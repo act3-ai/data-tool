@@ -3,7 +3,7 @@ package cli
 import (
 	"testing"
 
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/internal/cli/internal/functesting"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/functesting"
 )
 
 func Test_GenKeyPair(t *testing.T) {

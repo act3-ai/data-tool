@@ -14,8 +14,8 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 
-	"git.act3-ace.com/ace/data/tool/internal/git/cmd"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // ObjectCache proivdes methods for managing a cache of git objects.
@@ -160,7 +160,7 @@ func (c *Cache) resolveUncachedOCILFSFiles(ctx context.Context, layers []ocispec
 
 // copyLFSFromOCI copies a git-lfs file stored as an OCI layer, written to objDest.
 //
-// TODO: This is inefficient and not a good interface. See issue https://git.act3-ace.com/ace/data/tool/-/issues/504.
+// TODO: This is inefficient and not a good interface. See issue https://gitlab.com/act3-ai/asce/data/tool/-/issues/504.
 func copyLFSFromOCI(ctx context.Context, target oras.GraphTarget, objDest string, layerDesc ocispec.Descriptor) error {
 	log := logger.FromContext(ctx)
 
@@ -168,7 +168,7 @@ func copyLFSFromOCI(ctx context.Context, target oras.GraphTarget, objDest string
 	oidDir := filepath.Dir(objDest)
 
 	log.InfoContext(ctx, "initializing path to oid", "oidDir", oidDir)
-	err := os.MkdirAll(oidDir, 0777)
+	err := os.MkdirAll(oidDir, 0o777)
 	if err != nil {
 		return fmt.Errorf("creating path to oid file: %w", err)
 	}

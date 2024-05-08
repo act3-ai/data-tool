@@ -7,10 +7,11 @@ import (
 
 	"github.com/opencontainers/go-digest"
 
-	latest "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
-	tbtl "git.act3-ace.com/ace/data/tool/pkg/transfer/bottle"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	latest "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	tbtl "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
+
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // SourceAdd represents the bottle source add action.

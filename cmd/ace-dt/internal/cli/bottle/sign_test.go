@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	actions "git.act3-ace.com/ace/data/tool/internal/actions"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions"
 )
 
 func Test_Functional_SignBasic(t *testing.T) {

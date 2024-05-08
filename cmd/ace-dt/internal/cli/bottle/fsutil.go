@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"git.act3-ace.com/ace/go-common/pkg/ioutil"
+	"gitlab.com/act3-ai/asce/go-common/pkg/ioutil"
 )
 
 // FSUtil contains common utilities for working with a filesystem.
@@ -53,7 +53,7 @@ func (f *FSUtil) AddDir(fPath string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.MkdirAll(fPath, 0775); err != nil {
+	if err := os.MkdirAll(fPath, 0o775); err != nil {
 		return fmt.Errorf("failed to create dir %s: %w", fPath, err)
 	}
 	return nil
@@ -135,7 +135,7 @@ func (f *FSUtil) createPathAndFile(path string) (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(filepath.Dir(fPath), 0775); err != nil {
+	if err := os.MkdirAll(filepath.Dir(fPath), 0o775); err != nil {
 		return nil, fmt.Errorf("failed to create dir %s: %w", fPath, err)
 	}
 	file, err := os.Create(fPath)

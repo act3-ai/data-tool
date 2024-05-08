@@ -2,7 +2,7 @@
 package actions
 
 import (
-	"git.act3-ace.com/ace/data/tool/pkg/conf"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
 )
 
 // DataTool represents the base data tool action.

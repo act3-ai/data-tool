@@ -8,8 +8,8 @@ package mirror
 import (
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/internal/actions"
-	mirroractions "git.act3-ace.com/ace/data/tool/internal/actions/mirror"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	mirroractions "gitlab.com/act3-ai/asce/data/tool/internal/actions/mirror"
 )
 
 // NewMirrorCmd represents the base mirror command.

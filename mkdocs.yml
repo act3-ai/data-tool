@@ -2,9 +2,9 @@
 site_name: Data Tool Docs
 site_description: "Documentation Site for ASCE Data Tool"
 site_url: https://ace.git.act3-ace.com/data/tool
-repo_url: https://git.act3-ace.com/ace/data/tool
+repo_url: https://gitlab.com/act3-ai/asce/data/tool
 repo_name: ACE/Data/Tool
-edit_uri_template: https://git.act3-ace.com/ace/data/tool/-/blob/main/{path}
+edit_uri_template: https://gitlab.com/act3-ai/asce/data/tool/-/blob/main/{path}
 
 # Theme configuration
 theme:

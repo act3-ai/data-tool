@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // MetricRemove represents the bottle metric remove action.

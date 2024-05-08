@@ -21,9 +21,9 @@ import (
 	"oras.land/oras-go/v2/registry/remote/credentials"
 	"oras.land/oras-go/v2/registry/remote/retry"
 
-	"git.act3-ace.com/ace/data/tool/internal/httplogger"
-	regcache "git.act3-ace.com/ace/data/tool/internal/registry/cache"
-	"git.act3-ace.com/ace/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/data/tool/internal/httplogger"
+	regcache "gitlab.com/act3-ai/asce/data/tool/internal/registry/cache"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
 )
 
 // CredentialOption applies optional credential configuration.
@@ -39,8 +39,8 @@ func WithCredential(ctx context.Context, hostname string, cred auth.Credential) 
 // CreateRepoWithCustomConfig creates a remote.Repository object and sets it up based off
 // the custom parameters defined in registryConfig (inside ace-dt config file).
 func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig, ref string,
-	cache *regcache.RegistryCache, userAgent string, fallbackCredStores ...credentials.Store) (registry.Repository, error) {
-
+	cache *regcache.RegistryCache, userAgent string, fallbackCredStores ...credentials.Store,
+) (registry.Repository, error) {
 	// handle auth
 	storeOpts := credentials.StoreOptions{}
 	mainCredStore, err := credentials.NewStoreFromDocker(storeOpts)
@@ -108,7 +108,8 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 				},
 				Cache: auth.DefaultCache,
 				// Cache: auth.NewSingleContextCache(), // TODO could consider using this one
-				Credential: credentials.Credential(credStore)},
+				Credential: credentials.Credential(credStore),
+			},
 			Reference: registry.Reference{
 				Registry: endpointURL.Host,
 				// we want to set the repository and reference after cacheing the registry
@@ -132,7 +133,7 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 // if a nil TLS is passed, return a client with a logging transport (if ACE_DT_HTTP_LOG is set) wrapped in a retry transport.
 // if a TLS config exists, search for TLS certs and append to client.
 func newHTTPClientWithOps(cfg *v1alpha1.TLS, hostName, customCertPath string) (*http.Client, error) {
-	var transport = http.DefaultTransport
+	transport := http.DefaultTransport
 
 	var certLocation string
 	if customCertPath == "" {

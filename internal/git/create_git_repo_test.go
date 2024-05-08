@@ -8,16 +8,18 @@ import (
 	"strconv"
 	"strings"
 
-	"git.act3-ace.com/ace/data/tool/internal/git/cmd"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
 )
 
-const mainBranchName = "main"
-const modifyFileText = "modifying..."
-const mainUpdateFileName = "updateFile.txt"
-const feature1UpdateFileName = "feature1.txt"
-const feature2UpdateFileName = "feature2.txt"
-const testEmail = "user@example.com"
-const testUser = "user"
+const (
+	mainBranchName         = "main"
+	modifyFileText         = "modifying..."
+	mainUpdateFileName     = "updateFile.txt"
+	feature1UpdateFileName = "feature1.txt"
+	feature2UpdateFileName = "feature2.txt"
+	testEmail              = "user@example.com"
+	testUser               = "user"
+)
 
 type subCmd struct {
 	cmd  string // sometimes a func
@@ -241,7 +243,7 @@ func runCmdList(ch *cmd.Helper, list []subCmd) error {
 
 // modifyFile modifies, creating if necessary, the file at path by appending the text
 func modifyFile(path, text string) error {
-	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		return fmt.Errorf("opening file for modification: %w", err)
 	}

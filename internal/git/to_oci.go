@@ -15,11 +15,11 @@ import (
 	oras "oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/errdef"
 
-	"git.act3-ace.com/ace/data/tool/internal/git/cache"
-	"git.act3-ace.com/ace/data/tool/internal/git/cmd"
-	"git.act3-ace.com/ace/data/tool/internal/git/oci"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cache"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/oci"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // ToOCI represents a git to OCI sync action.
@@ -57,7 +57,7 @@ func NewToOCI(ctx context.Context, target oras.GraphTarget, tag, srcGitRemote st
 	}
 
 	if syncOpts.CacheDir != "" {
-		if err := os.MkdirAll(syncOpts.CacheDir, 0777); err != nil {
+		if err := os.MkdirAll(syncOpts.CacheDir, 0o777); err != nil {
 			u.Infof("Unable to create cache directory, continuing without caching.")
 			return toOCI, nil
 		}
@@ -244,7 +244,6 @@ func (t *ToOCI) updateBaseConfig(ctx context.Context) error {
 // sortRefsByLayer organizes the refs in the current config by layer,
 // returning a map of layer digests to a slice of commits contained in that layer.
 func (t *ToOCI) sortRefsByLayer() map[digest.Digest][]Commit {
-
 	layerResolver := make(map[digest.Digest][]Commit) // layer digest : []commits
 	for _, info := range t.base.config.Refs.Heads {
 		layerResolver[info.Layer] = append(layerResolver[info.Layer], info.Commit)
@@ -283,7 +282,6 @@ func (t *ToOCI) resolveLayer(layerResolver map[digest.Digest][]Commit, targetCom
 // addBundleToManifest prepares the shared filestore with the new bundle layer
 // as well as adds it to the manifest layers.
 func (t *ToOCI) addBundleToManifest(ctx context.Context, newBundlePath string) (ocispec.Descriptor, error) {
-
 	newBundleDesc, err := t.ociHelper.FStore.Add(ctx, filepath.Base(newBundlePath), MediaTypeBundleLayer, newBundlePath)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("adding bundle to filestore: %w", err)
@@ -345,7 +343,6 @@ func (t *ToOCI) sendBaseSync(ctx context.Context, newBundleDesc ocispec.Descript
 // the path of the bundle. An empty bundle path alongside a nil error indicates that a bundle of objects is not needed
 // but reference updates should still occur.
 func (t *ToOCI) bundleChanges(argRevList ...string) (string, error) {
-
 	// make new bundle rev-list
 	excludeCommits := make([]string, 0, len(t.base.config.Refs.Tags)+len(t.base.config.Refs.Heads)+len(argRevList))
 	for _, refInfo := range t.base.config.Refs.Tags {
@@ -370,7 +367,6 @@ EmptyBundleCheck:
 
 		// check to see if we're updating a reference
 		for i, fullRef := range newRefs {
-
 			switch {
 			case strings.HasPrefix(fullRef, cmd.TagRefPrefix):
 				oldTaggedInfo, inTags := t.base.config.Refs.Tags[strings.TrimPrefix(fullRef, cmd.TagRefPrefix)]

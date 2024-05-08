@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"git.act3-ace.com/ace/data/schema/pkg/util"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/util"
 )
 
 // ErrNonPortablePath is used to denote a filename/path that contains invalid characters.
@@ -98,15 +98,15 @@ func (ar *TarArchiver) WriteEntry(fsys fs.FS, path string, finfo fs.FileInfo) er
 	case fm.IsRegular():
 		hdr.Typeflag = tar.TypeReg
 		hdr.Size = finfo.Size()
-		if ar.preserveExecutableFiles && fm.Perm()&0111 != 0 {
-			hdr.Mode = 0777
+		if ar.preserveExecutableFiles && fm.Perm()&0o111 != 0 {
+			hdr.Mode = 0o777
 		} else {
-			hdr.Mode = 0666
+			hdr.Mode = 0o666
 		}
 	case finfo.IsDir():
 		hdr.Typeflag = tar.TypeDir
 		hdr.Name += "/"
-		hdr.Mode = 0777
+		hdr.Mode = 0o777
 	default:
 		return fmt.Errorf("file mode %v not supported", fm)
 	}
@@ -230,9 +230,9 @@ func (ar *TarExtractor) untarEntry(f *TarFileData, destination string, hdr *tar.
 		// create the directory (the parent(s) should already exist)
 		var err error
 		if ar.MakeParentDirectories {
-			err = os.MkdirAll(to, 0777)
+			err = os.MkdirAll(to, 0o777)
 		} else {
-			err = os.Mkdir(to, 0777)
+			err = os.Mkdir(to, 0o777)
 		}
 		if err != nil {
 			return fmt.Errorf("tar extraction: %w", err)

@@ -3,7 +3,7 @@ package bottle
 import (
 	"github.com/spf13/cobra"
 
-	actions "git.act3-ace.com/ace/data/tool/internal/actions/bottle"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
 )
 
 // newBtlPartCmd is the top level command that aggregates subcommands for interacting with bottles parts fields.
@@ -27,7 +27,7 @@ func newBtlMetricCmd(tool *actions.Action) *cobra.Command {
 func newMetricAddCmd(tool *actions.Action) *cobra.Command {
 	action := &actions.MetricAdd{Action: tool}
 
-	var addMetricCmd = &cobra.Command{
+	addMetricCmd := &cobra.Command{
 		Use:   "add [METRIC] [VALUE]",
 		Short: "add metric information to a bottle",
 		Example: `
@@ -54,7 +54,7 @@ Add metric loss with a negative value of -3.14 (use '--' when value is negative)
 func newMetricListCmd(tool *actions.Action) *cobra.Command {
 	action := &actions.MetricList{Action: tool}
 
-	var listMetricCmd = &cobra.Command{
+	listMetricCmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "list metric information from a bottle",
@@ -77,7 +77,7 @@ List metric information from bottle at path <my/bottle/path>:
 func newMetricRemoveCmd(tool *actions.Action) *cobra.Command {
 	action := &actions.MetricRemove{Action: tool}
 
-	var removeCmd = &cobra.Command{
+	removeCmd := &cobra.Command{
 		Use:     "remove [NAME]",
 		Aliases: []string{"rm"},
 		Short:   "Remove metric entry from a bottle",

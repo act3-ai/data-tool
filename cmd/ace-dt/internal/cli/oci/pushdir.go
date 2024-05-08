@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/internal/cli/internal/ui"
-	"git.act3-ace.com/ace/data/tool/internal/actions/oci"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions/oci"
 )
 
 // newPushDirCmd creates a new cobra.Command for the pushdir subcommand.
@@ -20,7 +20,6 @@ func newPushDirCmd(base *oci.Action) *cobra.Command {
 		Long:  `PATH is a directory that will be used as the contents of the image.`,
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			return ui.RunUI(cmd.Context(), uiOptions, func(ctx context.Context) error {
 				return action.Run(ctx, args[0], args[1])
 			})

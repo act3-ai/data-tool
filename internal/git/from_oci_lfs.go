@@ -9,8 +9,8 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/errdef"
 
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // runLFS updates a remote git repository by fetching git LFS tracked files from an LFS manifest
@@ -86,7 +86,6 @@ func (f *FromOCI) fetchLFSFilesOCI(ctx context.Context) error {
 
 // pushLFSRemote pushes all LFS files to the remote, followed by a standard git push.
 func (f *FromOCI) pushLFSRemote(refList []string, gitRemote string) error {
-
 	// push LFS files
 	if err := f.cmdHelper.LFS.Push(gitRemote, refList...); err != nil {
 		return fmt.Errorf("pushing git lfs files to remote: %w", err)

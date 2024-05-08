@@ -21,10 +21,10 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	orascontent "oras.land/oras-go/v2/content"
 
-	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
-	"git.act3-ace.com/ace/data/tool/internal/archive"
-	"git.act3-ace.com/ace/data/tool/internal/cache"
-	"git.act3-ace.com/ace/data/tool/internal/util"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
+	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
+	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
+	"gitlab.com/act3-ai/asce/data/tool/internal/util"
 )
 
 // CacheProvider is an interface describing an object that can facilitate retrieval of a cache manager and storage path.
@@ -166,7 +166,6 @@ func (s *DataStore) Exists(ctx context.Context, target ocispec.Descriptor) (bool
 	default:
 		return false, fmt.Errorf("unexpected mediatype encountered when checking data store '%s'", target.MediaType)
 	}
-
 }
 
 // Push implements the oras.content.Push interface method for writing content to storage.  The data is copied from the
@@ -245,7 +244,6 @@ var ErrUnknownLayerMediaType = errors.New("unknown layer media type")
 
 // HandlePartMedia copies the layer into the part file/directory given by partName.
 func (s *DataStore) HandlePartMedia(ctx context.Context, desc ocispec.Descriptor, partName string) error {
-
 	destPath := filepath.Join(s.root, filepath.FromSlash(partName))
 
 	cman := s.dloc.GetCache()

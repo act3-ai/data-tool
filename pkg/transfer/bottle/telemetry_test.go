@@ -8,10 +8,10 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote/auth"
 
-	telemv1alpha1 "git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
-	"git.act3-ace.com/ace/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"git.act3-ace.com/ace/data/tool/pkg/conf"
-	reg "git.act3-ace.com/ace/data/tool/pkg/registry"
+	telemv1alpha1 "gitlab.com/act3-ai/asce/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
+	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
 )
 
 // If you change this function then file an issue with CSI to get that updated as well.

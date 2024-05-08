@@ -9,20 +9,21 @@ import (
 	"sync"
 	"time"
 
-	sigcustom "git.act3-ace.com/ace/data/tool/internal/sign"
+	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
 
 	"oras.land/oras-go/v2/errdef"
 
-	"git.act3-ace.com/ace/data/telemetry/pkg/types"
-	"git.act3-ace.com/ace/data/tool/internal/actions"
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
-	"git.act3-ace.com/ace/data/tool/internal/bottle/status"
-	"git.act3-ace.com/ace/data/tool/internal/ref"
-	"git.act3-ace.com/ace/data/tool/internal/storage"
-	tbottle "git.act3-ace.com/ace/data/tool/internal/transfer/bottle"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	tbtl "git.act3-ace.com/ace/data/tool/pkg/transfer/bottle"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/telemetry/pkg/types"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/status"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
+	tbottle "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	tbtl "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
+
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Push represents the bottle push action.

@@ -18,10 +18,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"git.act3-ace.com/ace/data/tool/internal/actions"
-	"git.act3-ace.com/ace/data/tool/internal/ref"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 func exists(ctx context.Context, t *testing.T, repo, reference string) {
@@ -42,6 +42,7 @@ func notExists(ctx context.Context, t *testing.T, repo, reference string) {
 	_, err = cas.Resolve(ctx, reference)
 	assert.Error(t, err)
 }
+
 func TestScatter_Run(t *testing.T) {
 	defer leaktest.Check(t)() //nolint
 
@@ -104,7 +105,7 @@ func TestScatter_Run(t *testing.T) {
 	}
 
 	sources := filepath.Join(dir, "sources.list")
-	err = os.WriteFile(sources, []byte(strings.Join(sourceRefs, "\n")), 0666)
+	err = os.WriteFile(sources, []byte(strings.Join(sourceRefs, "\n")), 0o666)
 	rne(err)
 
 	// Run the actions
@@ -126,7 +127,7 @@ func TestScatter_Run(t *testing.T) {
 		t.Log(destTemplate)
 
 		templateFile := filepath.Join(dir, "dest.tmpl")
-		require.NoError(t, os.WriteFile(templateFile, []byte(destTemplate), 0666))
+		require.NoError(t, os.WriteFile(templateFile, []byte(destTemplate), 0o666))
 
 		assert.NoError(t, scatter.Run(ctx, gatherDest, "go-template="+templateFile))
 		exists(ctx, t, u.Host+"/high/scatter/go-template/source1", "tag")
@@ -292,7 +293,7 @@ func TestScatter_Run(t *testing.T) {
 
 		// create the sources.list file
 		sources := filepath.Join(dir, "subset.list")
-		err = os.WriteFile(sources, []byte(strings.Join(subsetRef, "\n")), 0666)
+		err = os.WriteFile(sources, []byte(strings.Join(subsetRef, "\n")), 0o666)
 		rne(err)
 
 		scatter := Scatter{
@@ -307,7 +308,7 @@ func TestScatter_Run(t *testing.T) {
 {{- end -}}`, u.Host, ref.AnnotationSrcRef)
 
 		templateFile := filepath.Join(dir, "dest.tmpl")
-		require.NoError(t, os.WriteFile(templateFile, []byte(destTemplate), 0666))
+		require.NoError(t, os.WriteFile(templateFile, []byte(destTemplate), 0o666))
 
 		assert.NoError(t, scatter.Run(ctx, gatherDest, "go-template="+templateFile))
 		exists(ctx, t, u.Host+"/high/scatter/subset/source1", "tag")
@@ -362,7 +363,7 @@ func TestScatter_Run(t *testing.T) {
 %[1]s/high/scatter/filtered/{{ trimPrefix "%[1]s/low/" $name -}}`, u.Host, ref.AnnotationSrcRef)
 
 		templateFile := filepath.Join(dir, "filter.tmpl")
-		require.NoError(t, os.WriteFile(templateFile, []byte(destTemplate), 0666))
+		require.NoError(t, os.WriteFile(templateFile, []byte(destTemplate), 0o666))
 
 		assert.NoError(t, scatter.Run(ctx, gatherDest, "go-template="+templateFile))
 		exists(ctx, t, u.Host+"/high/scatter/filtered/source1", "v1")

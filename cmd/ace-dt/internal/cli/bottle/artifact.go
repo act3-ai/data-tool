@@ -1,7 +1,7 @@
 package bottle
 
 import (
-	actions "git.act3-ace.com/ace/data/tool/internal/actions/bottle"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
 
 	"github.com/spf13/cobra"
 )
@@ -25,7 +25,7 @@ func newBtlArtifactCmd(tool *actions.Action) *cobra.Command {
 func setArtifactCmd(tool *actions.Action) *cobra.Command {
 	action := &actions.ArtifactSet{Action: tool}
 
-	var setArtifactCmd = &cobra.Command{
+	setArtifactCmd := &cobra.Command{
 		Use:   "set [NAME] [PATH]",
 		Short: "Sets a file as public artifact of bottle",
 		Long: `Sets a file as a public artifact of specified bottle.
@@ -63,7 +63,7 @@ Set public artifact <food model> at the path <./food.model> with its media type 
 func listArtifactCmd(tool *actions.Action) *cobra.Command {
 	action := &actions.ArtifactList{Action: tool}
 
-	var listArtCmd = &cobra.Command{
+	listArtCmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "Lists public artifacts in a bottle",
@@ -86,7 +86,7 @@ List public artifacts of bottle at the path my/bottle/path:
 func removeArtifactCmd(tool *actions.Action) *cobra.Command {
 	action := &actions.ArtifactRemove{Action: tool}
 
-	var removeArtCmd = &cobra.Command{
+	removeArtCmd := &cobra.Command{
 		Use:     "remove [PATH]",
 		Aliases: []string{"rm"},
 		Short:   "Removes item from public artifact list of a bottle",

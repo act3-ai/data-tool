@@ -16,10 +16,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"git.act3-ace.com/ace/data/tool/internal/actions"
-	"git.act3-ace.com/ace/data/tool/internal/ref"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 func TestE2E_Smoke(t *testing.T) {
@@ -88,7 +88,7 @@ func TestE2E_Smoke(t *testing.T) {
 	}
 
 	sources := filepath.Join(dir, "sources.list")
-	err = os.WriteFile(sources, []byte(strings.Join(sourceRefs, "\n")), 0666)
+	err = os.WriteFile(sources, []byte(strings.Join(sourceRefs, "\n")), 0o666)
 	rne(err)
 
 	// Run the actions
@@ -144,7 +144,7 @@ func TestE2E_Smoke(t *testing.T) {
 {{- end -}}`, u.Host, ref.AnnotationSrcRef)
 
 	templateFile := filepath.Join(dir, "dest.tmpl")
-	err = os.WriteFile(templateFile, []byte(destTemplate), 0666)
+	err = os.WriteFile(templateFile, []byte(destTemplate), 0o666)
 	rne(err)
 
 	err = scatter.Run(ctx, scatterSrc, "go-template="+templateFile)

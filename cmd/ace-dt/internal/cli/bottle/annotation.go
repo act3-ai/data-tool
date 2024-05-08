@@ -3,7 +3,7 @@ package bottle
 import (
 	"github.com/spf13/cobra"
 
-	actions "git.act3-ace.com/ace/data/tool/internal/actions/bottle"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
 )
 
 // newBtlAnnotateCmd command allows addition or removal of annotations to bottle schema.
@@ -46,7 +46,7 @@ List all annotations for bottle in current working directory:
 func newBtlAnnotListCmd(tool *actions.Action) *cobra.Command {
 	action := &actions.AnnotateList{Action: tool}
 
-	var listAnnotCmd = &cobra.Command{
+	listAnnotCmd := &cobra.Command{
 		Aliases: []string{"ls"},
 		Use:     "list",
 		Short:   "Lists annotation associated with a bottle",

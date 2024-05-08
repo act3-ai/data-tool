@@ -7,10 +7,10 @@ import (
 
 	"oras.land/oras-go/v2"
 
-	telemv1alpha1 "git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
-	"git.act3-ace.com/ace/data/tool/pkg/conf"
-	reg "git.act3-ace.com/ace/data/tool/pkg/registry"
+	telemv1alpha1 "gitlab.com/act3-ai/asce/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
+	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
 )
 
 // TransferConfig configures bottle transfers between the local host

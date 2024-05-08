@@ -3,7 +3,7 @@
 // Currently only cache pruning is supported.
 package cache
 
-import "git.act3-ace.com/ace/data/tool/internal/cache"
+import "gitlab.com/act3-ai/asce/data/tool/internal/cache"
 
 // BottleCachePruner removes bottle items until the total size of the cache is less than or
 // equal to maxSize.

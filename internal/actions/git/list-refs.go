@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"git.act3-ace.com/ace/data/tool/internal/git"
-	"git.act3-ace.com/ace/data/tool/internal/git/cmd"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // ListRefs represents the git list-refs action.

@@ -3,8 +3,8 @@ package mirror
 import (
 	"context"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 )
 
 // Scatter represents the mirror scatter action.

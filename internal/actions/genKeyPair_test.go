@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	sigcustom "git.act3-ace.com/ace/data/tool/internal/sign"
+	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
 )
 
 func Test_GenAndWriteKeyPair(t *testing.T) {

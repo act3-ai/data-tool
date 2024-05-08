@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
-	"git.act3-ace.com/ace/data/tool/internal/bottle/status"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/status"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Status represents the bottle status action.

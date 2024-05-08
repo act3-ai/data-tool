@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 func makeTarReadPipestream(path string) (PipeReader, error) {
@@ -58,7 +58,7 @@ func extractWithPipeStream(ctx context.Context, archivePath string, destPath str
 
 	// ensure destPath exists
 	// TODO seems like this should be done by the caller
-	if err := os.MkdirAll(destPath, 0777); err != nil {
+	if err := os.MkdirAll(destPath, 0o777); err != nil {
 		return fmt.Errorf("error creating archivePath: %w", err)
 	}
 

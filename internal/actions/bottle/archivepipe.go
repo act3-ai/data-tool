@@ -12,18 +12,18 @@ import (
 	"strings"
 	"sync"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 
 	"github.com/opencontainers/go-digest"
 	"golang.org/x/sync/errgroup"
 
-	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
-	"git.act3-ace.com/ace/data/tool/internal/archive"
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
-	"git.act3-ace.com/ace/data/tool/internal/cache"
-	"git.act3-ace.com/ace/data/tool/internal/storage"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/data/tool/internal/util"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
+	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
+	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/data/tool/internal/util"
 )
 
 // archiveConcurrency is the concurrency used when archiving parts.
@@ -400,7 +400,7 @@ func commitParts(ctx context.Context, btl *bottle.Bottle, tmpFileMap *sync.Map) 
 		// Get the file name if not an archive, or the archive file name.
 		fname := btl.NativePath(part.GetName())
 		mt := part.GetMediaType()
-		var tempExists = false
+		tempExists := false
 		archivedOrCompressed := mediatype.IsArchived(mt) || mediatype.IsCompressed(mt)
 		// any object within the tmpFileMap will need to be moved to the final cache destination.
 		if n, ok := tmpFileMap.Load(part.GetName()); ok {

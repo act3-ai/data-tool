@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"git.act3-ace.com/ace/data/telemetry/pkg/types"
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/data/telemetry/pkg/types"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 )
 
 // NewSummaryFromBottle generates a telemetry compatible signature summary, which includes the bottle and manifest

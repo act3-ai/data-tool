@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 
 	"github.com/opencontainers/go-digest"
 )
@@ -16,7 +16,7 @@ func SaveExtraBottleInfo(ctx context.Context, btl *Bottle, additionalBottleIDFil
 	log := logger.FromContext(ctx)
 	if additionalBottleIDFile != "" {
 		logger.V(log, 1).InfoContext(ctx, "Saving additional bottle ID to file", "path", additionalBottleIDFile)
-		if err := os.WriteFile(additionalBottleIDFile, []byte(btl.GetBottleID()), 0666); err != nil {
+		if err := os.WriteFile(additionalBottleIDFile, []byte(btl.GetBottleID()), 0o666); err != nil {
 			return fmt.Errorf("unable to save additional bottleID file: %w", err)
 		}
 	}
@@ -43,7 +43,7 @@ func SaveBottleManifest(btl *Bottle) error {
 	if err != nil {
 		return fmt.Errorf("saving bottle manifest: %w", err)
 	}
-	if err := os.WriteFile(manifestFile(btl.localPath), raw, 0666); err != nil {
+	if err := os.WriteFile(manifestFile(btl.localPath), raw, 0o666); err != nil {
 		return fmt.Errorf("unable to write bottle manifest: %w", err)
 	}
 	return nil
@@ -56,7 +56,7 @@ func SaveBottleID(btl *Bottle) error {
 
 // SaveBottleIDFile writes a bottle id as "<algorithm>:<digest>" to a given file.
 func SaveBottleIDFile(btl *Bottle, path string) error {
-	if err := os.WriteFile(path, []byte(btl.GetBottleID()), 0666); err != nil {
+	if err := os.WriteFile(path, []byte(btl.GetBottleID()), 0o666); err != nil {
 		return fmt.Errorf("unable to save bottleID: %w", err)
 	}
 
@@ -84,7 +84,7 @@ func SavePullCmd(ctx context.Context, btl *Bottle) error {
 	path := pullCmdFile(btl.localPath)
 	logger.V(log, 1).InfoContext(ctx, "Saving pull command", "command", content, "path", path)
 
-	if err := os.WriteFile(path, []byte(content), 0666); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o666); err != nil {
 		return fmt.Errorf("unable to create file for pullcmd: %w", err)
 	}
 
@@ -98,7 +98,7 @@ func SaveBottleConfig(btl *Bottle) error {
 		return fmt.Errorf("unable to get bottle configuration data for json output: %w", err)
 	}
 
-	if err := os.WriteFile(configFile(btl.localPath), bottleData, 0666); err != nil {
+	if err := os.WriteFile(configFile(btl.localPath), bottleData, 0o666); err != nil {
 		return fmt.Errorf("unable to save bottle config JSON: %w", err)
 	}
 

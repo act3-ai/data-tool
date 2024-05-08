@@ -12,11 +12,11 @@ import (
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 
-	dtreg "git.act3-ace.com/ace/data/tool/internal/registry"
-	regcache "git.act3-ace.com/ace/data/tool/internal/registry/cache"
-	"git.act3-ace.com/ace/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"git.act3-ace.com/ace/go-common/pkg/config"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	dtreg "gitlab.com/act3-ai/asce/data/tool/internal/registry"
+	regcache "gitlab.com/act3-ai/asce/data/tool/internal/registry/cache"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/go-common/pkg/config"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // ConfigOverrideFunction defines a function used to override config values after loading.

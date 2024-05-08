@@ -153,7 +153,7 @@ linters-settings:
     ignoreSigRegexps:
       # ignore printing (to stdout)
       - "fmt\\..?(P|p)rint.*\\(" 
-      - "\\(git.act3-ace.com/ace/data/tool/internal/.*"
+      - "\\(gitlab.com/act3-ai/asce/data/tool/internal/.*"
     ignorePackageGlobs:
       - encoding/*
       - git.act3-ace.com/* # Only catches things when they are imported
@@ -176,11 +176,11 @@ linters-settings:
         files:
         - "**/pkg/transfer/*.go"
         deny:
-        - pkg: "git.act3-ace.com/ace/data/tool/internal/transfer/bottle"
+        - pkg: "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
           desc: pkg/transfer should not depend on bottles
-        - pkg: "git.act3-ace.com/ace/data/tool/internal/actions/bottle"
+        - pkg: "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
           desc: pkg/transfer should not depend on bottles
-        - pkg: "git.act3-ace.com/ace/data/tool/internal/bottle"
+        - pkg: "gitlab.com/act3-ai/asce/data/tool/internal/bottle"
           desc: pkg/transfer should not depend on bottles
   
   sloglint:

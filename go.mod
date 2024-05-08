@@ -1,11 +1,11 @@
-module git.act3-ace.com/ace/data/tool
+module gitlab.com/act3-ai/asce/data/tool
 
 go 1.22.2
 
 require (
-	git.act3-ace.com/ace/data/schema v1.2.13
-	git.act3-ace.com/ace/data/telemetry v0.19.2
-	git.act3-ace.com/ace/go-common v0.0.0-20240319120227-e77a013aa92d
+	gitlab.com/act3-ai/asce/data/schema v1.2.13
+	gitlab.com/act3-ai/asce/data/telemetry v0.19.2
+	gitlab.com/act3-ai/asce/go-common v0.0.0-20240319120227-e77a013aa92d
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/adrg/xdg v0.4.0
 	github.com/dustin/go-humanize v1.0.1

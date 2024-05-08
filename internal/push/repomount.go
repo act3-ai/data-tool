@@ -8,8 +8,8 @@ import (
 
 	"github.com/opencontainers/go-digest"
 
-	"git.act3-ace.com/ace/data/tool/internal/cache"
-	"git.act3-ace.com/ace/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 )
 
 // MountStatus is a status indicator type for a mountLayers attempt.

@@ -26,14 +26,13 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 
-	regcache "git.act3-ace.com/ace/data/tool/internal/registry/cache"
-	"git.act3-ace.com/ace/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"git.act3-ace.com/ace/go-common/pkg/test"
+	regcache "gitlab.com/act3-ai/asce/data/tool/internal/registry/cache"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 func TestRegistryConfig(t *testing.T) {
-
 	log := test.Logger(t, 0)
 	ctx := logger.NewContext(context.Background(), log)
 
@@ -50,7 +49,7 @@ func TestRegistryConfig(t *testing.T) {
 	// create the temp directory and tls folder
 	tmpdir := t.TempDir()
 	tlsPath := filepath.Join(tmpdir, "testing")
-	err = os.Mkdir(tlsPath, 0777)
+	err = os.Mkdir(tlsPath, 0o777)
 	rne(err)
 	defer os.RemoveAll(tmpdir)
 	endpoint := "http://" + u.Host

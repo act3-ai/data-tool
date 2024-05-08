@@ -15,7 +15,7 @@ import (
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror/encoding"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
 )
 
 // Copier represents a copy object for mirror operations.
@@ -44,7 +44,8 @@ func NewCopier(ctx context.Context,
 	destRef registry.Reference,
 	referrers bool,
 	platforms []*ocispec.Platform,
-	repoFunc func(ctx context.Context, ref string) (*remote.Repository, error)) (*Copier, error) {
+	repoFunc func(ctx context.Context, ref string) (*remote.Repository, error),
+) (*Copier, error) {
 	// These CopyGraphOptions will be nested within CopyOptions for the case of platform
 	options := oras.CopyGraphOptions{}
 	if srcTarget == nil {

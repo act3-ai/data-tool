@@ -10,11 +10,11 @@ import (
 	notationreg "github.com/notaryproject/notation-go/registry"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	act3valid "git.act3-ace.com/ace/data/schema/pkg/validation"
+	act3valid "gitlab.com/act3-ai/asce/data/schema/pkg/validation"
 )
 
 // * * NOTICE * * //
-// The following is nearly identical to git.act3-ace.com/ace/data/schema/pkg/validation/manifest.go.
+// The following is nearly identical to gitlab.com/act3-ai/asce/data/schema/pkg/validation/manifest.go.
 // It contains minor mondifications to suit the media types used in signature
 // layers and the config.
 

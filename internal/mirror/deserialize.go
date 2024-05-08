@@ -21,12 +21,12 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror/encoding"
-	"git.act3-ace.com/ace/data/tool/internal/orasutil"
-	"git.act3-ace.com/ace/data/tool/internal/print"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/go-common/pkg/ioutil"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
+	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
+	"gitlab.com/act3-ai/asce/data/tool/internal/print"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/go-common/pkg/ioutil"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // DeserializeOptions specify the requirements to run the mirror deserialize command.
@@ -245,8 +245,8 @@ func consumeIndexJSON(r io.Reader) (*ocispec.Index, error) {
 func consumeBlob(ctx context.Context,
 	fname string, size int64, r io.Reader,
 	tracker *encoding.TaggableTracker,
-	remoteStorage, cache content.Storage) error {
-
+	remoteStorage, cache content.Storage,
+) error {
 	log := logger.FromContext(ctx)
 
 	// extract the digest from the filename

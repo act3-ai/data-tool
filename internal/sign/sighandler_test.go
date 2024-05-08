@@ -12,9 +12,10 @@ import (
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	tlog "git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
+
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	tlog "gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 // TODO: We'll likely have to update the bottle's signature if we change
@@ -117,7 +118,7 @@ func Test_VerifyNotaryCert(t *testing.T) {
 func CreateSampleBottle(t *testing.T, dir string) ocispec.Descriptor {
 	t.Helper()
 
-	err := os.MkdirAll(filepath.Join(dir, ".dt"), 0777)
+	err := os.MkdirAll(filepath.Join(dir, ".dt"), 0o777)
 	if err != nil {
 		t.Fatalf("creating .dt dir: %s", err)
 	}

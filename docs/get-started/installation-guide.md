@@ -19,7 +19,7 @@ Data Tool is included in the `reg.git.act3-ace.com/devsecops/dev-tools` image.
 
 The [dev-tools project](https://git.act3-ace.com/ace/dev-tools) also packages Data Tool in an image by itself. This allows developers to pull the Data Tool image into another image.  
 
-See the example [Dockerfile](https://git.act3-ace.com/ace/data/tool/-/blob/main/sample/Dockerfile?ref_type=heads) for example usage.
+See the example [Dockerfile](https://gitlab.com/act3-ai/asce/data/tool/-/blob/main/sample/Dockerfile?ref_type=heads) for example usage.
 
 ### Install with Go
 
@@ -56,7 +56,7 @@ machine git.act3-ace.com
 Install `ace-dt` with
 
 ```sh
-go install git.act3-ace.com/ace/data/tool/cmd/ace-dt@latest
+go install gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt@latest
 ```
 
 You may replace `<latest>` with a tag you would like to install.  
@@ -73,7 +73,7 @@ Depending on the installation method used, you may need to manually install auto
 
 ### Prebuilt Binary
   
-A list of prebuilt binaries is available on Data Tool's [GitLab Release page](https://git.act3-ace.com/ace/data/tool/-/releases). Options are available for 64-bit Linux, macOS, and Windows.
+A list of prebuilt binaries is available on Data Tool's [GitLab Release page](https://gitlab.com/act3-ai/asce/data/tool/-/releases). Options are available for 64-bit Linux, macOS, and Windows.
 
 These are unsigned binaries.
 

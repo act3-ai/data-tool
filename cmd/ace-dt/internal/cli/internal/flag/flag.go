@@ -7,7 +7,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/pflag"
 
-	"git.act3-ace.com/ace/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
 )
 
 // TelemetryURLFlags adds a flag for changing the default telemetry url.
@@ -56,7 +56,6 @@ type MemoryBufferOptions struct {
 // Options will convert the options values and return
 // the number of blocks, block size (B), number of blocks to reach the HWM.
 func (opts *MemoryBufferOptions) Options() (int, int, int) {
-
 	// convert to number of blocks
 	n := iceil(int(opts.Size), int(opts.BlockSize))
 	hwm := iceil(int(opts.Size)*opts.HighWaterMarkPercentage/100, int(opts.BlockSize))

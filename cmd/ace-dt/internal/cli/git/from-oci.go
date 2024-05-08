@@ -5,9 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/internal/cli/internal/ui"
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/internal/cli/oci"
-	"git.act3-ace.com/ace/data/tool/internal/actions/git"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/oci"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions/git"
 )
 
 // newFromOCICmd creates a new cobra.Command for the rebuild subcommand.
@@ -35,7 +35,6 @@ Cache the git repository at GIT_REMOTE (caches lfs files as well):
 		Args:              cobra.ExactArgs(2),
 		ValidArgsFunction: oci.RefCompletion(action.DataTool, 1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			return ui.RunUI(cmd.Context(), uiOptions, func(ctx context.Context) error {
 				action.Repo = args[0]
 				action.GitRemote = args[1]

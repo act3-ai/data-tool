@@ -3,7 +3,7 @@ package bottle
 import (
 	"github.com/spf13/cobra"
 
-	actions "git.act3-ace.com/ace/data/tool/internal/actions/bottle"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
 )
 
 // newLabelCmd represents the label command.
@@ -47,7 +47,7 @@ Remove label <foo> from bottle <bar> at path <my/bottle/path>:
 func listBtlLabelCmd(tool *actions.Action) *cobra.Command {
 	action := &actions.LabelList{Action: tool}
 
-	var listCmd = &cobra.Command{
+	listCmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "list labels applied on specified bottle",

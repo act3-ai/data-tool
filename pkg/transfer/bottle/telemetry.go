@@ -9,12 +9,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"oras.land/oras-go/v2/errdef"
 
-	latest "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
-	"git.act3-ace.com/ace/data/telemetry/pkg/types"
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
-	"git.act3-ace.com/ace/data/tool/internal/ref"
-	sigcustom "git.act3-ace.com/ace/data/tool/internal/sign"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	latest "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
+
+	"gitlab.com/act3-ai/asce/data/telemetry/pkg/types"
+
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Pull facilitates bottle transfers from a remote registry to a local directory. The

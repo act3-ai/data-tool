@@ -9,9 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/internal/cli/internal/ui"
-	actions "git.act3-ace.com/ace/data/tool/internal/actions/bottle"
-	"git.act3-ace.com/ace/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
 )
 
 // commitCmd represents the commit command.

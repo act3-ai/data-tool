@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	sigcustom "git.act3-ace.com/ace/data/tool/internal/sign"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // GenKeyPair represents the generate key pair action.
@@ -62,7 +62,6 @@ func GenAndWriteKeyPair(ctx context.Context, destPath, prefix string, wantCert b
 	privPEM, err := keypair.PrivateKeyPEM()
 	if err != nil {
 		return fmt.Errorf("error PEM formatting private key: %w", err)
-
 	}
 
 	// Get the public key in PEM format.
@@ -73,13 +72,13 @@ func GenAndWriteKeyPair(ctx context.Context, destPath, prefix string, wantCert b
 
 	// write the private key to the destination path.
 	log.InfoContext(ctx, "Writing key pair to destination path", "destPath", destPath)
-	err = os.WriteFile(privPath, privPEM, 0600)
+	err = os.WriteFile(privPath, privPEM, 0o600)
 	if err != nil {
 		return fmt.Errorf("writing private key to PEM file: %w", err)
 	}
 
 	// write the public key to the destination path
-	err = os.WriteFile(pubPath, pubPEM, 0600)
+	err = os.WriteFile(pubPath, pubPEM, 0o600)
 	if err != nil {
 		return fmt.Errorf("writing public key to PEM file: %w", err)
 	}
@@ -92,7 +91,7 @@ func GenAndWriteKeyPair(ctx context.Context, destPath, prefix string, wantCert b
 
 		// write the certificate to the destination path
 		certPath := filepath.Join(destPath, prefix+".crt")
-		err = os.WriteFile(certPath, cert, 0600)
+		err = os.WriteFile(certPath, cert, 0o600)
 		if err != nil {
 			return fmt.Errorf("writing certificate to ASN.1 DER file: %w", err)
 		}

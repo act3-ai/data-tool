@@ -12,7 +12,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror/encoding"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
 )
 
 // ErrMissingSuccessor indicates that a success is issing.

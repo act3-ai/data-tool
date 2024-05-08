@@ -15,11 +15,11 @@ import (
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror/encoding"
-	"git.act3-ace.com/ace/data/tool/internal/print"
-	"git.act3-ace.com/ace/data/tool/internal/ref"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
+	"gitlab.com/act3-ai/asce/data/tool/internal/print"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // GatherOptions specify the requirements to run a mirror gather operation.
@@ -181,7 +181,6 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) err
 }
 
 func annotateManifest(srcRef string, desc ocispec.Descriptor, labels map[string]string, sourceIndex []byte) (ocispec.Descriptor, error) {
-
 	desc.Annotations = map[string]string{
 		ref.AnnotationSrcRef: srcRef,
 	}

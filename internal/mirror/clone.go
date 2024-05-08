@@ -11,9 +11,9 @@ import (
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"git.act3-ace.com/ace/data/tool/internal/print"
-	"git.act3-ace.com/ace/data/tool/internal/ref"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/data/tool/internal/print"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 )
 
 // CloneOptions define the options required to run a Clone operation.

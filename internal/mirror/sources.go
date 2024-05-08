@@ -17,9 +17,9 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"git.act3-ace.com/ace/data/schema/pkg/selectors"
-	"git.act3-ace.com/ace/data/tool/internal/actions/oci"
-	"git.act3-ace.com/ace/data/tool/internal/mirror/encoding"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions/oci"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
 )
 
 // Source represents a single source line in the `sources.list` file. It includes the source reference (name) and any user-defined labels.
@@ -34,8 +34,8 @@ type Source struct {
 func processSourcesFile(ctx context.Context,
 	sourceFile string,
 	sels selectors.LabelSelectorSet,
-	concurrency int) ([]Source, error) {
-
+	concurrency int,
+) ([]Source, error) {
 	if sourceFile == "" {
 		return []Source{}, nil
 	}
@@ -180,8 +180,8 @@ func createSourcesMap(sources []Source) map[string]map[string]string {
 
 func filterRefByLabelAndGenerateDestinations(desc ocispec.Descriptor,
 	filters selectors.LabelSelectorSet,
-	mapper mapperFunc) ([]string, error) {
-
+	mapper mapperFunc,
+) ([]string, error) {
 	lb := labels.Set{}
 	// process the labels in the annotations if we have any
 	if l, ok := desc.Annotations[encoding.AnnotationLabels]; ok {

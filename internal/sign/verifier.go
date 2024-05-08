@@ -12,7 +12,7 @@ import (
 
 	"github.com/notaryproject/notation-go/verifier/truststore"
 
-	telemsig "git.act3-ace.com/ace/data/telemetry/pkg/signature"
+	telemsig "gitlab.com/act3-ai/asce/data/telemetry/pkg/signature"
 )
 
 // PublicKeyProvider returns a PublicKey associated with a digital signature.
@@ -61,7 +61,6 @@ func (scv simpleCertVerifier) GetCertificates(ctx context.Context, storeType tru
 // VerifySignature for a simpleCertVerifier uses notary verification to verify a signature using the stored certificates
 // and public key.
 func (scv simpleCertVerifier) VerifySignature(signedSubject ocispec.Descriptor, signature io.Reader) error {
-
 	// Read payload envelope
 	sig, err := io.ReadAll(signature)
 	if err != nil {
@@ -70,7 +69,6 @@ func (scv simpleCertVerifier) VerifySignature(signedSubject ocispec.Descriptor, 
 
 	// verify the signature.  Failure is returned as an error, so we don't need to check outcome directly
 	_, err = telemsig.ValidateSignatureNotary(context.Background(), signedSubject, sig, scv)
-
 	// if failed, return a signature verification error
 	if err != nil {
 		return fmt.Errorf("verifying notation signature: %w", err)

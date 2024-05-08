@@ -9,7 +9,7 @@ import (
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"git.act3-ace.com/ace/data/tool/internal/oci"
+	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
 )
 
 // AnnotationX509ChainThumbprint stores a certificate chain as a list of thumbprints. A manifest annotation key.
@@ -64,11 +64,10 @@ type SigsManifest struct {
 // is named similarly to the manifest with a "-Config.json" suffix rather than ".sig".
 // WriteDisk implements the SigsManifestHandler interface.
 func (s *SigsManifest) WriteDisk(dir, sigManifestTag, configFileName string) error {
-
 	// ensure .signature dir exists
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		// create the sig dir
-		err = os.MkdirAll(dir, 0777)
+		err = os.MkdirAll(dir, 0o777)
 		if err != nil {
 			return fmt.Errorf("creating signature directory: %w", err)
 		}
@@ -79,7 +78,7 @@ func (s *SigsManifest) WriteDisk(dir, sigManifestTag, configFileName string) err
 		sigPath := filepath.Join(dir, layerDigest.Hex())
 		_, err := os.Stat(sigPath)
 		if os.IsNotExist(err) {
-			err = os.WriteFile(sigPath, data, 0644)
+			err = os.WriteFile(sigPath, data, 0o644)
 			if err != nil {
 				return fmt.Errorf("writing signature layer to disk, digest = %s: %w", layerDigest, err)
 			}
@@ -95,7 +94,7 @@ func (s *SigsManifest) WriteDisk(dir, sigManifestTag, configFileName string) err
 		if err != nil {
 			return fmt.Errorf("getting JSON encoded config data: %w", err)
 		}
-		err = os.WriteFile(filepath.Join(dir, configFileName), configData, 0644)
+		err = os.WriteFile(filepath.Join(dir, configFileName), configData, 0o644)
 		if err != nil {
 			return fmt.Errorf("writing config data: %w", err)
 		}
@@ -106,7 +105,7 @@ func (s *SigsManifest) WriteDisk(dir, sigManifestTag, configFileName string) err
 	if err != nil {
 		return fmt.Errorf("getting JSON encoded manifest data: %w", err)
 	}
-	err = os.WriteFile(filepath.Join(dir, sigManifestTag), manifestData, 0644)
+	err = os.WriteFile(filepath.Join(dir, sigManifestTag), manifestData, 0o644)
 	if err != nil {
 		return fmt.Errorf("writing manifest data: %w", err)
 	}
@@ -142,7 +141,6 @@ func (s *SigsManifest) GetConfigRaw() ([]byte, error) {
 // SetLayerDescriptors sets layer information in both the manifest and config.
 // SetLayerDescriptors implements the SigsManifestHandler interface.
 func (s *SigsManifest) SetLayerDescriptors(layers []ocispec.Descriptor) error {
-
 	cfgImage := ocispec.Image{}
 	err := json.Unmarshal(s.Config, &cfgImage)
 	if err == nil {
@@ -174,7 +172,6 @@ func (s *SigsManifest) SetLayerDescriptors(layers []ocispec.Descriptor) error {
 // UpdateManifestDescriptor updates the manifest descriptor to reflect the current manifest data.
 // UpdateManifestDescriptor implements the SigsManifestHandler interface.
 func (s *SigsManifest) UpdateManifestDescriptor() error {
-
 	manifestBytes, err := s.GetManifestRaw()
 	if err != nil {
 		return fmt.Errorf("getting manifest bytes for descriptor update: %w", err)

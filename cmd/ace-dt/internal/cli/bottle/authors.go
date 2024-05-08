@@ -3,7 +3,7 @@ package bottle
 import (
 	"github.com/spf13/cobra"
 
-	actions "git.act3-ace.com/ace/data/tool/internal/actions/bottle"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
 )
 
 // newBtlPartCmd is the top level command that aggregates subcommands for interacting with bottles parts fields.
@@ -27,7 +27,7 @@ func newBtlAuthorCmd(tool *actions.Action) *cobra.Command {
 func listAuthorCmd(tool *actions.Action) *cobra.Command {
 	action := &actions.AuthorList{Action: tool}
 
-	var listCmd = &cobra.Command{
+	listCmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "Lists author information of a bottle",
@@ -52,7 +52,7 @@ func addAuthorCmd(tool *actions.Action) *cobra.Command {
 
 	var authorURL string
 
-	var addCmd = &cobra.Command{
+	addCmd := &cobra.Command{
 		Use:   "add [NAME] [EMAIL]",
 		Short: "Adds author information to specified bottle",
 		Example: `
@@ -76,7 +76,7 @@ Add author <Alice Wonders> to bottle at path <my/bottle/path>:
 func removeAuthorCmd(tool *actions.Action) *cobra.Command {
 	action := &actions.AuthorRemove{Action: tool}
 
-	var removeCmd = &cobra.Command{
+	removeCmd := &cobra.Command{
 		Use:     "remove [NAME]",
 		Aliases: []string{"rm"},
 		Short:   "Removes author's information from a bottle",

@@ -13,7 +13,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 
-	"git.act3-ace.com/ace/data/tool/internal/orasutil"
+	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
 )
 
 func TestCAS_MissingBlob(t *testing.T) {

@@ -9,12 +9,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/cli"
-	"git.act3-ace.com/ace/data/tool/docs"
-	"git.act3-ace.com/ace/go-common/pkg/cmd"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"git.act3-ace.com/ace/go-common/pkg/runner"
-	vv "git.act3-ace.com/ace/go-common/pkg/version"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/cli"
+	"gitlab.com/act3-ai/asce/data/tool/docs"
+
+	"gitlab.com/act3-ai/asce/go-common/pkg/cmd"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/runner"
+	vv "gitlab.com/act3-ai/asce/go-common/pkg/version"
 )
 
 // getVersionInfo retrieves the proper version information for this executable.

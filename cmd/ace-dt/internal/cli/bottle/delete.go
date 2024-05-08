@@ -6,8 +6,8 @@ package bottle
 import (
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/internal/cli/oci"
-	actions "git.act3-ace.com/ace/data/tool/internal/actions/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/oci"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
 )
 
 // deleteCmd represents the delete command.

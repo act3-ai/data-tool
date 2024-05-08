@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"git.act3-ace.com/ace/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 )
 
 func makeVirtPartData(path string) *VirtualParts {
@@ -107,7 +107,7 @@ func Test_VirtualParts_Load(t *testing.T) {
 				filePath:    tt.compare.filePath,
 				VirtRecords: tt.compare.VirtRecords,
 			}
-			require.NoError(t, os.WriteFile(tt.compare.filePath, []byte(tt.arg), 0666))
+			require.NoError(t, os.WriteFile(tt.compare.filePath, []byte(tt.arg), 0o666))
 			tvp := &VirtualParts{filePath: tt.compare.filePath}
 			require.NoError(t, tvp.Load())
 			assert.Equal(t, cvp, tvp)
@@ -199,11 +199,13 @@ func Test_VirtualParts_Add(t *testing.T) {
 		args args
 		cmp  *VirtualParts
 	}{
-		{"add a record", makeVirtPartDataShort(d), args{
-			"sha256:b1edb61290815003b6f299696f6a2c5431a1d4d68fa7c39815ed2ff2f26c8e87",
-			"sha256:4606989f5dc480174908c8fad859045c20947d94f767233c1cdffc9ab0b51db6",
-			"reg.example.com/bottle/different:v2.1",
-		},
+		{
+			"add a record", makeVirtPartDataShort(d),
+			args{
+				"sha256:b1edb61290815003b6f299696f6a2c5431a1d4d68fa7c39815ed2ff2f26c8e87",
+				"sha256:4606989f5dc480174908c8fad859045c20947d94f767233c1cdffc9ab0b51db6",
+				"reg.example.com/bottle/different:v2.1",
+			},
 			makeVirtPartData(d),
 		},
 	}

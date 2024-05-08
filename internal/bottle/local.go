@@ -9,17 +9,15 @@ import (
 	"path/filepath"
 	"reflect"
 
-	latest "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
+	latest "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
 
-	"git.act3-ace.com/ace/data/tool/internal/bottle/label"
-	"git.act3-ace.com/ace/data/tool/internal/storage"
-	"git.act3-ace.com/ace/data/tool/internal/util"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
+	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
+	"gitlab.com/act3-ai/asce/data/tool/internal/util"
 )
 
-var (
-	// ErrBottleAlreadyInit is the error received when trying to init an inited bottle.
-	ErrBottleAlreadyInit = errors.New("bottle already initialized")
-)
+// ErrBottleAlreadyInit is the error received when trying to init an inited bottle.
+var ErrBottleAlreadyInit = errors.New("bottle already initialized")
 
 // EntryFile returns a bottle configuration file path for a path name.
 func EntryFile(path string) string {
@@ -66,7 +64,6 @@ func SigDir(path string) string {
 // bottle configuration.  LocalPath and YAML file options will be
 // set by the path argument, so will not need to be supplied.
 func LoadBottle(path string, opts ...BOption) (*Bottle, error) {
-
 	bottleOptions := []BOption{
 		WithLocalPath(path),
 		WithVirtualParts,
@@ -80,7 +77,7 @@ func LoadBottle(path string, opts ...BOption) (*Bottle, error) {
 // createLocalPath is a helper function for creating an output directory path
 // intended for bottle download destination.
 func (btl *Bottle) createLocalPath() error {
-	err := os.MkdirAll(btl.localPath, 0777)
+	err := os.MkdirAll(btl.localPath, 0o777)
 	if err != nil {
 		return fmt.Errorf("error creating bottle directory: %w", err)
 	}
@@ -90,7 +87,7 @@ func (btl *Bottle) createLocalPath() error {
 // createScratchPath is a helper function for creating an output directory path
 // intended as a working area for creating archives.
 func (btl *Bottle) createScratchPath() error {
-	err := os.MkdirAll(btl.ScratchPath(), 0777)
+	err := os.MkdirAll(btl.ScratchPath(), 0o777)
 	if err != nil {
 		return fmt.Errorf("error creating scratch directory: %w", err)
 	}
@@ -134,7 +131,7 @@ func (btl *Bottle) saveLocalParts() error {
 		return fmt.Errorf("error marshalling local part data: %w", err)
 	}
 
-	if err := os.WriteFile(partsFile(btl.localPath), data, 0666); err != nil {
+	if err := os.WriteFile(partsFile(btl.localPath), data, 0o666); err != nil {
 		return fmt.Errorf("error writing local part file: %w", err)
 	}
 
@@ -208,7 +205,7 @@ func CreateBottle(bottlePath string, overwrite bool) error {
 		return err
 	}
 
-	if err := os.MkdirAll(configDir(bottlePath), 0777); err != nil {
+	if err := os.MkdirAll(configDir(bottlePath), 0o777); err != nil {
 		return fmt.Errorf("error creating bottle: %w", err)
 	}
 

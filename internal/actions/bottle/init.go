@@ -12,12 +12,13 @@ import (
 	"strings"
 	"time"
 
-	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
 
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
-	"git.act3-ace.com/ace/data/tool/internal/bottle/label"
-	"git.act3-ace.com/ace/data/tool/internal/bottle/status"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/status"
 )
 
 // Init represents the init action.
@@ -96,7 +97,7 @@ func createOrVerifyPath(ctx context.Context, bottlePath string) (string, error) 
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			log.InfoContext(ctx, "Path does not exist, creating it", "path", bottlePath)
-			err = os.Mkdir(bottlePath, 0777)
+			err = os.Mkdir(bottlePath, 0o777)
 			if err != nil {
 				return "", fmt.Errorf("error creating bottle directory: %w", err)
 			}

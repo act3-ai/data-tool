@@ -3,14 +3,14 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
 )
 
 // logoutCmd represents the logout command.
 func newLogoutCmd(tool *actions.DataTool) *cobra.Command {
 	action := &actions.Logout{DataTool: tool}
 
-	var logoutCmd = &cobra.Command{
+	logoutCmd := &cobra.Command{
 		GroupID: "setup",
 		Use:     "logout REGISTRY",
 		Short:   "Logout from a remote registry",

@@ -21,10 +21,10 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"git.act3-ace.com/ace/data/tool/internal/actions"
-	"git.act3-ace.com/ace/data/tool/internal/mirror"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 /*
@@ -230,7 +230,7 @@ func TestSerializeRun(t *testing.T) {
 		tf := filepath.Join(tmpdir, "test.tar")
 
 		cp := filepath.Join(tmpdir, "checkpoint")
-		rne(os.WriteFile(cp, []byte(``), 0600))
+		rne(os.WriteFile(cp, []byte(``), 0o600))
 
 		// build up the serialize action
 		serialize := Serialize{

@@ -14,13 +14,15 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
 
-	"git.act3-ace.com/ace/data/tool/internal/python"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/python"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // increment these if the data model changes so we are forced to re-upload data.
-const syncVersionIndex = "5"
-const syncVersionManifest = "7"
+const (
+	syncVersionIndex    = "5"
+	syncVersionManifest = "7"
+)
 
 type pythonDistributionIndex struct {
 	target oras.ReadOnlyTarget

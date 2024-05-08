@@ -8,10 +8,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/internal/cli/internal/flag"
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/internal/cli/internal/ui"
-	actions "git.act3-ace.com/ace/data/tool/internal/actions/mirror"
-	"git.act3-ace.com/ace/data/tool/internal/mirror"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/flag"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/mirror"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
 )
 
 // newSerializeCmd represents the mirror serialize command.

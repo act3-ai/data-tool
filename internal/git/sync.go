@@ -13,10 +13,10 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 
-	"git.act3-ace.com/ace/data/tool/internal/git/cache"
-	"git.act3-ace.com/ace/data/tool/internal/git/cmd"
-	"git.act3-ace.com/ace/data/tool/internal/git/oci"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cache"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/oci"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // sync contains data and helpers used in git to OCI and OCI to git transfers.

@@ -1,7 +1,7 @@
 package bottle
 
 import (
-	actions "git.act3-ace.com/ace/data/tool/internal/actions/bottle"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
 
 	"github.com/spf13/cobra"
 )

@@ -8,7 +8,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror/multiplex"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/multiplex"
 )
 
 const muxExample = `
@@ -67,7 +67,7 @@ func newDemuxCmd() *cobra.Command {
 			var err error
 			outs := make([]io.Writer, len(args))
 			for i, outFile := range args {
-				outs[i], err = os.OpenFile(outFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+				outs[i], err = os.OpenFile(outFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o666)
 				if err != nil {
 					return fmt.Errorf("demux output file: %w", err)
 				}

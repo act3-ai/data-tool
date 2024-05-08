@@ -22,12 +22,12 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"sigs.k8s.io/yaml"
 
-	"git.act3-ace.com/ace/data/tool/internal/actions"
-	"git.act3-ace.com/ace/data/tool/internal/mirror/encoding"
-	"git.act3-ace.com/ace/data/tool/internal/ref"
-	"git.act3-ace.com/ace/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 func TestGatherRun(t *testing.T) {
@@ -77,7 +77,7 @@ func TestGatherRun(t *testing.T) {
 
 	dir := GetOrCreateTestDir(t)
 	sources := filepath.Join(dir, "sources.list")
-	err = os.WriteFile(sources, []byte(strings.Join(sourceRefs, "\n")), 0666)
+	err = os.WriteFile(sources, []byte(strings.Join(sourceRefs, "\n")), 0o666)
 	rne(err)
 
 	// build up the action
@@ -176,7 +176,7 @@ func TestGatherRun(t *testing.T) {
 
 		dir := GetOrCreateTestDir(t)
 		sources := filepath.Join(dir, "sources.list")
-		err = os.WriteFile(sources, []byte(strings.Join(sourceRefs, "\n")), 0666)
+		err = os.WriteFile(sources, []byte(strings.Join(sourceRefs, "\n")), 0o666)
 		rne(err)
 
 		// Run the gather action
@@ -208,7 +208,6 @@ func TestGatherRun(t *testing.T) {
 			computed := fmt.Sprintf("%x", h.Sum(nil))
 			assert.Equal(t, idx2.Digest.Encoded(), computed)
 		}
-
 	})
 
 	t.Run("gather with labels", func(t *testing.T) {
@@ -247,7 +246,7 @@ func TestGatherRun(t *testing.T) {
 		// create source file with labels
 
 		labeledSources := filepath.Join(dir, "labeled-sources.list")
-		err = os.WriteFile(labeledSources, []byte(strings.Join(labeledSourceRefs, "\n")), 0666)
+		err = os.WriteFile(labeledSources, []byte(strings.Join(labeledSourceRefs, "\n")), 0o666)
 		rne(err)
 
 		gather := Gather{
@@ -292,6 +291,6 @@ func CreateConfigWithRegHTTP(tb testing.TB, fileName, hostName string) {
 	}
 	b, err := yaml.Marshal(cfg)
 	rne(err)
-	err = os.WriteFile(fileName, b, 0666)
+	err = os.WriteFile(fileName, b, 0o666)
 	rne(err)
 }

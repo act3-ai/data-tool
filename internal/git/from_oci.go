@@ -13,11 +13,11 @@ import (
 	oras "oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/errdef"
 
-	"git.act3-ace.com/ace/data/tool/internal/git/cache"
-	"git.act3-ace.com/ace/data/tool/internal/git/cmd"
-	"git.act3-ace.com/ace/data/tool/internal/git/oci"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cache"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/oci"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // FromOCI represents an OCI to git sync action.
@@ -53,7 +53,7 @@ func NewFromOCI(ctx context.Context, target oras.GraphTarget, tag, dstGitRemote 
 	}
 
 	if syncOpts.CacheDir != "" {
-		if err := os.MkdirAll(syncOpts.CacheDir, 0777); err != nil {
+		if err := os.MkdirAll(syncOpts.CacheDir, 0o777); err != nil {
 			u.Infof("Unable to create cache directory, continuing without caching.")
 			return fromOCI, nil
 		}
@@ -146,7 +146,6 @@ func (f *FromOCI) Run(ctx context.Context) ([]string, error) {
 // the updates to the remote repository to determine which refs will be updated on a push,
 // but does not actually update the remote repo.
 func (f *FromOCI) updateAllRefs(gitRemote string) ([]string, error) {
-
 	if err := f.cmdHelper.RemoteAdd("remote", gitRemote); err != nil {
 		return nil, err
 	}
@@ -235,7 +234,6 @@ func (f *FromOCI) updateRefList(prefixType string, refs map[string]ReferenceInfo
 
 // resolveLayersNeeded returns a list of the minimum bundle layers needed to update the remote.
 func (f *FromOCI) resolveLayersNeeded() ([]ocispec.Descriptor, error) {
-
 	layerNumResolver := make(map[digest.Digest]int, len(f.base.manifest.Layers))
 	for i, layerDesc := range f.base.manifest.Layers {
 		layerNumResolver[layerDesc.Digest] = i
@@ -406,7 +404,7 @@ func (f *FromOCI) cloneRemote() error {
 	err := f.cmdHelper.CloneWithShared(f.dstGitRemote, f.syncOpts.CacheDir)
 	switch {
 	case errors.Is(err, cmd.ErrRepoNotExistOrPermDenied):
-		if err := os.MkdirAll(f.syncOpts.TmpDir, 0777); err != nil {
+		if err := os.MkdirAll(f.syncOpts.TmpDir, 0o777); err != nil {
 			return fmt.Errorf("creating intermediate repository directory: %w", err)
 		}
 		if err := f.cmdHelper.InitializeRepo(); err != nil {

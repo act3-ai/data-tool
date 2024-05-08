@@ -36,7 +36,7 @@ This is an optional feature such that using `ace-dt git` may sync or rebuild rep
 
 #### Limitations
 
-Theroretically, a respository may have a sufficient amount of LFS files to overflow the maximum manifest size of 4MB. This has yet to happen, but remains a concern. See LFS bundles [issue](https://git.act3-ace.com/ace/data/tool/-/issues/503).
+Theroretically, a respository may have a sufficient amount of LFS files to overflow the maximum manifest size of 4MB. This has yet to happen, but remains a concern. See LFS bundles [issue](https://gitlab.com/act3-ai/asce/data/tool/-/issues/503).
 
 ```mermaid
 ---

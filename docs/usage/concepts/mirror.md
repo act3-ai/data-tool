@@ -267,7 +267,7 @@ localhost:5000/{{ $annotation }}
 Example usage from the sample template above:
 
 - `index.docker.io/library/busybox:1.36.1` would be mapped to `localhost:5000/index.docker.io/library/busybox:1.36.1`.
-- `reg.git.act3-ace.com/ace/data/tool/bottle/mnist:v1.6` would be mapped to `localhost:5000/reg.git.act3-ace.com/ace/data/tool/bottle/mnist:v1.6`.
+- `reg.gitlab.com/act3-ai/asce/data/tool/bottle/mnist:v1.6` would be mapped to `localhost:5000/reg.gitlab.com/act3-ai/asce/data/tool/bottle/mnist:v1.6`.
 
 After the `scatter.tmpl` file has been created, the scatter command can be run.
 

@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"git.act3-ace.com/ace/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 )
 
 func Test_getLongestPrefix(t *testing.T) {

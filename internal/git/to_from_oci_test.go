@@ -18,9 +18,9 @@ import (
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/errdef"
 
-	"git.act3-ace.com/ace/data/tool/internal/git/cmd"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	tlog "git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	tlog "gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 type args struct {
@@ -48,7 +48,8 @@ var tests = []test{
 	// Base Layer Tests:
 	// - Creating a valid bundle of a commit history up to a reference.
 	// - Creating a bundle based on a tag reference.
-	{name: "Base Layer",
+	{
+		name: "Base Layer",
 		args: args{
 			argRevList:          []string{"v1.0.1"},
 			expectedTagList:     []string{"v1.0.1"},
@@ -64,7 +65,8 @@ var tests = []test{
 	// - Appending a thin bundle to an existing manifest.
 	// - Adding a new tag reference to manifest config.
 	// - Only one tag reference is updated by FromOCI.
-	{name: "Add Tag Ref to New Commit",
+	{
+		name: "Add Tag Ref to New Commit",
 		args: args{
 			argRevList:          []string{"v1.0.2"},
 			expectedTagList:     []string{"v1.0.1", "v1.0.2"},
@@ -80,7 +82,8 @@ var tests = []test{
 	// - Appending a thin bundle to an existing manifest.
 	// - Adding a new head reference to manifest config.
 	// - Only one head reference is updated by FromOCI.
-	{name: "Add Head Ref to New Commit",
+	{
+		name: "Add Head Ref to New Commit",
 		args: args{
 			argRevList:          []string{"Feature2"},
 			expectedTagList:     []string{"v1.0.1", "v1.0.2"},
@@ -95,7 +98,8 @@ var tests = []test{
 	// Add Tag Ref to Existing Branch Head Ref Tests:
 	// - No additional bundle is created.
 	// - Adding a tag reference to a commit that's already included in the manifest via head reference.
-	{name: "Add Tag Ref to Existing Branch Head Ref",
+	{
+		name: "Add Tag Ref to Existing Branch Head Ref",
 		args: args{
 			argRevList:          []string{"v1.0.3"},
 			expectedTagList:     []string{"v1.0.1", "v1.0.2", "v1.0.3"},
@@ -110,7 +114,8 @@ var tests = []test{
 	// Add Branch Head Ref to Existing Tag Ref Tests:
 	// - No additional bundle is created.
 	// - Adding a head reference to a commit that's already included in the manifest via tag reference.
-	{name: "Add Branch Head Ref to Existing Tag Ref",
+	{
+		name: "Add Branch Head Ref to Existing Tag Ref",
 		args: args{
 			argRevList:          []string{"Feature1"},
 			expectedTagList:     []string{"v1.0.1", "v1.0.2", "v1.0.3"},
@@ -124,7 +129,8 @@ var tests = []test{
 
 	// Add Tag Ref to New Commit Tests:
 	// - Mostly for prepparing for the update tests.
-	{name: "Add Tag Ref to New Commit",
+	{
+		name: "Add Tag Ref to New Commit",
 		args: args{
 			argRevList:          []string{"v1.2.0"},
 			expectedTagList:     []string{"v1.0.1", "v1.0.2", "v1.0.3", "v1.2.0"},
@@ -139,10 +145,10 @@ var tests = []test{
 
 // Expected Error Cases
 var errorTests = []test{
-
 	// Unnecessary Tag Ref Sync Tests"
 	// - An expected failure for a tag reference that does not need to be updated.
-	{name: "Unnecessary Tag Ref Sync",
+	{
+		name: "Unnecessary Tag Ref Sync",
 		args: args{
 			argRevList:          []string{"v1.0.1"},
 			expectedTagList:     []string{"v1.0.1", "v1.0.2", "v1.0.3", "v1.2.0"},
@@ -155,7 +161,8 @@ var errorTests = []test{
 
 	//  Unnecessary Head Ref Sync Tests:
 	// - An expected failure for a head reference that does not need to be updated.
-	{name: "Unnecessary Head Ref Sync",
+	{
+		name: "Unnecessary Head Ref Sync",
 		args: args{
 			argRevList:          []string{"Feature2"},
 			expectedTagList:     []string{"v1.0.1", "v1.0.2", "v1.0.3", "v1.2.0"},
@@ -169,10 +176,10 @@ var errorTests = []test{
 
 // Update Use Cases - requires an update to be made to an existing reference.
 var updateTests = []test{
-
 	// Update Branch Head Ref Tests:
 	// - Updating a head reference that already exists in the manifest config to a child commit.
-	{name: "Update Branch Head Ref",
+	{
+		name: "Update Branch Head Ref",
 		args: args{
 			argRevList:          []string{"Feature2"},
 			expectedTagList:     []string{"v1.0.1", "v1.0.2", "v1.0.3", "v1.2.0"},
@@ -186,7 +193,8 @@ var updateTests = []test{
 
 	// Update Tag Ref Tests:
 	// - Updating a tag reference that already exists in the manifest config to a child commit.
-	{name: "Update Tag Ref",
+	{
+		name: "Update Tag Ref",
 		args: args{
 			argRevList:          []string{"v1.2.0"},
 			expectedTagList:     []string{"v1.0.1", "v1.0.2", "v1.0.3", "v1.2.0"},
@@ -238,7 +246,6 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 	// Use Cases
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			// want - but as maps to validate we got against what we want across bundles
 			expectedTags := make(map[string]bool, 0)
 			for _, tag := range tt.args.expectedTagList {
@@ -252,7 +259,6 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 
 			// test sync
 			t.Run(tt.name+": ToOCI", func(t *testing.T) {
-
 				syncOpts := SyncOptions{DTVersion: dtVersion, TmpDir: t.TempDir()}
 				toOCITester, err := NewToOCI(ctx, target, tt.args.tag, srcGitRemote, tt.args.argRevList, syncOpts, &cmd.Options{})
 				if err != nil {
@@ -299,7 +305,6 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 
 			// test rebuild
 			t.Run(tt.name+": FromOCI", func(t *testing.T) {
-
 				syncOpts := SyncOptions{DTVersion: dtVersion, TmpDir: t.TempDir()}
 				fromOCITester, err := NewFromOCI(ctx, target, tt.args.tag, dstGitRemote, syncOpts, &cmd.Options{})
 				if err != nil {
@@ -330,7 +335,6 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 	// Error Cases
 	for _, tt := range errorTests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			syncOpts := SyncOptions{DTVersion: dtVersion, TmpDir: t.TempDir()}
 			toOCITester, err := NewToOCI(ctx, target, tt.args.tag, srcGitRemote, tt.args.argRevList, syncOpts, &cmd.Options{})
 			if err != nil {
@@ -358,7 +362,6 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 
 	for _, tt := range updateTests {
 		t.Run(tt.name, func(t *testing.T) {
-
 			// want - but as maps to validate we got against what we want across bundles
 			expectedTags := make(map[string]bool, 0)
 			for _, tag := range tt.args.expectedTagList {
@@ -371,7 +374,6 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 			}
 
 			t.Run(tt.name+": ToOCI", func(t *testing.T) {
-
 				syncOpts := SyncOptions{DTVersion: dtVersion, TmpDir: t.TempDir()}
 				toOCITester, err := NewToOCI(ctx, target, tt.args.tag, srcGitRemote, tt.args.argRevList, syncOpts, &cmd.Options{})
 				if err != nil {
@@ -417,7 +419,6 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 
 			// test rebuild
 			t.Run(tt.name+": FromOCI", func(t *testing.T) {
-
 				syncOpts := SyncOptions{DTVersion: dtVersion, TmpDir: t.TempDir()}
 				cmdOpts := &cmd.Options{
 					GitOptions: cmd.GitOptions{Force: true, AltGitExec: ""},
@@ -445,7 +446,6 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 					t.Errorf("cleaning up fromOCITester handler: %v", err)
 				}
 			})
-
 		})
 	}
 }
@@ -519,8 +519,8 @@ func Test_FromOCINonExistantManifest(t *testing.T) {
 
 // validateSync validates the successors of a sync manifest, i.e. it's config and bundle layers.
 func validateSync(ctx context.Context, pulledBundlesDir string, successors []ocispec.Descriptor,
-	expectedTags, expectedHeads map[string]bool, target *memory.Store, dtVersion string) error {
-
+	expectedTags, expectedHeads map[string]bool, target *memory.Store, dtVersion string,
+) error {
 	gc, err := cmd.NewHelper(ctx, "", &cmd.Options{})
 	if err != nil {
 		return fmt.Errorf("creating validation command helper: %w", err)
@@ -565,7 +565,7 @@ func validateSync(ctx context.Context, pulledBundlesDir string, successors []oci
 }
 
 func prepSyncValidation(ctx context.Context, ch *cmd.Helper, target *memory.Store, successors []ocispec.Descriptor, pathToBundles string) (*Config, map[string]Commit, map[string]Commit, error) {
-	var config = &Config{}
+	config := &Config{}
 	allBundleTags := make(map[string]Commit, 0) // ref:commit key:val pair
 	allBundleHeads := make(map[string]Commit, 0)
 	syncErrs := make([]error, 0)
@@ -699,8 +699,8 @@ func validateBundles(ctx context.Context, config Config, foundTags, foundHeads m
 
 // validateConfig checks to see if a sync config contains the expected tag and head references, as well as a valid api field.
 func validateConfig(config Config, expectedAPIVersion string, expectedTagsMap,
-	expectedHeadsMap map[string]bool) error {
-
+	expectedHeadsMap map[string]bool,
+) error {
 	configErrs := make([]error, 0)
 
 	// catch extraneous tags

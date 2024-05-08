@@ -17,7 +17,7 @@ import (
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"git.act3-ace.com/ace/go-common/pkg/fsutil"
+	"gitlab.com/act3-ai/asce/go-common/pkg/fsutil"
 )
 
 func Test_Functional_PullBasic(t *testing.T) {

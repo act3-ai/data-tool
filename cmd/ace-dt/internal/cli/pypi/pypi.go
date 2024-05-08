@@ -4,14 +4,14 @@ package pypi
 import (
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/internal/actions"
-	"git.act3-ace.com/ace/data/tool/internal/actions/pypi"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions/pypi"
 )
 
 // NewPypiCmd represents the base command for all Python package index (PyPI commands).
 func NewPypiCmd(tool *actions.DataTool) *cobra.Command {
 	action := &pypi.Action{DataTool: tool}
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		GroupID: "core",
 		Use:     "pypi",
 		Short:   "Python package syncing operations",

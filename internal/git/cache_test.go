@@ -10,9 +10,9 @@ import (
 
 	"oras.land/oras-go/v2/content/memory"
 
-	"git.act3-ace.com/ace/data/tool/internal/git/cmd"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	tlog "git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	tlog "gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 func Test_GitCache(t *testing.T) {
@@ -45,7 +45,6 @@ func Test_GitCache(t *testing.T) {
 		}
 
 		t.Run(tt.t.name+":ToOCILFS Cache", func(t *testing.T) {
-
 			syncOpts := SyncOptions{TmpDir: t.TempDir(), CacheDir: toOCICache}
 			cmdOpts := cmd.Options{LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: srcServer.URL}}
 			toOCITester, err := NewToOCI(ctx, target, tt.t.args.tag, lfsSrc, tt.t.args.argRevList, syncOpts, &cmdOpts)
@@ -69,7 +68,6 @@ func Test_GitCache(t *testing.T) {
 		})
 
 		t.Run(tt.t.name+"FromOCILFS Cache", func(t *testing.T) {
-
 			syncOpts := SyncOptions{TmpDir: t.TempDir(), CacheDir: fromOCICache}
 			cmdOpts := cmd.Options{LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: dstServer.URL}}
 			fromOCITester, err := NewFromOCI(ctx, target, tt.t.args.tag, lfsDst, syncOpts, &cmdOpts)
@@ -107,7 +105,6 @@ func Test_GitCache(t *testing.T) {
 
 // validateToCache validates the number of git objects in a git cache directory.
 func validateToOCICache(cachePath string, expectedObjs, expectedLFSObjs int) error {
-
 	// git objects
 	objsDir := filepath.Join(cachePath, "objects")
 	oids, err := listGitObjects(objsDir)
@@ -137,7 +134,6 @@ func validateToOCICache(cachePath string, expectedObjs, expectedLFSObjs int) err
 // Note: Errors may occur here if multiple packfiles contain the same obj, however due
 // to the "thin"/"shallow" nature of how we manage bundles this should not be an issue.
 func validateFromOCICache(ctx context.Context, cachePath string, expectedObjs, expectedLFSObjs int) error {
-
 	// count objs in all packfiles
 	packPath := filepath.Join(cachePath, "objects", "pack")
 	allPackIdxs, err := resolvePacks(packPath) // actually indexes, which correspond to packs
@@ -182,7 +178,6 @@ func validateFromOCICache(ctx context.Context, cachePath string, expectedObjs, e
 // listGitObjects walks a git objects directory, returning a slice
 // of all oids. The path to the oid may be derived with oid[0:2]/oid[2:4]/oid[4:].
 func listGitObjects(objectsDir string) (oids []string, err error) {
-
 	// git's path naming, unlike git-lfs', is named as ab/cd/efghi... where
 	// the oid is abcdefghi...
 	// As such, we reconstruct the actual oid which is not the filename
@@ -225,7 +220,6 @@ func listGitObjects(objectsDir string) (oids []string, err error) {
 // We could use `git-lfs ls-files --all`, but this is incompatible with a bare repository,
 // which is what we're evaluating in the tests.
 func listLFSObjects(objectsDir string) (oids []string, err error) {
-
 	lfsObjsFS := os.DirFS(objectsDir)
 
 	walkFn := func(path string, d os.DirEntry, err error) error {

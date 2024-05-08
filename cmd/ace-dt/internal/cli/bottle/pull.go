@@ -6,16 +6,17 @@ package bottle
 import (
 	"context"
 
-	telemv1alpha1 "git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/internal/cli/internal/flag"
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/internal/cli/internal/ui"
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/internal/cli/oci"
-	"git.act3-ace.com/ace/go-common/pkg/redact"
+	telemv1alpha1 "gitlab.com/act3-ai/asce/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/flag"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/oci"
+
+	"gitlab.com/act3-ai/asce/go-common/pkg/redact"
 
 	"github.com/spf13/cobra"
 
-	actions "git.act3-ace.com/ace/data/tool/internal/actions/bottle"
-	"git.act3-ace.com/ace/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
 )
 
 // pullCmd represents the pull command.
@@ -63,8 +64,7 @@ where <digest> is often of the form sha256:<sha256 digest, lower case hex encode
 		return nil
 	})
 
-	cmd.Example =
-		`Pull the tagged bottle TESTSET:TAG from registry REG/REPO/TESTSET:TAG to path PATH:
+	cmd.Example = `Pull the tagged bottle TESTSET:TAG from registry REG/REPO/TESTSET:TAG to path PATH:
   ace-dt bottle pull REG/REPO/TESTSET:TAG --bottle-dir PATH
 
 Use bottle ID to pull a bottle from the best available location:

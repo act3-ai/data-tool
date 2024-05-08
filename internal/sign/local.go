@@ -13,8 +13,8 @@ import (
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"git.act3-ace.com/ace/data/tool/internal/oci"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 const (
@@ -50,7 +50,8 @@ func NewEmptySigsManifest() *SigsManifest {
 		ManifestStatusInfo: oci.ManifestStatusInfo{
 			Status:     oci.ManifestNotFound,
 			StatusInfo: "New signature image manifest required",
-			Error:      nil},
+			Error:      nil,
+		},
 	}
 }
 
@@ -128,7 +129,8 @@ func SigsManifestFromData(contentType string, data []byte) SigsManifestHandler {
 			ManifestStatusInfo: oci.ManifestStatusInfo{
 				Status:     status,
 				StatusInfo: statusInfo,
-				Error:      err},
+				Error:      err,
+			},
 		}
 	default:
 		// return an empty
@@ -138,10 +140,10 @@ func SigsManifestFromData(contentType string, data []byte) SigsManifestHandler {
 			ManifestStatusInfo: oci.ManifestStatusInfo{
 				Status:     oci.ManifestUnsupportedType,
 				StatusInfo: "Unsupported manifest media type: " + contentType,
-				Error:      errors.New("Unsupported manifest media type " + contentType)},
+				Error:      errors.New("Unsupported manifest media type " + contentType),
+			},
 		}
 	}
-
 }
 
 // ResolveSigManifestName resolves the filename of a signature manifest.

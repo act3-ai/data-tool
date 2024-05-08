@@ -8,7 +8,7 @@ import (
 
 	v1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Label represents the bottle label action.

@@ -18,10 +18,10 @@ import (
 	"github.com/stretchr/testify/require"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"git.act3-ace.com/ace/data/tool/internal/actions"
-	"git.act3-ace.com/ace/data/tool/internal/ref"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 func TestClone_Run(t *testing.T) {
@@ -83,7 +83,7 @@ func TestClone_Run(t *testing.T) {
 		Action: mAction,
 	}
 	sources := filepath.Join(dir, "sources.list")
-	err = os.WriteFile(sources, []byte(strings.Join(sourceRefs, "\n")), 0666)
+	err = os.WriteFile(sources, []byte(strings.Join(sourceRefs, "\n")), 0o666)
 	rne(err)
 
 	t.Run("go-template", func(t *testing.T) {
@@ -96,7 +96,7 @@ func TestClone_Run(t *testing.T) {
 		t.Log(destTemplate)
 
 		templateFile := filepath.Join(dir, "dest.tmpl")
-		require.NoError(t, os.WriteFile(templateFile, []byte(destTemplate), 0666))
+		require.NoError(t, os.WriteFile(templateFile, []byte(destTemplate), 0o666))
 
 		// Run the action
 		assert.NoError(t, clone.Run(ctx, sources, "go-template="+templateFile))
@@ -140,7 +140,6 @@ func TestClone_Run(t *testing.T) {
 	})
 
 	t.Run("all-prefix", func(t *testing.T) {
-
 		c := [][]string{
 			{"# this is a test comment"},
 			{u.Host + "/low/source1", u.Host + "/high/clone/all-prefix/source1"},
@@ -198,7 +197,7 @@ func TestClone_Run(t *testing.T) {
 			strings.Join([]string{refIdx1, "component=env", "module=test"}, ","),
 		}
 		labeledSources := filepath.Join(dir, "labeledSources.list")
-		err = os.WriteFile(labeledSources, []byte(strings.Join(sourceRefsWithLabels, "\n")), 0666)
+		err = os.WriteFile(labeledSources, []byte(strings.Join(sourceRefsWithLabels, "\n")), 0o666)
 		rne(err)
 
 		labelTemplate := fmt.Sprintf(`{{- $name := index .Annotations "%[2]s" -}}
@@ -207,7 +206,7 @@ func TestClone_Run(t *testing.T) {
 		t.Log(labelTemplate)
 
 		templateFile := filepath.Join(dir, "labels.tmpl")
-		require.NoError(t, os.WriteFile(templateFile, []byte(labelTemplate), 0666))
+		require.NoError(t, os.WriteFile(templateFile, []byte(labelTemplate), 0o666))
 
 		// Run the action
 		assert.NoError(t, clone.Run(ctx, labeledSources, "go-template="+templateFile))
@@ -235,7 +234,7 @@ func TestClone_Run(t *testing.T) {
 			strings.Join([]string{refIdx2, "component=env", "module=test"}, ","),
 		}
 		labeledSources := filepath.Join(dir, "labeledSources.list")
-		err = os.WriteFile(labeledSources, []byte(strings.Join(sourceRefsWithLabels, "\n")), 0666)
+		err = os.WriteFile(labeledSources, []byte(strings.Join(sourceRefsWithLabels, "\n")), 0o666)
 		rne(err)
 
 		labelTemplate := fmt.Sprintf(`{{- $name := index .Annotations "%[2]s" -}}
@@ -244,7 +243,7 @@ func TestClone_Run(t *testing.T) {
 		t.Log(labelTemplate)
 
 		templateFile := filepath.Join(dir, "labels.tmpl")
-		require.NoError(t, os.WriteFile(templateFile, []byte(labelTemplate), 0666))
+		require.NoError(t, os.WriteFile(templateFile, []byte(labelTemplate), 0o666))
 
 		// Run the action
 		assert.NoError(t, clone.Run(ctx, labeledSources, "go-template="+templateFile))

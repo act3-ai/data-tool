@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/yaml"
 
-	"git.act3-ace.com/ace/data/tool/internal/util"
+	"gitlab.com/act3-ai/asce/data/tool/internal/util"
 )
 
 const (
@@ -185,7 +185,7 @@ func writeLabelFile(dir string, fl *partLabels) error {
 		return fmt.Errorf("unable to create path for labels file: %w", err)
 	}
 
-	if err = os.WriteFile(filepath.Join(dir, LabelsFilename), data, 0666); err != nil {
+	if err = os.WriteFile(filepath.Join(dir, LabelsFilename), data, 0o666); err != nil {
 		return fmt.Errorf("error writing labels file: %w", err)
 	}
 

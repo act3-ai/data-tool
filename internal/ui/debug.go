@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"git.act3-ace.com/ace/data/tool/internal/ui/tracker"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui/tracker"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // debugUI is a UI used to record timestamped events for debugging.
@@ -169,7 +169,6 @@ func (d *debugStruct) counterCSVUpdate(timestamp time.Duration) error {
 		return fmt.Errorf("failed to write progress to counter csv file %s, err: %w", filepath.Join(d.rootDir, "counter.csv"), err)
 	}
 	return nil
-
 }
 
 // rootDirFromName takes a debug folder and a task name, and returns the root directory for the task (with some cleaning).
@@ -211,7 +210,7 @@ func newDebugStruct(update *taskUpdate, debugFolder string) *debugStruct {
 	}
 
 	// create directory for task
-	if err := os.MkdirAll(rootDir, 0777); err != nil {
+	if err := os.MkdirAll(rootDir, 0o777); err != nil {
 		panic(fmt.Errorf("failed to create debug folder given path %s, err: %w", rootDir, err))
 	}
 

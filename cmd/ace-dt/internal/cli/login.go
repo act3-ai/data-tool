@@ -3,13 +3,13 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
 )
 
 // loginCmd represents the login command.
 func newLoginCmd(tool *actions.DataTool) *cobra.Command {
 	action := &actions.Login{DataTool: tool}
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		GroupID: "setup",
 		Use:     "login REGISTRY",
 		Short:   "Provide authentication credentials for OCI push and pull operations",

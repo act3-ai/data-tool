@@ -10,10 +10,10 @@ import (
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/credentials"
 
-	reg "git.act3-ace.com/ace/data/tool/internal/registry"
-	regcache "git.act3-ace.com/ace/data/tool/internal/registry/cache"
-	"git.act3-ace.com/ace/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	reg "gitlab.com/act3-ai/asce/data/tool/internal/registry"
+	regcache "gitlab.com/act3-ai/asce/data/tool/internal/registry/cache"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // NewGraphTargetFn defines a func used to create oras.GraphTarget references.

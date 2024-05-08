@@ -9,7 +9,7 @@ import (
 	"github.com/fortytw2/leaktest"
 	"github.com/stretchr/testify/assert"
 
-	actions "git.act3-ace.com/ace/data/tool/internal/actions"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions"
 )
 
 // Was for testing cryptographic agility, which has been temporarily taken out

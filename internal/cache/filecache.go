@@ -13,7 +13,7 @@ import (
 
 	"github.com/opencontainers/go-digest"
 
-	"git.act3-ace.com/ace/data/tool/internal/util"
+	"gitlab.com/act3-ai/asce/data/tool/internal/util"
 )
 
 // BottleFileCache is an implementation of MoteCache for dealing with
@@ -27,7 +27,6 @@ type BottleFileCache struct {
 
 	LinkOnReadDisabled bool      // Whether or not to create a hard link during read operations to prevent locking files
 	FallbackCache      MoteCache // A secondary cache to check if the primary cache does not contain a requested file.  This fallback is considered only on read operations. Caution, avoid graph cycles!
-
 }
 
 // IsDirty always returns false for BottleFileCache -- no way to detect if there have
@@ -51,7 +50,7 @@ func (bc *BottleFileCache) Update() error {
 // one if necessary.
 func (bc *BottleFileCache) Initialize() error {
 	if _, err := os.Stat(bc.localPath); errors.Is(err, fs.ErrNotExist) {
-		if err := os.MkdirAll(bc.localPath, 0777); err != nil {
+		if err := os.MkdirAll(bc.localPath, 0o777); err != nil {
 			return fmt.Errorf("failed to create cache path: %w", err)
 		}
 	}
@@ -144,7 +143,7 @@ func (bc *BottleFileCache) CommitMote(srcpath string, mote Mote, commitMode int)
 		}
 	}
 
-	if err := os.Chmod(prepsrc, 0644); err != nil {
+	if err := os.Chmod(prepsrc, 0o644); err != nil {
 		return fmt.Errorf("error changing file permissions: %w", err)
 	}
 

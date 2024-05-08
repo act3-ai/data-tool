@@ -8,10 +8,10 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 
-	"git.act3-ace.com/ace/data/tool/internal/cache/bicbackend"
-	"git.act3-ace.com/ace/data/tool/internal/ref"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/data/tool/internal/cache/bicbackend"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 const (
@@ -120,7 +120,6 @@ func testLocateLayerNotFound(t *testing.T, bic bicbackend.BlobInfoCache) {
 	refs := LocateLayer(ctx, bic, ocispec.Descriptor{Digest: digestD}, ref.RepoFromString("https://any.host/store/a"), false)
 
 	assert.Equal(t, 0, len(refs))
-
 }
 
 // Look for a layer with only one source
@@ -137,7 +136,6 @@ func testLocateLayerSingle(t *testing.T, bic bicbackend.BlobInfoCache) {
 
 	assert.Equal(t, len(refs), 1)
 	assert.Equal(t, ref.Ref{Scheme: "https", Reg: "another.host", Repo: "with", Name: "b", Tag: "latest"}, refs[0])
-
 }
 
 // Look for a layer that has multiple sources, but pick one matching the registry
@@ -154,7 +152,6 @@ func testLocateLayerRegMatch(t *testing.T, bic bicbackend.BlobInfoCache) {
 
 	assert.Equal(t, len(refs), 1)
 	assert.Equal(t, ref.Ref{Scheme: "https", Reg: "duplicate.host", Repo: "with", Name: "a", Tag: "latest"}, refs[0])
-
 }
 
 // Look for a layer that has multiple sources, and get all of them. Note, the most recent addition should appear first in
@@ -178,7 +175,6 @@ func testLocateLayerMultiple(t *testing.T, bic bicbackend.BlobInfoCache) {
 			{Scheme: "https", Reg: "duplicate.host", Repo: "with", Name: "a", Tag: "latest"},
 			{Scheme: "https", Reg: "any.host", Repo: "store", Name: "a", Tag: "latest"},
 		}, refs)
-
 }
 
 // Match all sources in a list of given digests
@@ -205,7 +201,6 @@ func testGetSources(t *testing.T, bic bicbackend.BlobInfoCache) {
 	assert.Equal(t,
 		[]string{"duplicate.host/with/a:latest", "any.host/store/a:latest"},
 		dgstSources[digestA])
-
 }
 
 func TestTransportFromImageName(t *testing.T) {

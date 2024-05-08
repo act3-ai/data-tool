@@ -4,20 +4,21 @@ import (
 	"context"
 	"fmt"
 
-	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
-	"git.act3-ace.com/ace/data/tool/internal/cache"
-	"git.act3-ace.com/ace/data/tool/internal/oci"
-	"git.act3-ace.com/ace/data/tool/internal/ref"
-	"git.act3-ace.com/ace/data/tool/internal/storage"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
+	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // FetchBottleMetadata retrieves a bottle's config and manifest from a remote source.
@@ -144,7 +145,6 @@ func pull(ctx context.Context, target oras.GraphTarget, opts TransferConfig) (*b
 // setupBottleFromTransfer configures the provided bottle with data retrieved from a configured transfer.  This performs
 // manifest and configuration retrieval, and applies the retrieved data to the bottle metadata.
 func setupBottleFromTransfer(ctx context.Context, btl *bottle.Bottle, target oras.GraphTarget, opts TransferConfig) error {
-
 	// resolve ref to descriptor
 	btlManDesc, err := target.Resolve(ctx, opts.Reference)
 	if err != nil {
@@ -196,7 +196,8 @@ func fetchBottleManifest(ctx context.Context, btl *bottle.Bottle, target oras.Gr
 // fetchBottleConfig fetches a bottle's config and populates the appropriate config
 // related fields.
 func fetchBottleConfig(ctx context.Context, btl *bottle.Bottle, target oras.GraphTarget,
-	desc ocispec.Descriptor, opts TransferConfig) error {
+	desc ocispec.Descriptor, opts TransferConfig,
+) error {
 	cfgBytes, err := content.FetchAll(ctx, target, desc)
 	if err != nil {
 		return fmt.Errorf("fetching from remote: %w", err)
@@ -265,7 +266,8 @@ func prePullParts(progress *ui.Progress, btl *bottle.Bottle) func(ctx context.Co
 // postPullParts returns a func for the oras.CopyGraphOptions option PostCopy func. It extracts a recently
 // cached part to its final destination.
 func postPullParts(progress *ui.Progress, btl *bottle.Bottle,
-	dataStore *storage.DataStore) func(ctx context.Context, desc ocispec.Descriptor) error {
+	dataStore *storage.DataStore,
+) func(ctx context.Context, desc ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
 		switch {
 		case desc.MediaType == ocispec.MediaTypeImageManifest:
@@ -300,7 +302,8 @@ func postPullParts(progress *ui.Progress, btl *bottle.Bottle,
 // fetcher will be cached in the memory, it is recommended to use original
 // source storage to fetch large blobs.
 func selectPartSuccessors(btl *bottle.Bottle, selector bottle.PartSelectorFunc,
-	refSpec ref.Ref) func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	refSpec ref.Ref,
+) func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 	return func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 		log := logger.FromContext(ctx)
 
@@ -312,7 +315,6 @@ func selectPartSuccessors(btl *bottle.Bottle, selector bottle.PartSelectorFunc,
 
 		selected := make([]ocispec.Descriptor, 0, len(successors))
 		for _, s := range successors {
-
 			// apply part selector
 			switch {
 			case mediatype.IsBottleConfig(s.MediaType):

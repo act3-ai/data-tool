@@ -9,7 +9,7 @@ import (
 
 	version "github.com/hashicorp/go-version"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Minimum git version.
@@ -45,7 +45,6 @@ func CheckGitVersion(ctx context.Context, altExec string) (string, error) {
 
 // getGitVersion shells out and parses the version of git being used. Returns major, minor, patch.
 func getGitVersion(altExec string) (v string, err error) {
-
 	var gitVersion *exec.Cmd
 	switch {
 	case altExec != "":

@@ -3,7 +3,7 @@ package ui
 import (
 	"context"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // silentUI is a UI that outputs nothing.

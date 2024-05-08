@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/internal/cli/internal/ui"
-	actions "git.act3-ace.com/ace/data/tool/internal/actions/mirror"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/mirror"
 )
 
 // newDeserializeCmd represents the mirror deserialize command.
@@ -45,7 +45,7 @@ If you see a "Cannot Allocate Memory error" when using a tape as the input, you 
 go run ./cmd/ace-dt mirror deserialize log/tmp.tar zot.lion.act3-ace.ai/$PROJECT/dest:sync-1 --strict
 
 # otherwise we can do it manually
-ace-dt oci pull reg.git.act3-ace.com/ace/data/tool/ace-dt:v1.0.7 reg.git.act3-ace.com/ace/data/tool/ace-dt@sha256:a88cb2d6e96cd261b4718adb9497bb3cd6ad70edc4db6a927a1e20e299eed2ac reg.git.act3-ace.com/ace/hub/api log/oci-dir
+ace-dt oci pull reg.gitlab.com/act3-ai/asce/data/tool/ace-dt:v1.0.7 reg.gitlab.com/act3-ai/asce/data/tool/ace-dt@sha256:a88cb2d6e96cd261b4718adb9497bb3cd6ad70edc4db6a927a1e20e299eed2ac reg.git.act3-ace.com/ace/hub/api log/oci-dir
 tar cvf log/oci-dir.tar -C log/oci-dir .
 # or create a tar with the worst ordering
 tar cvf log/oci-dir.tar -C log/oci-dir blobs index.json oci-layout

@@ -9,19 +9,19 @@ import (
 	"slices"
 	"testing"
 
-	"git.act3-ace.com/ace/data/tool/pkg/conf"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
 
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
-	"git.act3-ace.com/ace/data/tool/internal/orasutil"
-	tbottle "git.act3-ace.com/ace/data/tool/internal/transfer/bottle"
-	reg "git.act3-ace.com/ace/data/tool/pkg/registry"
-	tbtl "git.act3-ace.com/ace/data/tool/pkg/transfer/bottle"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	tlog "git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
+	tbottle "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
+	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
+	tbtl "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	tlog "gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 // StoreInfo defines an oras.GraphTarget, a "reference" to it, and a function to access it.
@@ -238,7 +238,7 @@ func createPart(t *testing.T, btlDir, name string) {
 	t.Helper()
 
 	partPath := filepath.Join(btlDir, name)
-	if err := os.WriteFile(partPath, []byte("testing part "+name), 0666); err != nil {
+	if err := os.WriteFile(partPath, []byte("testing part "+name), 0o666); err != nil {
 		t.Fatalf("creating part %s: error = %v", name, err)
 	}
 }

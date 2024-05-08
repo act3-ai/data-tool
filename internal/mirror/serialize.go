@@ -16,11 +16,11 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror/blockbuf"
-	"git.act3-ace.com/ace/data/tool/internal/mirror/encoding"
-	"git.act3-ace.com/ace/data/tool/internal/print"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/go-common/pkg/ioutil"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/blockbuf"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
+	"gitlab.com/act3-ai/asce/data/tool/internal/print"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/go-common/pkg/ioutil"
 )
 
 // serializationVersion is the serialization format version.
@@ -67,7 +67,7 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 	defer progress.Complete()
 
 	// open the destination file/tape carefully to append only
-	file, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	file, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o666)
 	if err != nil {
 		return fmt.Errorf("destination file: %w", err)
 	}
@@ -249,7 +249,6 @@ func writeDescriptor(ctx context.Context,
 	mt *manifestTracker,
 	desc ocispec.Descriptor,
 ) error {
-
 	// short circuit if this descriptor has already been seen (digest, size, and media type)
 	if mt.Exists(desc) {
 		return nil
@@ -293,7 +292,6 @@ func writeManifest(ctx context.Context,
 	mt *manifestTracker,
 	desc ocispec.Descriptor,
 ) error {
-
 	task = task.SubTask("Manifest " + print.ShortDigest(desc.Digest))
 	defer task.Complete()
 	task.Info("Processing manifest ", desc.Digest)

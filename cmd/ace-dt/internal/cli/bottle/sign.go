@@ -6,9 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/internal/cli/internal/ui"
-	actions "git.act3-ace.com/ace/data/tool/internal/actions/bottle"
-	"git.act3-ace.com/ace/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
 )
 
 // signCmd represents the sign command.
@@ -52,7 +52,6 @@ Signing a bottle with altered data or metadata will automatically deprecate the 
 
 	// Add flag overrides function to override config with flags.
 	action.Config.AddConfigOverride(func(ctx context.Context, c *v1alpha1.Configuration) error {
-
 		// override config if all key metadata is specified, otherwise fail if some but not all is specified.
 		if action.KeyPath != "" && action.KeyAPI != "" && action.KeyID != "" && action.UserIdentity != "" {
 			c.SigningKeys = []v1alpha1.SigningKey{
@@ -61,7 +60,8 @@ Signing a bottle with altered data or metadata will automatically deprecate the 
 					KeyPath:      action.KeyPath,
 					KeyAPI:       action.KeyAPI,
 					UserIdentity: action.UserIdentity,
-					KeyID:        action.KeyID},
+					KeyID:        action.KeyID,
+				},
 			}
 		} else if action.KeyPath != "" || action.KeyAPI != "" || action.KeyID != "" || action.UserIdentity != "" {
 			return fmt.Errorf("insufficient signing key metadata, please ensure to specify all metadata with flags when directly providing a key: KeyPath = %s, KeyAPI = %s, UserIdentity = %s, KeyID = %s", action.KeyPath, action.KeyAPI, action.UserIdentity, action.KeyID)

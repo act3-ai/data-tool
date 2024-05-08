@@ -3,7 +3,7 @@ package bottle
 import (
 	"github.com/spf13/cobra"
 
-	actions "git.act3-ace.com/ace/data/tool/internal/actions/bottle"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
 )
 
 // newBtlPartCmd is the top level command that aggregates subcommands for interacting with bottles parts fields.
@@ -64,7 +64,7 @@ Add source "training data" with bottle reference from a remote bottle at "reg.gi
 func listSourceCmd(tool *actions.Action) *cobra.Command {
 	action := &actions.SourceList{Action: tool}
 
-	var listCmd = &cobra.Command{
+	listCmd := &cobra.Command{
 		Use:     "list",
 		Aliases: []string{"ls"},
 		Short:   "list source information from a bottle",
@@ -86,7 +86,7 @@ List source from bottle at path my/bottle/path:
 
 func removeSourceCmd(tool *actions.Action) *cobra.Command {
 	action := &actions.SourceRemove{Action: tool}
-	var removeCmd = &cobra.Command{
+	removeCmd := &cobra.Command{
 		Use:     "remove [NAME]",
 		Aliases: []string{"rm"},
 		Short:   "remove source information from a bottle",

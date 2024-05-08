@@ -5,11 +5,11 @@ import (
 	"context"
 	"fmt"
 
-	"git.act3-ace.com/ace/data/tool/internal/actions"
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
-	"git.act3-ace.com/ace/data/tool/internal/bottle/status"
-	"git.act3-ace.com/ace/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/status"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Action represents a general bottle action.
@@ -35,7 +35,7 @@ func saveMetaChanges(ctx context.Context, btl *bottle.Bottle) error {
 	log := logger.FromContext(ctx)
 
 	// btlMetadataSaveOpts is a SaveOptions constant used when only bottle metadata is updated in a bottle
-	var btlMetadataSaveOpts = SaveOptions{
+	btlMetadataSaveOpts := SaveOptions{
 		NoArchive: true,
 		NoDigest:  true,
 		NoCommit:  true,
@@ -43,7 +43,6 @@ func saveMetaChanges(ctx context.Context, btl *bottle.Bottle) error {
 
 	// save changes to bottle's metadata
 	err := SaveUpdatesToSet(ctx, btl, btlMetadataSaveOpts)
-
 	if err != nil {
 		return fmt.Errorf("failed while saving bottle at %s: %w", btl.GetPath(), err)
 	}

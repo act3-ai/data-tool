@@ -10,8 +10,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/internal/cli/internal/ui"
-	"git.act3-ace.com/ace/data/tool/internal/actions/pypi"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions/pypi"
 )
 
 // newToOCICmd creates a new cobra.Command for the pypi to-oci subcommand.

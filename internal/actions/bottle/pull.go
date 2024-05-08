@@ -4,11 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"git.act3-ace.com/ace/data/tool/internal/actions"
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	tbtl "git.act3-ace.com/ace/data/tool/pkg/transfer/bottle"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	tbtl "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Pull represents the bottle pull action.

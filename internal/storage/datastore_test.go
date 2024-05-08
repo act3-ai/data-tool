@@ -8,7 +8,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 
-	"git.act3-ace.com/ace/data/tool/internal/cache"
+	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 )
 
 type mockMoteWriter struct{}
@@ -45,9 +45,11 @@ func (m mockMoteCache) MoteExists(dgst digest.Digest) bool { return true }
 func (m mockMoteCache) MoteWriter(dgst digest.Digest) (io.WriteCloser, error) {
 	return mockMoteWriter{}, nil
 }
+
 func (m mockMoteCache) MoteReader(dgst digest.Digest) (io.ReadCloser, error) {
 	return mockMoteReader{}, nil
 }
+
 func (m mockMoteCache) MoteReaderAt(dgst digest.Digest) (cache.ReaderAt, error) {
 	return mockMoteReaderAt{}, nil
 }

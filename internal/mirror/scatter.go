@@ -10,11 +10,11 @@ import (
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror/encoding"
-	"git.act3-ace.com/ace/data/tool/internal/print"
-	"git.act3-ace.com/ace/data/tool/internal/ref"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
+	"gitlab.com/act3-ai/asce/data/tool/internal/print"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // ScatterOptions specify the requirements to run the mirror scatter command.
@@ -101,7 +101,6 @@ func Scatter(ctx context.Context, opts ScatterOptions) error { //nolint:gocognit
 				}
 
 				c, err := NewCopier(gctx, logger.FromContext(gctx), opts.SrcString, destRef, opts.Src, opts.SrcReference, d, nil, registry.Reference{}, opts.Recursive, nil, opts.RepoFunc)
-
 				if err != nil {
 					destTask.Complete()
 					return err

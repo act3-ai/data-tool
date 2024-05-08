@@ -16,10 +16,10 @@ import (
 	content "oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
 
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
-	"git.act3-ace.com/ace/data/tool/internal/oci"
-	"git.act3-ace.com/ace/data/tool/internal/storage"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
+	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Pull copies all signatures referring to the subject descriptor from source to btlPath.
@@ -64,7 +64,6 @@ func Pull(ctx context.Context, btlPath string, source oras.GraphTarget, subject 
 
 // fetchNotarySig fetches all contents of a notary signature manifest.
 func fetchNotarySig(ctx context.Context, source oras.GraphTarget, manifestDesc ocispec.Descriptor) (SigsManifestHandler, error) {
-
 	// fetch the manifest itself
 	rawManifest, err := content.FetchAll(ctx, source, manifestDesc)
 	if err != nil {

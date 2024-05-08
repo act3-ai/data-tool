@@ -7,9 +7,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	actions "git.act3-ace.com/ace/data/tool/internal/actions"
-	bottleactions "git.act3-ace.com/ace/data/tool/internal/actions/bottle"
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
+	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	bottleactions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 )
 
 // NewBottleCmd is the top level command that aggregates subcommands for interacting with bottles.

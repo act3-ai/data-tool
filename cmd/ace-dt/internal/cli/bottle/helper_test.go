@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"git.act3-ace.com/ace/data/tool/cmd/ace-dt/internal/cli/internal/functesting"
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/functesting"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 )
 
 const (

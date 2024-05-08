@@ -3,7 +3,7 @@ package bottle
 import (
 	"testing"
 
-	cfgdef "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
+	cfgdef "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
 
 	"github.com/stretchr/testify/assert"
 )

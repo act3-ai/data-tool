@@ -6,7 +6,7 @@ hide:
 
 # Welcome to ASCE Data Tool Docs
 
-[![version](https://git.act3-ace.com/ace/data/tool/-/badges/release.svg)](https://git.act3-ace.com/ace/data/tool/-/releases)
+[![version](https://gitlab.com/act3-ai/asce/data/tool/-/badges/release.svg)](https://gitlab.com/act3-ai/asce/data/tool/-/releases)
 
 Data Tool is a command line interface (CLI) designed for researchers and AI/ML practitioners who manage large amounts of data, such as datasets for experimentation or machine learning models.
 

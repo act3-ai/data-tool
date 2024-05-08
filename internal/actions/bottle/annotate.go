@@ -8,7 +8,7 @@ import (
 
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Annotate represents the bottle annotate action.
@@ -50,7 +50,6 @@ func (action *Annotate) Run(ctx context.Context, annotations []string, out io.Wr
 // parseAnnotation parses a single arguments from arguments for annotations for a single Key value pair.
 // It also validates the values to check if the annotation (Key-Value) is a valid kubernetes annotation value.
 func parseAnnotation(arg string) (string, string, error) {
-
 	// Since annotation value can have an equal sign (i.e. base64 encoded
 	// item), we'll look for the first equal sign to delineate the Key
 

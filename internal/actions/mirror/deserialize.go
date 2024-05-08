@@ -3,9 +3,9 @@ package mirror
 import (
 	"context"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Deserialize represents the mirror serialize action.
@@ -24,7 +24,6 @@ type Deserialize struct {
 
 // Run runs the mirror deserialize action.
 func (action *Deserialize) Run(ctx context.Context, sourceFile string, dest string) error {
-
 	rootUI := ui.FromContextOrNoop(ctx)
 
 	log := logger.FromContext(ctx)

@@ -7,7 +7,7 @@ import (
 
 	"sigs.k8s.io/yaml"
 
-	"git.act3-ace.com/ace/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
 )
 
 // Config is the action for getting the server configuration.

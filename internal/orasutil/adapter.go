@@ -10,7 +10,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/errdef"
 
-	"git.act3-ace.com/ace/data/tool/internal/descriptor"
+	"gitlab.com/act3-ai/asce/data/tool/internal/descriptor"
 )
 
 // NewNoPushTarget is an oras.Target adapter that turns the Push() and Tag() into no-ops.

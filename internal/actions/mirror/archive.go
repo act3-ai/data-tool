@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
@@ -38,7 +38,6 @@ type Archive struct {
 
 // Run executes the actual archive operation.
 func (action *Archive) Run(ctx context.Context, sourceFile, destFile, reference string, existingImages []string, n, bs, hwm int) error {
-
 	log := logger.FromContext(ctx)
 	cfg := action.Config.Get(ctx)
 

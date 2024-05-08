@@ -8,9 +8,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
-	"git.act3-ace.com/ace/data/tool/internal/util"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/internal/util"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Edit represents the bottle edit action.
@@ -75,7 +75,6 @@ func (action *Edit) Run(ctx context.Context, out io.Writer) error {
 
 			if userAnswer == preserveEdit {
 				keepEditing = true
-
 			} else if userAnswer == discardEdit {
 				keepEditing = false
 				if err := os.Remove(editFile); err != nil {

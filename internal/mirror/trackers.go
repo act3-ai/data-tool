@@ -10,8 +10,8 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content"
 
-	"git.act3-ace.com/ace/data/tool/internal/descriptor"
-	"git.act3-ace.com/ace/data/tool/internal/mirror/encoding"
+	"gitlab.com/act3-ai/asce/data/tool/internal/descriptor"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
 )
 
 // ByteTracker is an object for tracking digests seen, total bytes seen, and deduplication size.

@@ -16,10 +16,10 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
 
-	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
-	"git.act3-ace.com/ace/data/tool/internal/cache"
-	"git.act3-ace.com/ace/data/tool/internal/descriptor"
-	"git.act3-ace.com/ace/data/tool/internal/mirror/encoding"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
+	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
+	"gitlab.com/act3-ai/asce/data/tool/internal/descriptor"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
 )
 
 // colors to print color to the console.
@@ -220,7 +220,6 @@ func (pp prettyPrinter) printPredecessors(ctx context.Context, storage content.R
 //
 //nolint:revive
 func (pp prettyPrinter) entry(last bool) prettyPrinter {
-
 	prefix := pp.prefix
 	if last {
 		pp.prefix = prefix + prefixLast

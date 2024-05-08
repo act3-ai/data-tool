@@ -10,7 +10,7 @@ import (
 
 	"github.com/opencontainers/go-digest"
 
-	"git.act3-ace.com/ace/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 )
 
 // VirtTrackingFile is the filename for local virtual parts tracking json file.
@@ -125,7 +125,8 @@ func (vp *VirtualParts) Add(layerID digest.Digest, contentID digest.Digest, loc 
 	vp.VirtRecords = append(vp.VirtRecords, VirtRecord{
 		layerID,
 		contentID,
-		loc.String()})
+		loc.String(),
+	})
 }
 
 // getRecord is a helper function for retrieving a VirtRecord based on layerID or contentID, depending on byLayer. False
@@ -177,7 +178,7 @@ func (vp *VirtualParts) Save() error {
 		return fmt.Errorf("error marshalling virtual part data: %w", err)
 	}
 
-	if err := os.WriteFile(vp.filePath, dat, 0666); err != nil {
+	if err := os.WriteFile(vp.filePath, dat, 0o666); err != nil {
 		return fmt.Errorf("error creating virtual part file: %w", err)
 	}
 

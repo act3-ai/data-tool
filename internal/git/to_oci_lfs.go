@@ -11,9 +11,9 @@ import (
 	oras "oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/errdef"
 
-	"git.act3-ace.com/ace/data/tool/internal/git/cmd"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // RunLFS creates or updates an LFS manifest with git LFS tracked files modified between two sets of commit tips. It is acceptable for oldTips to be empty, but this
@@ -65,7 +65,7 @@ func (t *ToOCI) createFakeLFSFiles() error {
 	objsInRegistry := t.getExistingLFSFiles() // do not modify lfs manifest before this
 	for obj, size := range objsInRegistry {
 		oidPath := filepath.Join(t.cmdHelper.Dir(), t.cmdHelper.ResolveLFSOIDPath(obj))
-		if err := os.MkdirAll(filepath.Dir(oidPath), 0777); err != nil {
+		if err := os.MkdirAll(filepath.Dir(oidPath), 0o777); err != nil {
 			return fmt.Errorf("creating path to empty lfs obj: %w", err)
 		}
 
@@ -165,7 +165,7 @@ func (t *ToOCI) sendLFSSync(ctx context.Context, subject *ocispec.Descriptor, ne
 	manOpts := oras.PackManifestOptions{
 		Subject: subject,
 		Layers:  append(t.lfs.manifest.Layers, lfsObjDescs...),
-		//ConfigDescriptor:    &configDesc,
+		// ConfigDescriptor:    &configDesc,
 		ManifestAnnotations: map[string]string{ocispec.AnnotationCreated: "1970-01-01T00:00:00Z", AnnotationDTVersion: t.syncOpts.DTVersion}, // POSIX epoch
 	}
 
@@ -195,7 +195,7 @@ func (t *ToOCI) updateLFSManSubject(ctx context.Context, oldBaseManDesc, newBase
 		manOpts := oras.PackManifestOptions{
 			Subject: &newBaseManDesc,
 			Layers:  t.lfs.manifest.Layers,
-			//ConfigDescriptor:    &configDesc,
+			// ConfigDescriptor:    &configDesc,
 			ManifestAnnotations: map[string]string{ocispec.AnnotationCreated: "1970-01-01T00:00:00Z", AnnotationDTVersion: t.syncOpts.DTVersion}, // POSIX epoch
 		}
 
@@ -214,7 +214,6 @@ func (t *ToOCI) updateLFSManSubject(ctx context.Context, oldBaseManDesc, newBase
 // If this function is called immediately after fetching an LFS manifest, it may be assumed that these LFS files
 // exist in the registry.
 func (t *ToOCI) getExistingLFSFiles() map[string]int64 {
-
 	objects := make(map[string]int64, len(t.lfs.manifest.Layers))
 	for _, layer := range t.lfs.manifest.Layers {
 		objects[layer.Annotations[ocispec.AnnotationTitle]] = layer.Size

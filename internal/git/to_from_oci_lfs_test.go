@@ -21,9 +21,9 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/memory"
 
-	"git.act3-ace.com/ace/data/tool/internal/git/cmd"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	tlog "git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	tlog "gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 // lfsTest is an extension of test to aid in validating git lfs files.
@@ -33,28 +33,32 @@ type lfsTest struct {
 }
 
 var lfsTests = []lfsTest{
-	{t: test{name: "One LFS File",
-		args: args{
-			argRevList:          []string{"main"},
-			expectedTagList:     []string{},
-			expectedHeadList:    []string{"main"},
-			expectedRebuildRefs: []string{"refs/heads/main"},
-			tag:                 "sync",
+	{
+		t: test{
+			name: "One LFS File",
+			args: args{
+				argRevList:          []string{"main"},
+				expectedTagList:     []string{},
+				expectedHeadList:    []string{"main"},
+				expectedRebuildRefs: []string{"refs/heads/main"},
+				tag:                 "sync",
+			},
+			wantErr: false,
 		},
-		wantErr: false,
-	},
 		expectedLFSFiles: 1,
 	},
-	{t: test{name: "Two LFS Files",
-		args: args{
-			argRevList:          []string{"Feature1"},
-			expectedTagList:     []string{},
-			expectedHeadList:    []string{"main", "Feature1"},
-			expectedRebuildRefs: []string{"refs/heads/main", "refs/heads/Feature1"},
-			tag:                 "sync",
+	{
+		t: test{
+			name: "Two LFS Files",
+			args: args{
+				argRevList:          []string{"Feature1"},
+				expectedTagList:     []string{},
+				expectedHeadList:    []string{"main", "Feature1"},
+				expectedRebuildRefs: []string{"refs/heads/main", "refs/heads/Feature1"},
+				tag:                 "sync",
+			},
+			wantErr: false,
 		},
-		wantErr: false,
-	},
 		expectedLFSFiles: 2,
 	},
 }
@@ -86,7 +90,6 @@ func Test_ToFromOCILFS(t *testing.T) { //nolint
 		}
 
 		t.Run(tt.t.name+":ToOCILFS", func(t *testing.T) {
-
 			syncOpts := SyncOptions{TmpDir: t.TempDir()}
 			cmdOpts := cmd.Options{LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: srcServer.URL}}
 			toOCITester, err := NewToOCI(ctx, target, tt.t.args.tag, lfsSrc, tt.t.args.argRevList, syncOpts, &cmdOpts)
@@ -123,7 +126,6 @@ func Test_ToFromOCILFS(t *testing.T) { //nolint
 		}
 
 		t.Run(tt.t.name+"FromOCILFS", func(t *testing.T) {
-
 			syncOpts := SyncOptions{TmpDir: t.TempDir()}
 			cmdOpts := cmd.Options{LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: dstServer.URL}}
 			fromOCITester, err := NewFromOCI(ctx, target, tt.t.args.tag, lfsDst, syncOpts, &cmdOpts)
@@ -163,8 +165,8 @@ func Test_ToFromOCILFS(t *testing.T) { //nolint
 // setupLFSServerHandlers sets up src and dst LFS servers as well as handlers to access
 // their content. It is the caller's responsibility to close the servers and cleanup the handlers.
 func setupLFSServerHandlers(t *testing.T, ctx context.Context) (lfsSrc string, lfsSrcHandler *ToOCI, srcServer *httptest.Server, //nolint
-	lfsDst string, lfsDstHandler *FromOCI, dstServer *httptest.Server) {
-
+	lfsDst string, lfsDstHandler *FromOCI, dstServer *httptest.Server,
+) {
 	// setup source repository backed by its own lfs server.
 	lfsSrc = t.TempDir()
 
@@ -362,7 +364,6 @@ func setupActions(actionType, host string, objs []*Transfer) {
 
 // copyLFSToResponse copies an lfs file to an http response.
 func copyLFSToResponse(oidPath string, w http.ResponseWriter) error {
-
 	oidInfo, err := os.Stat(oidPath)
 	if err != nil {
 		return fmt.Errorf("getting stats of oid file: %w", err)
@@ -388,10 +389,8 @@ func copyLFSToResponse(oidPath string, w http.ResponseWriter) error {
 
 // copyLFSFromResponse copies the body of a request to an lfs file.
 func copyLFSFromResponse(oidPath string, r *http.Request) error {
-
-	if err := os.MkdirAll(filepath.Dir(oidPath), 0777); err != nil {
+	if err := os.MkdirAll(filepath.Dir(oidPath), 0o777); err != nil {
 		return fmt.Errorf("creating path to new oid location: %w", err)
-
 	}
 
 	oidFile, err := os.Create(oidPath)
@@ -447,8 +446,10 @@ type Action struct {
 	// createdAt time.Time
 }
 
-const uploadAction = "upload"
-const downloadAction = "download"
+const (
+	uploadAction   = "upload"
+	downloadAction = "download"
+)
 
 type batchRef struct {
 	Name string `json:"name,omitempty"`
@@ -465,7 +466,6 @@ type batchRequest struct {
 // validateLFSManifestConfig validates the LFS manifest by ensuring the manifest layers match exactly what's expected.
 // Note: The config is empty, so it's not validated.
 func validateLFSManifestConfig(lfsManifest ocispec.Manifest, config LFSConfig, expectedOIDMap map[string]bool) error {
-
 	configErrs := make([]error, 0)
 
 	// ensure layers match the config and they were expected

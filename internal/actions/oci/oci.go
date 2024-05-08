@@ -2,7 +2,7 @@
 package oci
 
 import (
-	"git.act3-ace.com/ace/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
 )
 
 // Action represents a general oci action.

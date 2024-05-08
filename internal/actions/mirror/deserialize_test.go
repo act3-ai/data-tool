@@ -26,11 +26,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"oras.land/oras-go/v2/content/oci"
 
-	"git.act3-ace.com/ace/data/tool/internal/actions"
-	"git.act3-ace.com/ace/data/tool/internal/archive"
-	"git.act3-ace.com/ace/data/tool/internal/print"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
+	"gitlab.com/act3-ai/asce/data/tool/internal/print"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 func TestDeserialize(t *testing.T) {
@@ -66,7 +66,7 @@ func TestDeserialize(t *testing.T) {
 	}
 	indexData, err := json.Marshal(index)
 	rne(err)
-	rne(os.WriteFile(filepath.Join(ociDir, ocispec.ImageIndexFile), indexData, 0600))
+	rne(os.WriteFile(filepath.Join(ociDir, ocispec.ImageIndexFile), indexData, 0o600))
 
 	// tar it up
 	tape := filepath.Join(dir, "tape.tar")
@@ -212,7 +212,7 @@ func FuzzDeserialize_Random(f *testing.F) {
 	}
 	indexData, err := json.Marshal(index)
 	rne(err)
-	rne(os.WriteFile(filepath.Join(ociDir, "index.json"), indexData, 0600))
+	rne(os.WriteFile(filepath.Join(ociDir, "index.json"), indexData, 0o600))
 
 	{
 		f.Logf(`To see the OCI tree run: ace-dt oci tree --oci-layout %s:root`, dir)
@@ -226,7 +226,7 @@ func FuzzDeserialize_Random(f *testing.F) {
 
 	// add extraneous files
 	for i := 0; i < 3; i++ {
-		rne(os.WriteFile(filepath.Join(ociDir, fmt.Sprintf("bogus-%d", i)), []byte("bogus content"), 0666))
+		rne(os.WriteFile(filepath.Join(ociDir, fmt.Sprintf("bogus-%d", i)), []byte("bogus content"), 0o666))
 	}
 
 	f.Fuzz(func(t *testing.T, seed int64) {

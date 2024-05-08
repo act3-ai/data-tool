@@ -18,11 +18,12 @@ import (
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"git.act3-ace.com/ace/data/schema/pkg/selectors"
-	"git.act3-ace.com/ace/data/tool/internal/python"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"git.act3-ace.com/ace/go-common/pkg/redact"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
+	"gitlab.com/act3-ai/asce/data/tool/internal/python"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/redact"
 )
 
 // Some motivation for this approach is given in https://stevelasker.blog/2021/08/26/artifact-services/
@@ -234,7 +235,8 @@ func (action *ToOCI) Run(ctx context.Context, repository string, additionalRequi
 }
 
 func writeFailedRequirements(filename string, requirements *python.Requirements,
-	projects []string, errs []error) error {
+	projects []string, errs []error,
+) error {
 	f, err := os.Create(filename)
 	if err != nil {
 		return fmt.Errorf("creating failed requirements file: %w", err)
@@ -395,7 +397,8 @@ func processRequirement(ctx context.Context, reqs []python.Requirement, opts opt
 // processEntry processes a single distribution entry by upload (if necessary) to OCI.
 // The descriptor of the Manifest is used.
 func processEntry(ctx context.Context, task *ui.Task,
-	pyDistIdx *pythonDistributionIndex, entry python.DistributionEntry, opts optionsToOCI) (ocispec.Descriptor, error) {
+	pyDistIdx *pythonDistributionIndex, entry python.DistributionEntry, opts optionsToOCI,
+) (ocispec.Descriptor, error) {
 	subUI := task.SubTask(entry.Filename)
 	defer subUI.Complete()
 
@@ -457,7 +460,8 @@ func transferEntry(ctx context.Context, entry python.DistributionEntry, client r
 	target interface {
 		content.Resolver
 		content.Pusher
-	}) (ocispec.Descriptor, *ocispec.Descriptor, error) {
+	},
+) (ocispec.Descriptor, *ocispec.Descriptor, error) {
 	var metadata *ocispec.Descriptor
 	if metadataURL := entry.MetadataURL(); metadataURL != "" {
 		meta, err := transferBlob(ctx, metadataURL, entry.MetadataDigest, MediaTypePythonDistributionMetadata, client, target)

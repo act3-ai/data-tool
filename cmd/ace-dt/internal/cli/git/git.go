@@ -6,14 +6,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/internal/actions"
-	"git.act3-ace.com/ace/data/tool/internal/actions/git"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions/git"
 )
 
 // NewGitCmd represents the base git command.
 func NewGitCmd(tool *actions.DataTool) *cobra.Command {
 	action := &git.Action{DataTool: tool}
-	var cmd = &cobra.Command{
+	cmd := &cobra.Command{
 		GroupID: "core",
 		Use:     "git",
 		Short:   "Git to/from OCI",

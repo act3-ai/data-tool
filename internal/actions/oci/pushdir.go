@@ -13,8 +13,8 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/errdef"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror/encoding"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // PushDir represents the oci pushdir action.
@@ -32,7 +32,6 @@ type PushDir struct {
 
 // Run performs the pushdir operation.
 func (action *PushDir) Run(ctx context.Context, dir, ref string) error {
-
 	repo, err := action.Config.ConfigureRepository(ctx, ref)
 	if err != nil {
 		return err
@@ -52,7 +51,8 @@ func (action *PushDir) Run(ctx context.Context, dir, ref string) error {
 
 // PushDirOp pushes a directory as the single layer in a OCI image.
 func PushDirOp(ctx context.Context, dir string, target oras.Target, ref string,
-	platform *ocispec.Platform, legacy, reproducible bool) (ocispec.Descriptor, error) {
+	platform *ocispec.Platform, legacy, reproducible bool,
+) (ocispec.Descriptor, error) {
 	log := logger.FromContext(ctx)
 
 	log.InfoContext(ctx, "Fetching index", "ociref", ref)

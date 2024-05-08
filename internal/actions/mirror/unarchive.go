@@ -7,9 +7,9 @@ import (
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Unarchive represents the mirror unarchive action.

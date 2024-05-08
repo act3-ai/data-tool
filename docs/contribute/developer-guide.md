@@ -6,7 +6,7 @@ This documentation is written for ACT3 developers who are creating and maintaini
 
 ## Logging
 
-Logging is done as JSONL so it is complete but harder for a human to easily parse. To convert them on the fly to colored and formatted text run it with `2> >(jq -j -f log.jq)` at the end. The [log.jq](https://git.act3-ace.com/ace/data/tool/-/blob/main/cmd/ace-dt/internal/cli/log.jq?ref_type=heads) filter can be used with `jq` to pretty print the logs. So run `ace-dt` like so (in bash)
+Logging is done as JSONL so it is complete but harder for a human to easily parse. To convert them on the fly to colored and formatted text run it with `2> >(jq -j -f log.jq)` at the end. The [log.jq](https://gitlab.com/act3-ai/asce/data/tool/-/blob/main/cmd/ace-dt/internal/cli/log.jq?ref_type=heads) filter can be used with `jq` to pretty print the logs. So run `ace-dt` like so (in bash)
 
 ```shell
 ace-dt bottle commit 2> >(jq -j -f log.jq)
@@ -14,7 +14,7 @@ ace-dt bottle commit 2> >(jq -j -f log.jq)
 
 ### Style Guidelines: Logging Best Practices
 
-The Data team uses `git.act3-ace.com/ace/go-common/pkg/logger`, which uses [slog](https://pkg.go.dev/log/slog) internally.
+The Data team uses `gitlab.com/act3-ai/asce/go-common/pkg/logger`, which uses [slog](https://pkg.go.dev/log/slog) internally.
 
 - Logs should be JSONL formatted but other formats can be supported. They are not meant to be consumed by a user but rather by a developer or operator.
 - The logging system is not part of the UX.
@@ -40,7 +40,7 @@ Example 1:
 import (
    "context"
 
-   "git.act3-ace.com/ace/go-common/pkg/logger"
+   "gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 func DoWork(ctx context.Context, a string) error {
@@ -56,7 +56,7 @@ Example 2:
 import (
    "context"
 
-   "git.act3-ace.com/ace/go-common/pkg/logger"
+   "gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 func DoWork(ctx context.Context) error {
@@ -189,7 +189,7 @@ Follow the [GitLab documentation](https://docs.gitlab.com/runner/install/) corre
 The standard `.gitlab-ci.yaml` needs to be updated prior using a local runner.
 
 Replace the `.gitlab-ci.yaml` content within your local repo, with the content of the file listed under the merged tab of this
-[page](https://git.act3-ace.com/ace/data/tool/-/ci/editor). -->
+[page](https://gitlab.com/act3-ai/asce/data/tool/-/ci/editor). -->
 
 #### Run Tests Locally
 

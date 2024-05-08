@@ -21,9 +21,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/sync/errgroup"
 
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
-	"git.act3-ace.com/ace/go-common/pkg/httputil"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/go-common/pkg/httputil"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 //go:embed templates
@@ -79,7 +79,7 @@ func (action *GUI) Run(ctx context.Context, out io.Writer) error {
 
 	// HACK to allow unit testing access to the dynamic port
 	u := fmt.Sprintf("http://%s", listener.Addr())
-	if err := os.WriteFile(GUIURLPath(btl.GetPath()), []byte(u), 0666); err != nil {
+	if err := os.WriteFile(GUIURLPath(btl.GetPath()), []byte(u), 0o666); err != nil {
 		return fmt.Errorf("writing GUI URL to file: %w", err)
 	}
 

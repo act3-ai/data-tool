@@ -9,13 +9,14 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
-	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
-	"git.act3-ace.com/ace/data/tool/internal/actions/internal/format"
-	"git.act3-ace.com/ace/data/tool/internal/bottle"
-	"git.act3-ace.com/ace/data/tool/internal/oci"
-	"git.act3-ace.com/ace/data/tool/internal/print"
-	tbtl "git.act3-ace.com/ace/data/tool/pkg/transfer/bottle"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions/internal/format"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
+	"gitlab.com/act3-ai/asce/data/tool/internal/print"
+	tbtl "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
+
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Show represents the bottle show action.

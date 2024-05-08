@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"git.act3-ace.com/ace/data/tool/internal/actions"
-	"git.act3-ace.com/ace/go-common/pkg/config"
+	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	"gitlab.com/act3-ai/asce/go-common/pkg/config"
 )
 
 const configExample = `Configuration can be modified with the following environment variables:

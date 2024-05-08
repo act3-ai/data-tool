@@ -15,10 +15,10 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
 
-	"git.act3-ace.com/ace/data/tool/internal/cache"
-	"git.act3-ace.com/ace/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 // NewCommandHelper returns a new CommandHelper using the given cobra command.
@@ -58,7 +58,7 @@ func (c *CommandHelper) setupTestConfig() {
 	// We write a config file (with the cachePath set) and use --config=... to read in the config for actual tested command.
 	data, err := json.Marshal(c.config)
 	require.NoError(c.t, err)
-	require.NoError(c.t, os.WriteFile(c.configFile, data, 0600))
+	require.NoError(c.t, os.WriteFile(c.configFile, data, 0o600))
 }
 
 // Context provides access to the command's context.

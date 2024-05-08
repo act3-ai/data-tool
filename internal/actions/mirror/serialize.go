@@ -3,7 +3,7 @@ package mirror
 import (
 	"context"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
 )
 
 // Serialize represents the mirror serialize action.
@@ -16,7 +16,6 @@ type Serialize struct {
 
 // Run runs the mirror serialize action.
 func (action *Serialize) Run(ctx context.Context, ref string, destFile string, existingImages []string, n, bs, hwm int) error {
-
 	repo, err := action.Config.ConfigureRepository(ctx, ref)
 	if err != nil {
 		return err

@@ -12,7 +12,7 @@ import (
 	oras "oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Helper assists in pushing to or fetching from an OCI compliant registry.
@@ -27,7 +27,6 @@ type Helper struct {
 // The OCI compliant registry must support the Referrer's API. This constructor initializes an oras filestore
 // which is the caller's responsibility to close, may be done with sync.cleanup().
 func NewOCIHelper(tmpDir string, target oras.GraphTarget, tag string) (*Helper, error) {
-
 	fs, err := file.New(tmpDir)
 	if err != nil {
 		return &Helper{}, fmt.Errorf("initializing filestore: %w", err)
@@ -43,7 +42,7 @@ func NewOCIHelper(tmpDir string, target oras.GraphTarget, tag string) (*Helper, 
 
 // CopyLFSFromOCI copies a git-lfs file stored as an OCI layer, written to objDest.
 //
-// TODO: This is inefficient and not a good interface. See issue https://git.act3-ace.com/ace/data/tool/-/issues/504.
+// TODO: This is inefficient and not a good interface. See issue https://gitlab.com/act3-ai/asce/data/tool/-/issues/504.
 func (o *Helper) CopyLFSFromOCI(ctx context.Context, objDest string, layerDesc ocispec.Descriptor) error {
 	log := logger.FromContext(ctx)
 
@@ -51,7 +50,7 @@ func (o *Helper) CopyLFSFromOCI(ctx context.Context, objDest string, layerDesc o
 	oidDir := filepath.Dir(objDest)
 
 	log.InfoContext(ctx, "initializing path to oid", "oidDir", oidDir)
-	err := os.MkdirAll(oidDir, 0777)
+	err := os.MkdirAll(oidDir, 0o777)
 	if err != nil {
 		return fmt.Errorf("creating path to oid file: %w", err)
 	}

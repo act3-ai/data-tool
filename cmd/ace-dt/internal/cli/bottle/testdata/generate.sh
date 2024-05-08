@@ -12,9 +12,9 @@ do
     rm -rf $BOTTLE
     rm -rf $OCI
     cp -r $DATA/original $BOTTLE
-    go run git.act3-ace.com/ace/data/tool/cmd/ace-dt@$VERSION bottle init -d $BOTTLE
-    go run git.act3-ace.com/ace/data/tool/cmd/ace-dt@$VERSION bottle push -d $BOTTLE http://"$REGISTRY"/testdata/$DATA:$VERSION --force
-    go run git.act3-ace.com/ace/data/tool/cmd/ace-dt@master oci pull "$REGISTRY"/testdata/$DATA:$VERSION $OCI
+    go run gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt@$VERSION bottle init -d $BOTTLE
+    go run gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt@$VERSION bottle push -d $BOTTLE http://"$REGISTRY"/testdata/$DATA:$VERSION --force
+    go run gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt@master oci pull "$REGISTRY"/testdata/$DATA:$VERSION $OCI
 done
 
 VERSION=master
@@ -25,7 +25,7 @@ do
     rm -rf $BOTTLE
     rm -rf $OCI
     cp -r $DATA/original $BOTTLE
-    go run git.act3-ace.com/ace/data/tool/cmd/ace-dt@$VERSION bottle init -d $BOTTLE
-    go run git.act3-ace.com/ace/data/tool/cmd/ace-dt@$VERSION bottle push -d $BOTTLE http://"$REGISTRY"/testdata/$DATA:$VERSION
-    go run git.act3-ace.com/ace/data/tool/cmd/ace-dt@master oci pull "$REGISTRY"/testdata/$DATA:$VERSION $OCI
+    go run gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt@$VERSION bottle init -d $BOTTLE
+    go run gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt@$VERSION bottle push -d $BOTTLE http://"$REGISTRY"/testdata/$DATA:$VERSION
+    go run gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt@master oci pull "$REGISTRY"/testdata/$DATA:$VERSION $OCI
 done

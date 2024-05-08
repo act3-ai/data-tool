@@ -5,9 +5,10 @@ import (
 	"slices"
 	"strings"
 
-	"git.act3-ace.com/ace/data/schema/pkg/selectors"
-	"git.act3-ace.com/ace/data/tool/internal/python"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
+	"gitlab.com/act3-ai/asce/data/tool/internal/python"
+
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // NOTE consider adding dependency checking (io.MultiWriter and unzip then look at the deps and add them to list to download)
@@ -22,7 +23,6 @@ func filterDistributionEntries(log *slog.Logger,
 	allowYanked bool,
 	reqs []python.Requirement,
 ) ([]python.DistributionEntry, error) {
-
 	filteredPackages := make([]python.DistributionEntry, 0, len(entries))
 	for _, entry := range entries {
 		log := logger.V(log.With("filename", entry.Filename), 2)

@@ -14,7 +14,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/registry"
 
-	"git.act3-ace.com/ace/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 )
 
 type mapperFunc func(ocispec.Descriptor) ([]string, error)

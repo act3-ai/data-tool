@@ -21,8 +21,8 @@ import (
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
 
-	"git.act3-ace.com/ace/data/tool/internal/orasutil"
-	"git.act3-ace.com/ace/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 )
 
 // templateFile executes the template for the given template file.
@@ -102,7 +102,7 @@ func ProcessRecipe(ctx context.Context, recipePath, ociDir string, validate bool
 	}
 
 	// TemplateFuncs are used during templating the .tmpl files
-	var templateFuncs = template.FuncMap{
+	templateFuncs := template.FuncMap{
 		"FileDescriptor": fsh.FileDescriptor,
 		"FileDigest":     fsh.FileDigest,
 		"Tar":            fsh.Tar,

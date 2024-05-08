@@ -7,8 +7,8 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 const (
@@ -160,19 +160,26 @@ func testGenericCandidateLocations(t *testing.T, cache BlobInfoCache) {
 
 		// With substitutions: The original digest is always preferred, then other transformed, then the untransformed one.
 		assertCandidatesMatch(t, scopeName, []candidate{
-			{d: digestTransformedA, tn: UnknownTransformer, lr: "A1"}, {d: digestTransformedA, tn: UnknownTransformer, lr: "A2"},
-			{d: digestTransformedB, tn: UnknownTransformer, lr: "B1"}, {d: digestTransformedB, tn: UnknownTransformer, lr: "B2"},
-			{d: digestUntransformed, tn: UnknownTransformer, lr: "U1"}, {d: digestUntransformed, tn: UnknownTransformer, lr: "U2"},
+			{d: digestTransformedA, tn: UnknownTransformer, lr: "A1"},
+			{d: digestTransformedA, tn: UnknownTransformer, lr: "A2"},
+			{d: digestTransformedB, tn: UnknownTransformer, lr: "B1"},
+			{d: digestTransformedB, tn: UnknownTransformer, lr: "B2"},
+			{d: digestUntransformed, tn: UnknownTransformer, lr: "U1"},
+			{d: digestUntransformed, tn: UnknownTransformer, lr: "U2"},
 		}, cache.CandidateLocations(ctx, transport, scope, digestTransformedA, true))
 
 		assertCandidatesMatch(t, scopeName, []candidate{
-			{d: digestTransformedB, tn: UnknownTransformer, lr: "B1"}, {d: digestTransformedB, tn: UnknownTransformer, lr: "B2"},
-			{d: digestTransformedA, tn: UnknownTransformer, lr: "A1"}, {d: digestTransformedA, tn: UnknownTransformer, lr: "A2"},
-			{d: digestUntransformed, tn: UnknownTransformer, lr: "U1"}, {d: digestUntransformed, tn: UnknownTransformer, lr: "U2"},
+			{d: digestTransformedB, tn: UnknownTransformer, lr: "B1"},
+			{d: digestTransformedB, tn: UnknownTransformer, lr: "B2"},
+			{d: digestTransformedA, tn: UnknownTransformer, lr: "A1"},
+			{d: digestTransformedA, tn: UnknownTransformer, lr: "A2"},
+			{d: digestUntransformed, tn: UnknownTransformer, lr: "U1"},
+			{d: digestUntransformed, tn: UnknownTransformer, lr: "U2"},
 		}, cache.CandidateLocations(ctx, transport, scope, digestTransformedB, true))
 
 		assertCandidatesMatch(t, scopeName, []candidate{
-			{d: digestUntransformed, tn: UnknownTransformer, lr: "U1"}, {d: digestUntransformed, tn: UnknownTransformer, lr: "U2"},
+			{d: digestUntransformed, tn: UnknownTransformer, lr: "U1"},
+			{d: digestUntransformed, tn: UnknownTransformer, lr: "U2"},
 			// "1" entries were added after "2", and A/Bs are sorted in the reverse of digestNameSet order
 			{d: digestTransformedB, tn: UnknownTransformer, lr: "B1"},
 			{d: digestTransformedA, tn: UnknownTransformer, lr: "A1"},
