@@ -1,0 +1,1 @@
+{"apiVersion":"data.act3-ace.io/v1beta1","kind":"Bottle","sources":[],"authors":[],"metrics":[],"publicArtifacts":[],"parts":[{"name":"adir","size":4096,"digest":"sha256:18ede4da8e34ec2372ce645fdf33f5b3b6f99495d303d17b55f643a7322f1dc8","labels":{"foo":"bar"}},{"name":"top-file.txt","size":8,"digest":"sha256:12a61f4e173fb3a11c05d6471f74728f76231b4a5fcd9667cef3af87a3ae4dc2"}]}

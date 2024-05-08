@@ -1,0 +1,8 @@
+# ordering is PREFIX,REGISTRY/REPO
+# anything that has a gather annotation source ref of "quay.io/"
+# will get sent to 127.0.0.1:35475
+quay.io/,127.0.0.1:35475/quay.io/
+docker.io/library/,127.0.0.1:35475/docker.io/library
+docker.io/ceph/daemon, 127.0.0.1:35475/docker.io/ceph/daemon
+docker.io/,127.0.0.1:35475/docker.io/
+index.docker.io/,127.0.0.1:35475/index.docker.io/

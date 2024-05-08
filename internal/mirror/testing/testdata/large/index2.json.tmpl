@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.index.v1+json",
+  "manifests": [
+    {{- FileDescriptor "manifest3.json" "application/vnd.oci.image.manifest.v1+json" "sha256" | mustToPrettyJson | nindent 4 }},
+    {{- FileDescriptor "manifest4.json" "application/vnd.oci.image.manifest.v1+json" "sha256" | mustToPrettyJson | nindent 4 }}
+  ],
+  "annotations": {
+    "name": "{{ .Filename }}"
+  }
+}

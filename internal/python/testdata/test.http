@@ -1,0 +1,14 @@
+@baseURL=https://pypi.org
+@project=there
+
+### PEP-503
+GET {{baseURL}}/simple/{{project}} HTTP/1.1
+Accept: application/vnd.pypi.simple.v1+html, text/html
+
+### This is a PyPI specific API
+GET {{baseURL}}/pypi/{{project}}/json HTTP/1.1
+Accept: application/json
+
+### PEP-691 (json or html based on the server).  Gitlab only supports html.
+GET {{baseURL}}/simple/{{project}} HTTP/1.1
+Accept: application/vnd.pypi.simple.v1+json, application/vnd.pypi.simple.v1+;q=0.2, text/html;q=0.1

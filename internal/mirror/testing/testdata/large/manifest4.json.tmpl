@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "artifactType": "application/vnd.example.com",
+  {{/* We use a bogus media type for the config to avoid having to properly construct the config.  Zot parses the config data and fails on upload if it is not correct. */}}
+  "config": {{ FileDescriptor "blob3.txt" "application/vnd.ace.image.config.v1" "sha256" | mustToPrettyJson | nindent 4 }},
+  "layers": [
+    {{- FileDescriptor "blob4.txt" "application/vnd.oci.image.layer.v1.tar" "sha256" | mustToPrettyJson | nindent 4 }}
+  ],
+  "annotations": {
+    "name": "{{ .Filename }}"
+  }
+}

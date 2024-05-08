@@ -1,0 +1,22 @@
+{"file": "blob1.txt"}
+{"file": "blob2.zst"}
+{"file": "blob3.txt"}
+{"file": "blob4.txt"}
+{"file": "blob5.txt"}
+{"file": "blob6.txt"}
+{"file": "blob7.gz"}
+{"file": "blob8.txt"}
+{"file": "blob9.txt"}
+{"file": "blob10.txt"}
+{"file": "blob11.tar.zst"}
+{"file": "blob12.tar.gz"}
+{"file": "manifest4.json", "mediaType": "application/octet-stream"}
+{"file": "manifest4.json", "mediaType": "application/vnd.oci.image.manifest.v1+json"}
+{"file": "manifest5.json", "mediaType": "application/vnd.oci.image.manifest.v1+json"}
+{"file": "manifest3.json", "mediaType": "application/vnd.oci.image.manifest.v1+json"}
+{"file": "manifest9.json", "mediaType": "application/vnd.oci.image.manifest.v1+json"}
+{"file": "index2.json", "mediaType": "application/vnd.oci.image.index.v1+json"}
+{"file": "index1.json", "mediaType": "application/vnd.oci.image.index.v1+json", "tag": "sync-13"}
+{"file": "manifest6.json", "mediaType": "application/vnd.oci.image.manifest.v1+json"}
+{"file": "manifest7.json", "mediaType": "application/vnd.oci.image.manifest.v1+json"}
+{"file": "manifest8.json", "mediaType": "application/vnd.oci.image.manifest.v1+json"}

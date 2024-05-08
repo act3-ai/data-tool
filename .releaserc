@@ -1,0 +1,26 @@
+# yaml-language-server: $schema=https://json.schemastore.org/semantic-release.json
+branches:
+  - main # default branch
+  # Uncomment to add a prerelease channel using the "beta" branch
+  - name: beta
+    channel: beta
+    prerelease: true
+plugins:
+  # reads "fix:"/"feat:" commits
+  - "@semantic-release/commit-analyzer"
+  # generates release notes
+  - "@semantic-release/release-notes-generator"
+  # generates CHANGELOG.md
+  - "@semantic-release/changelog"
+  # runs a script
+  - - "@semantic-release/exec"
+    - prepareCmd: ./release.sh ${nextRelease.version}
+      verifyReleaseCmd: ./verify.sh ${nextRelease.version}
+  # makes a commit with generated release assets
+  - - "@semantic-release/git"
+    - assets:
+        - CHANGELOG.md
+        - VERSION
+        - docs/apis
+        - docs/cli
+      message: "chore(release): ${nextRelease.version}  \n\n${nextRelease.notes}"

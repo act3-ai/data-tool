@@ -1,0 +1,4 @@
+there
+--index-url http://example.com
+--extra-index-url https://foo.com
+pkg#comment

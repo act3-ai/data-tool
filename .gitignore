@@ -1,0 +1,15 @@
+/bin
+/tool
+/coverage*.*
+/report.*
+/profile.cov
+/integration
+/site
+
+## Ignore logfiles
+/log
+
+.env.test
+.envrc.private
+/ci-dist/
+/.gorelease-actual.txt

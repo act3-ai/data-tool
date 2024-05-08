@@ -1,0 +1,6 @@
+absl-py==1.2.0 ; python_version >= "3.8" and python_version < "3.11" \
+    --hash=sha256:5d15f85b8cc859c6245bc9886ba664460ed96a6fee895416caa37d669ee74a9a \
+    --hash=sha256:f568809938c49abbda89826223c992b630afd23c638160ad7840cfe347710d97
+aiohttp-cors==0.7.0 ; python_version >= "3.8" and python_version < "3.11" \
+    --hash=sha256:0451ba59fdf6909d0e2cd21e4c0a43752bc0703d33fc78ae94d9d9321710193e \
+    --hash=sha256:4d39c6d7100fd9764ed1caf8cebf0eb01bf5e3f24e2e073fda6234bc48b19f5d

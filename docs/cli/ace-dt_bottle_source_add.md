@@ -1,0 +1,63 @@
+## ace-dt bottle source add
+
+add source information to bottle
+
+### Synopsis
+
+Description:
+  Adds an source information specified bottle.
+  Source information is comprised of two fields: 'name' and 'uri'
+  When adding a source, both fields are required. The URI field accepts 
+  any valid URI (which include URLs) as well as the bottle ID format,
+  which is 'bottle:sha256:badfacade...'
+
+
+```
+ace-dt bottle source add [NAME] [URI] [flags]
+```
+
+### Examples
+
+```
+
+Add source 'mnist catalog' with uri https://mnist-catalog.example.com to bottle in current directory:
+	ace-dt bottle source add "mnist catalog" "https://mnist-catalog.example.com"
+
+Add source 'kaggle data' with uri https://kaggle.example.com/id256 to bottle at path my/bottle/path:
+	ace-dt bottle source add "kaggle data" "https://kaggle.example.com/id256" -d my/bottle/path
+
+Add source 'validation subset' with bottle ID sha256:989697e1f07d9454dad83b2171491ef55de9aa9ed9bf1e91814c464999517b77:
+	ace-dt bottle source add 'validation subset' 'bottle://sha256:989697e1f07d9454dad83b2171491ef55de9aa9ed9bf1e91814c464999517b77'
+
+Add source "training data" with bottle ID from another local bottle at "my/training/data"
+	ace-dt bottle source "training data" "my/training/data" --path
+
+Add source "training data" with bottle reference from a remote bottle at "reg.git.com/my/training/data"
+	ace-dt bottle source "training data" "reg.git.com/my/training/data" --ref
+
+```
+
+### Options
+
+```
+  -h, --help       help for add
+      --insecure   Allow ace-dt to attempt to communicate over non-tls connections
+      --path       Interpret the URI as a path to a bottle directory that will be used to get the bottle ID
+      --ref        Interpret the URI as a bottle reference that will be used to get the bottle ID
+```
+
+### Options inherited from parent commands
+
+```
+  -d, --bottle-dir string          Specify bottle directory (default "/builds/ace/data/tool")
+      --config stringArray         configuration file location (setable with env "ACE_DT_CONFIG").
+                                   The first configuration file present is used.  Others are ignored.
+                                    (default [ace-dt-config.yaml,HOMEDIR/.config/ace/dt/config.yaml,/etc/ace/dt/config.yaml])
+  -v, --verbosity strings[=warn]   Logging verbosity level (also setable with environment variable ACE_DT_VERBOSITY)
+                                   Aliases: error=0, warn=4, info=8, debug=12 (default [error])
+```
+
+### SEE ALSO
+
+* [ace-dt bottle source](ace-dt_bottle_source.md)	 - A command group for bottle source operations
+

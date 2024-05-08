@@ -1,0 +1,281 @@
+@font-face {
+  font-family: "Roboto";
+  src: url("Roboto.woff2");
+}
+
+body {
+  color: white;
+  background-color: #181818;
+  font-family: "Roboto", sans-serif;
+  margin: 0px;
+}
+
+.wrapper {
+  display: grid;
+  margin: 20px;
+}
+.invalid {
+  border: 1px solid #ff6262 !important;
+}
+.error {
+  color: #ff6262;
+  margin: 0 10px;
+}
+.taskbar img {
+  width: 250px;
+  margin: 20px;
+}
+.taskbar {
+  background-color: #282828;
+}
+.author-info {
+  display: grid;
+  grid-template-columns: 2fr 2fr 2fr 1fr;
+  column-gap: 25px;
+}
+
+.label-info,
+.metrics-info,
+.source-info,
+.parts-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr fit-content(20%);
+  column-gap: 25px;
+}
+
+.annotation-section {
+  display: grid;
+  grid-template-columns: 1fr fit-content(20%);
+  column-gap: 25px;
+}
+
+h1 {
+  color: white;
+  margin: 0px;
+  font-size: 24px;
+}
+
+form {
+  margin-top: 10px;
+  max-width: 900px;
+}
+
+.data {
+  display: block;
+  margin: 10px 10px 5px;
+  font-size: 16px;
+}
+
+label {
+  display: block;
+  font-size: 20px;
+  font-weight: 500;
+  margin: 40px 10px 2px 0px;
+}
+
+input[type="text"],
+textarea {
+  margin:10px 0px;
+  width: 100%;
+  background-color: #212121;
+  border: 0;
+  border-bottom: 1px solid #979797;
+  color: #ffffff;  
+  padding: 10px;
+}
+
+input[type="text"] {
+  height: 15px; 
+}
+
+textarea {
+  box-sizing: border-box;
+}
+
+.save-button {
+  margin-top: 30px;
+  border-radius: 0.2rem;
+  border: none;
+  width: 100%;
+  height: 36px;
+}
+
+.discard-button {
+  border-radius: 0.2rem;
+  border: none;
+  height: 36px;
+}
+
+::placeholder {
+  color: rgb(151, 151, 151);
+}
+
+ul {
+  padding-inline-start: 10px;
+}
+
+.pills li {
+  display: inline;
+  margin: 10px 4px;
+  border-radius: 16px;
+  background-color: #ffd54f;
+  color: #000;
+  padding: 8px;
+  font-size: 12px;
+  font-weight: 300;
+}
+
+.pills li i {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.pills.metrics li {
+  background-color: #1de9b6;
+}
+
+table {
+  width: 100%;
+  font-size: 12px;
+  border: none;
+}
+
+thead,
+tbody tr:nth-child(even) {
+  background-color: #333333;
+  width: auto;
+}
+
+td {
+  padding: 10px;
+}
+
+button.add {
+  margin-left: 10px;
+  margin-top: 11px;
+  margin-bottom: 15px;
+  /* width: 200px; */
+  border: none;
+  border-radius: 0.2rem;
+}
+
+button,
+input[type="submit"] {
+  background-color: #22489b;
+  color: #fff;
+  width: 140px;
+  height: 36px;
+  margin: 10px 5px;
+}
+
+button[class="addAnnotation"] {
+  height: 36px;
+  border-radius: 0.2rem;
+  border: none;
+  align-self: flex-end;
+  margin-left: 0;
+  width: 150px;
+}
+
+.close-icon {
+  content: url("close.png");
+  width: 24px;
+}
+
+.pills .close-icon {
+  width: 17px;
+}
+
+.pencil-icon {
+  content: url("pencil.png");
+  width: 24px;
+}
+
+.save-icon{
+  content: url("save-icon.png");
+  width: 24px;
+  padding: 0 20px;
+}
+
+.invert-icon {
+  filter: brightness(0) invert(1);
+}
+
+.plus-icon {
+  content: url("plus.png");
+  width: 12px;
+}
+label[for="part_checked"] {
+  font-size: 12px;
+  display: inline-block;
+  vertical-align: middle;
+  margin: 0;
+}
+
+input[type="checkbox"] {
+  display: inline-block;
+  vertical-align: middle;
+}
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+.tooltip .tooltiptext {
+  visibility: hidden;
+  background-color: #fff;
+  color: #000;
+  text-align: center;
+  border-radius: 6px;
+  padding: 5px 5px;
+
+  /* Position the tooltip */
+  position: absolute;
+  z-index: 1;
+  bottom: 130%;
+  margin-left: -60px;
+}
+
+.tooltip:hover .tooltiptext {
+  visibility: visible;
+}
+
+.hide {
+  display: none;
+}
+
+.error_message {
+  border-radius: 4px;
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.1);
+  font-size: 14px;
+  text-align: center;
+  margin: auto;
+  width: 85%;
+  padding: 10px;
+}
+
+h2 {
+  margin: 50px 0 20px 0;
+}
+
+td input[type='text']{
+  width: 90%
+}
+
+.edit-row td {
+  padding: 0px;
+}
+
+.row-dark {
+  background-color: #181818 !important;
+}
+
+.row-light {
+  background-color: #333333 !important;
+}
+
+.selectAll label {
+  font-size: 14px;
+  margin: 0px;
+  display: inline-block;
+}

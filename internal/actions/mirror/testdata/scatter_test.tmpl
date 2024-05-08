@@ -1,0 +1,6 @@
+127.0.0.1:35475/{{ index .Annotations "vnd.act3-ace.manifest.source" }}@{{ .Digest }}
+
+{{ if eq (index .Annotations "vnd.act3-ace.manifest.source") "index.docker.io/curlimages/curl:latest" }}127.0.0.1:35475/index-docker-io/@{{ .Digest }}{{ end }}
+{{ if hasPrefix "index.docker.io" (index .Annotations "vnd.act3-ace.manifest.source") }}127.0.0.1:35575/testrepo{{end}}
+{{ if contains "docker" (index .Annotations "vnd.act3-ace.manifest.source") }}127.0.0.1:35575/dockerrepo{{end}}
+{{ if regexMatch "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}$" (index .Annotations "vnd.act3-ace.manifest.source")}}127.0.0.1:35575/regexrepo{{end}}

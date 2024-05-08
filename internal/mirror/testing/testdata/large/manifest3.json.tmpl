@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "subject": {{ FileDescriptor "manifest5.json" "application/vnd.oci.image.manifest.v1+json" "sha256" | mustToPrettyJson | nindent 4 }},
+  "config": {{ FileDescriptor "blob1.txt" "application/vnd.oci.image.config.v1+json" "sha256" | mustToPrettyJson | nindent 4 }},
+  "layers": [
+    {{- FileDescriptor "blob2.zst" "application/vnd.oci.image.layer.v1.tar+zstd" "sha256" | mustToPrettyJson | nindent 4 }},
+    {{- FileDescriptor "manifest4.json" "application/vnd.oci.image.layer.v1.tar+gzip" "sha256" | mustToPrettyJson | nindent 4 }}
+  ],
+  "annotations": {
+    "name": "{{ .Filename }}"
+  }
+}

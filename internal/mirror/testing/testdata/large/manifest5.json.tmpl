@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 2,
+  "mediaType": "application/vnd.oci.image.manifest.v1+json",
+  "config": {{ FileDescriptor "blob5.txt" "application/vnd.ace.image.config.v1+json" "sha256" | mustToPrettyJson | nindent 4 }},
+  "layers": [
+    {{- FileDescriptor "blob6.txt" "application/vnd.ace.image.layer.v1.tar+zstd" "sha256" | mustToPrettyJson | nindent 4 }},
+    {{- FileDescriptor "blob7.gz" "application/vnd.ace.image.layer.v1.tar+gzip" "sha256" | mustToPrettyJson | nindent 4 }}
+  ],
+  "annotations": {
+    "name": "{{ .Filename }}"
+  }
+}

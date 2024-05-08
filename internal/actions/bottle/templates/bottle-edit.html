@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ACE Data Bottle</title>
+    <link href="assets/style.css" rel="stylesheet" />
+  </head>
+  <body>
+    <div class="taskbar"><img src="assets/Databottle-25.png" alt="" /></div>
+
+    <div class="wrapper">
+      <h1>Bottle Details</h1>
+      <form id="bottle-form" method="post">
+        <label for="name">Folder Location</label>
+        <div class="data">{{ .Bottle.GetPath }}</div>
+        <label for="author">Description</label>
+        <textarea
+          placeholder="some text"
+          name="description-textarea"
+          id="description"
+          cols="30"
+          rows="10"
+        >{{ .Bottle.Definition.Description }}</textarea>
+        <label for="author">Authors</label>
+        <div class="author-info">
+          <input
+            name="author"
+            placeholder="Name"
+            id="author-name"
+            type="text"
+          />
+          <input
+            name="author"
+            placeholder="Email"
+            type="text"
+            id="author-email"
+          />
+          <input name="author" placeholder="URL" type="text" id="author-url" />
+          <button id="authorAdd" class="add">
+            <i class="plus-icon"></i> ADD AUTHOR
+          </button>
+        </div>
+        <table cellspacing="0" cellpadding="0" id="author-table">
+          <thead>
+            <td class="name">Author Name</td>
+            <td class="email">Email</td>
+            <td class="url">URL</td>
+            <td></td>
+          </thead>
+          <tbody>
+            {{ range $index, $author := .Bottle.Definition.Authors }}
+            <tr>
+              <td>{{ $author.Name }}</td>
+              <td>{{ $author.Email }}</td>
+              <td>{{ $author.URL }}</td>
+              <td>
+                <i
+                  class="pencil-icon invert-icon"
+                  onclick="editAuthor({{ $index }});"
+                ></i>
+                <i
+                  class="close-icon invert-icon"
+                  onclick="deleteAuthor({{ $index}})"
+                ></i>
+              </td>
+            </tr>
+            {{ end }}
+          </tbody>
+        </table>
+        <label for="annotations">Annotations</label>
+        <div class="annotation-input">
+          <input
+            placeholder="Annotation Name"
+            type="text"
+            id="annotation-name"
+          />
+          <div class="annotation-section">
+            <textarea
+              placeholder="Annotation Description"
+              name="annotation-textarea"
+              id="annotation-value"
+              cols="30"
+              rows="10"
+            ></textarea>
+            <button class="addAnnotation">
+              <i class="plus-icon"></i> ADD ANNOTATION
+            </button>
+          </div>
+        </div>
+        <ul class="pills annotations">
+          {{ range $key, $value := .Bottle.Definition.Annotations }}
+          <li class="tooltip">
+            {{ $key }}
+            <i class="close-icon" onclick="deleteAnnotations({{ $key }});"></i
+            ><span class="tooltiptext">{{ $value }}</span>
+          </li>
+          {{ end }}
+        </ul>
+        
+        <label for="labels">Labels</label>
+        <div class="label-info">
+          <input placeholder="Label Name" type="text" id="label-name" />
+          <input placeholder="Label Value Pair" type="text" id="label-value" />
+          <button id="labelAdd" class="add">
+            <i class="plus-icon"></i> ADD LABEL
+          </button>
+        </div>
+        <ul class="pills labels">
+          {{ range $key, $value := .Bottle.Definition.Labels }}
+          <li class="tooltip">
+            {{ $key }}{{ if ne $value "" }}={{ $value }}{{ end }}
+            <i class="close-icon" onclick="deleteLabel({{ $key }});"></i>
+          </li>
+          {{ end }}
+        </ul>
+        
+        <label for="metrics">Metrics</label>
+        <div class="metrics-info annotation-input">
+          <input placeholder="Metric Name" type="text" id="metric-name" />
+          <input
+            placeholder="Metric Value Pair"
+            type="text"
+            id="metric-value"
+          />
+        </div>
+        <div class="annotation-section">
+          <textarea
+            placeholder="Metric Description"
+            name="metric-textarea"
+            id="metric-desc"
+            cols="30"
+            rows="2"
+          ></textarea>
+          <button class="addAnnotation" id="metricsAdd">
+            <i class="plus-icon"></i> ADD METRIC
+          </button>
+        </div>
+        <ul class="pills metrics">
+          {{ range $index, $metric := .Bottle.Definition.Metrics }}
+          <li class="tooltip">
+            {{ $metric.Name }}={{ $metric.Value }}
+            <i class="close-icon" onclick="deleteMetric({{ $index }});"></i>
+            {{ if ne $metric.Description "" }}
+            <span class="tooltiptext">{{ $metric.Description }}</span>
+            {{ end }}
+          </li>
+          {{ end }}
+        </ul>
+        
+        <label for="parts">Parts</label>
+        <div class="parts-info">
+          <input
+            name="part name"
+            placeholder="Label Name"
+            id="partName"
+            type="text"
+          />
+          <input
+            name="part value"
+            placeholder="Label Value Pair"
+            type="text"
+            id="partValue"
+          />
+          <button id="partAdd" class="add">
+            <i class="plus-icon"></i> ADD PART LABEL
+          </button>
+        </div>
+        <div class="selectAll">
+          <input type="checkbox" id="part_checked_All" name="part selected" />
+          <label for="part_checked_All">Select All</label>
+        </div> 
+        <table cellspacing="0" cellpadding="0" id="parts-table">
+          <thead>
+            <td style="width: 10%;"></td>
+            <td class="digest">Digest</td>
+            <td class="file">File Name</td>
+            <td class="size">Size</td>
+          </thead>
+          <tbody>
+            {{ range $pIndex, $part := .Bottle.Parts }}
+            <tr class="row-dark">
+              <td>
+                <input type="checkbox" id="part_checked" name="part selected" />
+              </td>
+              <td>{{ $part.Digest }}</td>
+              <td>{{ $part.Name }}</td>
+              <td>{{ $part.Size }}</td>
+            </tr>
+            <tr class="row-light">
+              <td colspan="4">
+                Labels
+                <ul class="pills labels">
+                  {{ range $lKey, $lValue := $part.Labels }}
+                  <li>
+                    {{ $lKey }}{{ if ne $lValue "" }}={{ $lValue }}{{ end }}
+                    <i
+                      class="close-icon"
+                      onclick="deletePartLabel({{ $pIndex }}, {{ $lKey }});"
+                    ></i>
+                  </li>
+                  {{ end}}
+                </ul>
+              </td>
+            </tr>
+            {{ end }}
+          </tbody>
+        </table>
+        <label for="source">Sources</label>
+        <table cellspacing="0" cellpadding="0" id="source-table">
+          <thead>
+            <td class="source">Source Name</td>
+            <td class="sourceUrl">URI</td>
+            <td></td>
+          </thead>
+          <tbody>
+            {{ range $index, $source := .Bottle.Definition.Sources }}
+            <tr>
+              <td>{{ $source.Name }}</td>
+              <td>{{ $source.URI }}</td>
+              <td>
+                <i
+                  class="pencil-icon invert-icon"
+                  onclick="editSource({{ $index }});"
+                ></i>
+                <i
+                  class="close-icon invert-icon"
+                  onclick="deleteSource({{ $index }})"
+                ></i>
+              </td>
+            </tr>
+            {{ end }}
+          </tbody>
+        </table>
+        <div class="source-info">
+          <input
+            name="source name"
+            placeholder="Source Name"
+            id="sourceName"
+            type="text"
+          />
+          <input
+            name="source uri"
+            placeholder="URI"
+            type="text"
+            id="sourceUri"
+          />
+          <button class="add" id="sourceAdd">
+            <i class="plus-icon"></i> ADD SOURCE
+          </button>
+        </div>
+        <div class="wrapper hide" id="submitError">
+          <div class="error_message">
+            An error occurred while saving your bottle. Please check terminal output for more information.
+          </div>
+        </div>
+        <input type="submit" value="Save & Close" class="save-button" />
+        <button type="button" class="discard-button" id="discard-button">Discard</button>
+      </form>
+    </div>
+
+  </body>
+  <script type="text/javascript" src="/assets/bottle-create.js"></script>
+</html>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="pypi:repository-version" content="1.0">
+    <title>PyPI Simple</title>
+  </head>
+  <body>
+    <h1>All projects</h1>
+    <h2>Served by ACE Data Tool backed by <code>{{ .Globals.Repository }}</code></h2>
+    {{- range .Values.Projects }}
+    <a href="{{ . }}/">{{ . }}</a><br />
+    {{- end }}
+  </body>
+</html>

@@ -1,0 +1,5 @@
+*.json
+*.zst
+*.gz
+blob1.txt
+oci

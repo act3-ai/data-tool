@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="pypi:repository-version" content="1.0">
+    <title>{{ .Values.Project }}</title>
+  </head>
+  <body>
+    <h1>Links for {{ .Values.Project }}</h1>
+    <h2>Served by ACE Data Tool backed by <code>{{ .Globals.Repository }}</code></h2>
+    {{- range .Values.Distributions }}
+    <a href="{{ .URL }}{{ with .Digest }}#{{ .Algorithm }}={{ .Encoded }}{{ end }}" {{ with .RequiresPython }} data-requires-python="{{ . }}"{{ end }}{{ with .Yanked }} data-yanked="{{ . }}"{{ end }}{{ with .MetadataDigest }} data-core-metadata="{{ . }}"{{ end }}>{{ .Filename }}</a><br />
+    {{- end }}
+    </body>
+</html>

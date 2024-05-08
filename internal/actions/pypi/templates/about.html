@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>PyPI</title>
+  </head>
+  <body>
+    <h1>ACE Data Tool PyPI Offline Proxy</h1>
+    
+    <p>This is a PyPI compatible python package index served to you by ACE Data Tool backed by the OCI repository <code>{{ .Globals.Repository }}</code>.  This may be used to install a package with: <code>pip install pyzmq --index-url=<span id="origin"></span>/simple</code>.  The list of hosted packages is available <a href="simple/">here</a>.</p>
+    
+    <p>Version: {{ .Globals.Version }}</p>
+    <script>
+    document.getElementById("origin").innerHTML = window.location.origin;
+    </script>
+  </body>
+</html>

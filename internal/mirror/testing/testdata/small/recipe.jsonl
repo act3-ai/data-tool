@@ -1,0 +1,3 @@
+{"file": "blob1.txt"}
+{"file": "blob2.txt"}
+{"file": "manifest1.json", "mediaType": "application/vnd.oci.image.manifest.v1+json", "tag": "manifest1"}
