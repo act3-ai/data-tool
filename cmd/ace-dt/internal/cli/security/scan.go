@@ -15,8 +15,8 @@ func newScanCommand(tool *securityActions.Action) *cobra.Command {
 		Use:   "scan",
 		Short: "",
 		Example: `
-		ace-dt scan --source-file /path/to/sources.list
-		ace-dt scan --gathered-image localhost:5000/gather:sync-1`,
+		ace-dt security scan --source-file /path/to/sources.list
+		ace-dt security scan --gathered-image localhost:5000/gather:sync-1`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return action.Run(cmd.Context(), cmd.OutOrStdout())
 		},
