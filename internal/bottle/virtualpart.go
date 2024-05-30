@@ -9,8 +9,6 @@ import (
 	"path/filepath"
 
 	"github.com/opencontainers/go-digest"
-
-	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 )
 
 // VirtTrackingFile is the filename for local virtual parts tracking json file.
@@ -22,7 +20,6 @@ const VirtTrackingFile = "vlayers.json"
 type VirtRecord struct {
 	LayerID   digest.Digest `json:"layer-id"`
 	ContentID digest.Digest `json:"content-id"`
-	Location  string        `json:"location"`
 }
 
 // VirtualParts represents a set of local bottle part metadata that tracks parts that are not stored in a local copy of
@@ -31,67 +28,6 @@ type VirtRecord struct {
 type VirtualParts struct {
 	filePath    string
 	VirtRecords []VirtRecord `json:"virt-records"`
-}
-
-// IsMountable implements the MountableLayers interface for discovering sources for cross repo blob mounting.
-func (vp *VirtualParts) IsMountable(layerID digest.Digest, destMount ref.Ref) bool {
-	for _, v := range vp.VirtRecords {
-		if v.LayerID == layerID {
-			s, err := ref.FromString(v.Location, ref.SkipRefValidation)
-			if err != nil {
-				continue
-			}
-
-			if s.Match(destMount, ref.RefMatchRegRepo) {
-				// already in repo
-				return false
-			}
-			if s.Match(destMount, ref.RefMatchReg) {
-				// found on registry in a different repo
-				return true
-			}
-		}
-	}
-	return false
-}
-
-// MustMount implements the MountableLayers interface for determining whether a layer must be mounted, which is always
-// true for virtual parts (since they don't exist locally for upload).
-func (vp *VirtualParts) MustMount(layerID digest.Digest) bool {
-	return true
-}
-
-// Sources implements the MountableLayers interface for identifying a source for a virtual part layer ID.
-func (vp *VirtualParts) Sources(layerID digest.Digest, destMount ref.Ref) []ref.Ref {
-	for _, v := range vp.VirtRecords {
-		if v.LayerID == layerID {
-			s, err := ref.FromString(v.Location, ref.SkipRefValidation)
-			if err != nil {
-				continue
-			}
-			return []ref.Ref{s}
-		}
-	}
-	return []ref.Ref{}
-}
-
-// GetSources implements the cache SourceProvider interface for locating registry hosts for virtualized parts.
-func (vp *VirtualParts) GetSources() map[digest.Digest][]string {
-	sources := make(map[digest.Digest][]string)
-	for _, v := range vp.VirtRecords {
-		sources[v.LayerID] = []string{v.Location}
-	}
-	return sources
-}
-
-// AddSource associates a source ref with a provided layer ID.  This currently overwrites an existing source value with
-// a new ref.
-func (vp *VirtualParts) AddSource(layerID digest.Digest, source ref.Ref, mustMount bool) {
-	for i, v := range vp.VirtRecords {
-		if v.LayerID == layerID {
-			vp.VirtRecords[i].Location = source.String()
-		}
-	}
 }
 
 // NewVirtualPartTracker initializes a VirtualParts object and loads any existing data from disk.
@@ -121,11 +57,10 @@ func (vp *VirtualParts) HasContent(digest digest.Digest) bool {
 }
 
 // Add adds a layer/content and location reference for a layer to the collection.
-func (vp *VirtualParts) Add(layerID digest.Digest, contentID digest.Digest, loc ref.Ref) {
+func (vp *VirtualParts) Add(layerID digest.Digest, contentID digest.Digest) {
 	vp.VirtRecords = append(vp.VirtRecords, VirtRecord{
 		layerID,
 		contentID,
-		loc.String(),
 	})
 }
 
@@ -144,22 +79,6 @@ func (vp *VirtualParts) getRecord(id digest.Digest, byLayer bool) (VirtRecord, b
 		}
 	}
 	return VirtRecord{}, false
-}
-
-// GetLayerLocation returns a ref.Ref that describes a location where the layer can be found.
-func (vp *VirtualParts) GetLayerLocation(layerID digest.Digest) (ref.Ref, error) {
-	if r, ok := vp.getRecord(layerID, true); ok {
-		return ref.FromString(r.Location, ref.SkipRefValidation)
-	}
-	return ref.Ref{}, fmt.Errorf("layer ID not found in virtual parts")
-}
-
-// GetContentLocation returns a ref.Ref that describes a location where the layer can be found.
-func (vp *VirtualParts) GetContentLocation(layerID digest.Digest) (ref.Ref, error) {
-	if r, ok := vp.getRecord(layerID, false); ok {
-		return ref.FromString(r.Location, ref.SkipRefValidation)
-	}
-	return ref.Ref{}, fmt.Errorf("content ID not found in virtual parts")
 }
 
 // Load loads virtual part tracking data from disk.

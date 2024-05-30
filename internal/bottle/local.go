@@ -9,8 +9,10 @@ import (
 	"path/filepath"
 	"reflect"
 
-	latest "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
+	latest "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
 	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
@@ -138,7 +140,7 @@ func (btl *Bottle) saveLocalParts() error {
 	return nil
 }
 
-// updateDefinitionParts copies the bottle Part data into the Defintion.Parts.
+// updateDefinitionParts copies the bottle Part data into the Definition.Parts.
 func (btl *Bottle) updateDefinitionParts() {
 	oldParts := btl.Definition.Parts
 	btl.Definition.Parts = make([]latest.Part, 0, len(btl.Parts))
@@ -270,6 +272,11 @@ func getRootBottlePath(path string) (string, error) {
 // FindBottleRootDir checks if the current path is nested within a bottle, and returns the root directory of a bottle.
 // If root bottle is not found, the function return the input path, along with an error.
 func FindBottleRootDir(inputPath string) (string, error) {
+	// convert the input path to an absolute one, and fail if we can't.
+	inputPath, err := filepath.Abs(inputPath)
+	if err != nil {
+		return "", fmt.Errorf("resolving bottle path to absolute path: %w", err)
+	}
 	// check if supplied path has is a potential bottle path by checking for entry.yaml
 	hasEntryYaml, err := isBottleDir(inputPath)
 	if err != nil {
@@ -291,7 +298,7 @@ func FindBottleRootDir(inputPath string) (string, error) {
 var ErrDirNestedInBottle = errors.New("path is nested within bottle directory")
 
 // VerifyPullDir performs checks on the bottle destination path to ensure that it meets the expected criteria.
-func VerifyPullDir(destdir string) error {
+func VerifyPullDir(destdir string, desc ocispec.Descriptor) error {
 	// Before initiating pull options, we want to check if bottle output directory
 	// Expected behavior
 	//		if  root (parent) bottle is detected -> ErrDirNestedInBottle
@@ -306,8 +313,24 @@ func VerifyPullDir(destdir string) error {
 		}
 	}
 
+	// test if the manifest digest of the bottle to be pulled matches what exists
+	// TODO: optionally test the bottle dir more rigirously, i.e.
+	// are we simply missing a few part?
 	if rootBtlDir != "" {
-		return ErrDirNestedInBottle
+		manBytes, err := os.ReadFile(manifestFile(rootBtlDir))
+		switch {
+		case errors.Is(err, os.ErrNotExist):
+			// unlikely case where the .dt dir exists, but not .manifest.json
+			return fmt.Errorf("bottle manifest file not found: %w", err)
+		case err != nil:
+			return fmt.Errorf("loading bottle manifest: %w", err)
+		default:
+			d := digest.FromBytes(manBytes)
+			if d != desc.Digest {
+				return fmt.Errorf("existing bottle does not match bottle to be pulled, have digest '%s', pulling digest '%s'", d, desc.Digest)
+			}
+			return nil // assume no changes to the bottle have been made since last pull
+		}
 	}
 
 	empty, err := util.IsDirEmpty(destdir)

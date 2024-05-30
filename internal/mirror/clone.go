@@ -55,7 +55,7 @@ func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 	}
 
 	opts.Log.InfoContext(ctx, "Opening repository source file", "path", opts.SourceFile)
-	sourceList, err := processSourcesFile(gctx, opts.SourceFile, filters, opts.ConcurrentHTTP)
+	sourceList, err := ProcessSourcesFile(gctx, opts.SourceFile, filters, opts.ConcurrentHTTP)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 		g.Go(func() error {
 			defer task.Complete()
 
-			srcTarget, err := opts.RepoFunc(gctx, src.name)
+			srcTarget, err := opts.RepoFunc(gctx, src.Name)
 			if err != nil {
 				return err
 			}
@@ -78,7 +78,7 @@ func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 				return fmt.Errorf("error resolving the source: %w", err)
 			}
 
-			desc, err = annotateManifest(src.name, desc, src.labels, nil)
+			desc, err = annotateManifest(src.Name, desc, src.Labels, nil)
 			if err != nil {
 				return err
 			}
@@ -92,11 +92,11 @@ func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 				return nil
 			}
 
-			task.Infof("Copying %s", src.name)
+			task.Infof("Copying %s", src.Name)
 			var destCount int
 			for _, destRef := range destinations {
 				destCount++
-				c, err := NewCopier(ctx, opts.Log, src.name, destRef, srcTarget, srcTarget.Reference, desc, nil, registry.Reference{}, opts.Recursive, platforms, opts.RepoFunc)
+				c, err := NewCopier(ctx, opts.Log, src.Name, destRef, srcTarget, srcTarget.Reference, desc, nil, registry.Reference{}, opts.Recursive, platforms, opts.RepoFunc)
 				// create an oras Repository for the destination
 				if err != nil {
 					return err

@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"context"
 	"io"
 
 	"github.com/opencontainers/go-digest"
@@ -79,6 +80,6 @@ func (nc *NilCache) RemoveMote(dgst digest.Digest) error {
 }
 
 // Prune does nothing.
-func (nc *NilCache) Prune(maxSize int64) error {
+func (nc *NilCache) Prune(ctx context.Context, maxSize int64) error {
 	return nil
 }

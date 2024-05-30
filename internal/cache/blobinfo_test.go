@@ -53,7 +53,9 @@ func testBICFallback(t *testing.T, bic bicbackend.BlobInfoCache) {
 	}
 }
 
-func makeSources() ([]ocispec.Descriptor, []ref.Ref) {
+func makeSources(t *testing.T) ([]ocispec.Descriptor, []ref.Ref) {
+	t.Helper()
+
 	descs := []ocispec.Descriptor{
 		{Digest: digestA},
 		{Digest: digestB},
@@ -61,13 +63,23 @@ func makeSources() ([]ocispec.Descriptor, []ref.Ref) {
 		{Digest: digestA},
 		{Digest: digestC},
 	}
-	srcs := []ref.Ref{
-		ref.RepoFromString("https://any.host/store/a"),
-		ref.RepoFromString("https://another.host/with/b"),
-		ref.RepoFromString("https://final.host/having/c"),
-		ref.RepoFromString("https://duplicate.host/with/a"),
-		ref.RepoFromString("https://duplicate.host/with/c"),
+	strs := []string{
+		"https://any.host/store/a:latest",
+		"https://another.host/with/b:latest",
+		"https://final.host/having/c:latest",
+		"https://duplicate.host/with/a:latest",
+		"https://duplicate.host/with/c:latest",
 	}
+
+	srcs := make([]ref.Ref, 0, len(strs))
+	for _, str := range strs {
+		s, err := ref.FromString(str)
+		if err != nil {
+			t.Fatalf("parsing source reference '%s': error = %v", str, err)
+		}
+		srcs = append(srcs, s)
+	}
+
 	return descs, srcs
 }
 
@@ -75,14 +87,14 @@ func makeSources() ([]ocispec.Descriptor, []ref.Ref) {
 func testRecordLayerSourceSingle(t *testing.T, bic bicbackend.BlobInfoCache) {
 	t.Helper()
 	ctx := logger.NewContext(context.Background(), test.Logger(t, 0))
-	descs, srcs := makeSources()
+	descs, srcs := makeSources(t)
 
 	RecordLayerSource(ctx, bic, descs[0], srcs[0])
 
 	candidates := bic.CandidateLocations(ctx, "oci", bicbackend.BICContentScope{Opaque: bicbackend.LayerContent}, descs[0].Digest, false)
 
 	assert.Equal(t, []bicbackend.BICReplacementCandidate{
-		{Digest: descs[0].Digest, TransformerName: bicbackend.UnknownTransformer, Location: bicbackend.BICLocationReference{Opaque: srcs[0].URL()}},
+		{Digest: descs[0].Digest, TransformerName: bicbackend.UnknownTransformer, Location: bicbackend.BICLocationReference{Opaque: srcs[0].StringWithScheme()}},
 	}, candidates)
 }
 
@@ -91,7 +103,7 @@ func testRecordLayerSourceSingle(t *testing.T, bic bicbackend.BlobInfoCache) {
 func testRecordLayerSourceMultiple(t *testing.T, bic bicbackend.BlobInfoCache) {
 	t.Helper()
 	ctx := logger.NewContext(context.Background(), test.Logger(t, 0))
-	descs, srcs := makeSources()
+	descs, srcs := makeSources(t)
 
 	for i := range descs {
 		RecordLayerSource(ctx, bic, descs[i], srcs[i])
@@ -102,8 +114,8 @@ func testRecordLayerSourceMultiple(t *testing.T, bic bicbackend.BlobInfoCache) {
 	// important testing note: the order of the found locations should be in reverse order from how they were added, so
 	// the srcs index used for the expected value is decreasing
 	assert.Equal(t, []bicbackend.BICReplacementCandidate{
-		{Digest: descs[0].Digest, TransformerName: bicbackend.UnknownTransformer, Location: bicbackend.BICLocationReference{Opaque: srcs[3].URL()}},
-		{Digest: descs[0].Digest, TransformerName: bicbackend.UnknownTransformer, Location: bicbackend.BICLocationReference{Opaque: srcs[0].URL()}},
+		{Digest: descs[0].Digest, TransformerName: bicbackend.UnknownTransformer, Location: bicbackend.BICLocationReference{Opaque: srcs[3].StringWithScheme()}},
+		{Digest: descs[0].Digest, TransformerName: bicbackend.UnknownTransformer, Location: bicbackend.BICLocationReference{Opaque: srcs[0].StringWithScheme()}},
 	}, candidates)
 }
 
@@ -111,7 +123,7 @@ func testRecordLayerSourceMultiple(t *testing.T, bic bicbackend.BlobInfoCache) {
 func testLocateLayerNotFound(t *testing.T, bic bicbackend.BlobInfoCache) {
 	t.Helper()
 	ctx := logger.NewContext(context.Background(), test.Logger(t, 0))
-	descs, srcs := makeSources()
+	descs, srcs := makeSources(t)
 
 	for i := range descs {
 		RecordLayerSource(ctx, bic, descs[i], srcs[i])
@@ -126,7 +138,7 @@ func testLocateLayerNotFound(t *testing.T, bic bicbackend.BlobInfoCache) {
 func testLocateLayerSingle(t *testing.T, bic bicbackend.BlobInfoCache) {
 	t.Helper()
 	ctx := logger.NewContext(context.Background(), test.Logger(t, 0))
-	descs, srcs := makeSources()
+	descs, srcs := makeSources(t)
 
 	for i := range descs {
 		RecordLayerSource(ctx, bic, descs[i], srcs[i])
@@ -142,7 +154,7 @@ func testLocateLayerSingle(t *testing.T, bic bicbackend.BlobInfoCache) {
 func testLocateLayerRegMatch(t *testing.T, bic bicbackend.BlobInfoCache) {
 	t.Helper()
 	ctx := logger.NewContext(context.Background(), test.Logger(t, 0))
-	descs, srcs := makeSources()
+	descs, srcs := makeSources(t)
 
 	for i := range descs {
 		RecordLayerSource(ctx, bic, descs[i], srcs[i])
@@ -159,7 +171,7 @@ func testLocateLayerRegMatch(t *testing.T, bic bicbackend.BlobInfoCache) {
 func testLocateLayerMultiple(t *testing.T, bic bicbackend.BlobInfoCache) {
 	t.Helper()
 	ctx := logger.NewContext(context.Background(), test.Logger(t, 0))
-	descs, srcs := makeSources()
+	descs, srcs := makeSources(t)
 
 	for i := range descs {
 		RecordLayerSource(ctx, bic, descs[i], srcs[i])
@@ -181,7 +193,7 @@ func testLocateLayerMultiple(t *testing.T, bic bicbackend.BlobInfoCache) {
 func testGetSources(t *testing.T, bic bicbackend.BlobInfoCache) {
 	t.Helper()
 	ctx := logger.NewContext(context.Background(), test.Logger(t, 0))
-	descs, srcs := makeSources()
+	descs, srcs := makeSources(t)
 
 	for i := range descs {
 		RecordLayerSource(ctx, bic, descs[i], srcs[i])

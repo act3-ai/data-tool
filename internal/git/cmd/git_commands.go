@@ -44,7 +44,7 @@ func newGitCmd(log *slog.Logger, dir string, altGitExec string) *gitCmd {
 }
 
 func (gc *gitCmd) log(args []string, out []byte) {
-	gc.logger.Info("Ran command", "command", args, "directory", gc.dir, "output", string(out)) //nolint:sloglint
+	gc.logger.Info("Ran command", "command", args, "directory", gc.dir, "output", string(out))
 }
 
 // Run executes a git command, returning the parsed output.

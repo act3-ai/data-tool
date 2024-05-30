@@ -97,7 +97,7 @@ func IsDirEmpty(path string) (bool, error) {
 	}
 	defer f.Close()
 
-	_, err = f.Readdirnames(1)
+	_, err = f.Readdirnames(1) // only one entry needs to be identified to determine emptiness
 	if errors.Is(err, io.EOF) {
 		return true, nil
 	}

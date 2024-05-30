@@ -109,7 +109,7 @@ func RetrieveDistributions(ctx context.Context, client Client, pypi string, proj
 
 	switch mediaType {
 	case MediaTypeSimpleHTML, MediaTypeSimpleLegacy:
-		return parseV1ProjectHTML(log, base, project, res.Body)
+		return parseV1ProjectHTML(log, base, res.Body)
 	case MediaTypeSimpleJSON:
 		return nil, fmt.Errorf("not implemented yet")
 	default:
@@ -176,7 +176,7 @@ func parseDigest(pydigest string) digest.Digest {
 }
 
 // parseV1ProjectHTML is https://peps.python.org/pep-0503/ compliant parser for the HTML.
-func parseV1ProjectHTML(log *slog.Logger, pypi, project string, in io.Reader) ([]DistributionEntry, error) {
+func parseV1ProjectHTML(log *slog.Logger, pypi string, in io.Reader) ([]DistributionEntry, error) {
 	// parse the HTML <a> tags to find the version
 
 	// href can be complete, absolute, or relative
@@ -219,7 +219,7 @@ func parseV1ProjectHTML(log *slog.Logger, pypi, project string, in io.Reader) ([
 		if n.Type == html.ElementNode && n.Data == "a" {
 			dist := parseDistNode(base, n)
 			if dist.URL != "" && dist.Filename != "" {
-				logger.V(log, 1).Info("Found distribution", "filename", dist.Filename) //nolint:sloglint
+				logger.V(log, 1).Info("Found distribution", "filename", dist.Filename)
 				dists = append(dists, dist)
 			}
 		}
@@ -234,7 +234,7 @@ func parseV1ProjectHTML(log *slog.Logger, pypi, project string, in io.Reader) ([
 		return nil, err
 	}
 
-	logger.V(log, 1).Info("Found packages", "number", len(dists)) //nolint:sloglint
+	logger.V(log, 1).Info("Found packages", "number", len(dists))
 
 	return dists, nil
 }

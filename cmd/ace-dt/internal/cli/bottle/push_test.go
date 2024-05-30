@@ -2,6 +2,7 @@ package bottle
 
 import (
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/fortytw2/leaktest"
@@ -185,8 +186,8 @@ func Test_Functional_PushWriteBottleID(t *testing.T) {
 	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
 	helper.CommandHelper.RunCommand("init")
 	helper.BottleHelper.SetTempBottleRef(rootReg)
-	bottleIDFile := t.TempDir() + "bottleID"
-	helper.CommandHelper.RunCommand("push", helper.BottleHelper.RegRef, "--write-bottle-id", bottleIDFile)
+	bottleIDFile := filepath.Join(helper.BottleHelper.RootDir, ".dt", "bottleid")
+	helper.CommandHelper.RunCommand("push", helper.BottleHelper.RegRef)
 
 	err := helper.CheckRegForBottle(helper.BottleHelper.RegRef, "")
 	assert.NoError(t, err)

@@ -6,7 +6,7 @@ This documentation is written for ACT3 developers who are creating and maintaini
 
 ## Logging
 
-Logging is done as JSONL so it is complete but harder for a human to easily parse. To convert them on the fly to colored and formatted text run it with `2> >(jq -j -f log.jq)` at the end. The [log.jq](https://gitlab.com/act3-ai/asce/data/tool/-/blob/main/cmd/ace-dt/internal/cli/log.jq?ref_type=heads) filter can be used with `jq` to pretty print the logs. So run `ace-dt` like so (in bash)
+Logging is done as JSONL so it is complete but harder for a human to easily parse. To convert them on the fly to colored and formatted text run it with `2> >(jq -j -f log.jq)` at the end. The [log.jq](../../cmd/ace-dt/internal/cli/log.jq) filter can be used with `jq` to pretty print the logs. So run `ace-dt` like so (in bash)
 
 ```shell
 ace-dt bottle commit 2> >(jq -j -f log.jq)
@@ -171,7 +171,7 @@ Integration testing for `ace-dev` to ACE Telemetry is done in the `ace-dev test`
 
 Go Report Card provides Go language code quality reports. It can be run locally or as a [web application](https://goreportcard.com/).
 
-Developers using this option for code quality reports should use the local option documented in the project's [GitHub repository](https://github.com/gojp/goreportcard?tab=readme-ov-file#installation).
+Developers using this option for code quality reports should use the local option documented in the project's [GitHub repository](https://github.com/gojp/goreportcard#installation).
 
 ### Use Local GitLab Runner
 

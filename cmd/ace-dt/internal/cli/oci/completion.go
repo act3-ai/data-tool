@@ -39,7 +39,7 @@ func RefCompletion(tool *actions.DataTool, argIndices ...int) func(cmd *cobra.Co
 			return nil, cobra.ShellCompDirectiveDefault
 		}
 
-		repo, err := tool.Config.ConfigureRepository(ctx, strings.Join(args[validPos:], "")+toComplete)
+		repo, err := tool.Config.Repository(ctx, strings.Join(args[validPos:], "")+toComplete)
 		if err != nil {
 			// if we can't connect to the repo don't supply completion,
 			// we'll let the calling command handle the connection error

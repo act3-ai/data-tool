@@ -175,7 +175,7 @@ func (ow *OCILayoutSerializer) createFileEntry(filename string, size int64, r io
 	hdr := tar.Header{
 		Name:     filename,
 		Size:     size,
-		Mode:     0666,
+		Mode:     0o666,
 		ModTime:  time.Unix(0, 0).UTC(),
 		Typeflag: tar.TypeReg,
 	}
@@ -207,7 +207,7 @@ func (ow *OCILayoutSerializer) createFileEntry(filename string, size int64, r io
 func (ow *OCILayoutSerializer) createDirEntry(dirname string) error {
 	hdr := tar.Header{
 		Name:     dirname,
-		Mode:     0777,
+		Mode:     0o777,
 		ModTime:  time.Unix(0, 0).UTC(),
 		Typeflag: tar.TypeDir,
 	}

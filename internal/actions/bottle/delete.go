@@ -17,7 +17,7 @@ type Delete struct {
 func (action *Delete) Run(ctx context.Context) error {
 	log := logger.FromContext(ctx)
 
-	repo, err := action.Config.ConfigureRepository(ctx, action.Ref)
+	repo, err := action.Config.Repository(ctx, action.Ref)
 	if err != nil {
 		return err
 	}

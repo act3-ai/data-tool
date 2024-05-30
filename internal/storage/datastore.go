@@ -122,7 +122,7 @@ func (s *DataStore) Fetch(ctx context.Context, target ocispec.Descriptor) (io.Re
 	}
 	rdr, err := c.MoteReader(target.Digest)
 	if errors.Is(err, cache.ErrNotFound) {
-		return nil, fmt.Errorf("layer not found in cache: %s", target.Digest)
+		return nil, fmt.Errorf("layer '%s' not found in cache: %w", target.Digest, err)
 	}
 
 	return rdr, err
@@ -139,7 +139,10 @@ func (s *DataStore) Fetch(ctx context.Context, target ocispec.Descriptor) (io.Re
 func (s *DataStore) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
 	switch {
 	case target.MediaType == ocispec.MediaTypeImageManifest:
-		// manifests are not cached, but true will skip an oras copy
+		// manifests are not cached, instead added as loose data
+		if _, hasLoose := s.looseData.Load(target.Digest); hasLoose {
+			return true, nil
+		}
 		return false, nil
 	case mediatype.IsBottleConfig(target.MediaType) ||
 		target.MediaType == notaryreg.ArtifactTypeNotation:
@@ -147,7 +150,7 @@ func (s *DataStore) Exists(ctx context.Context, target ocispec.Descriptor) (bool
 		if _, hasLoose := s.looseData.Load(target.Digest); hasLoose {
 			return true, nil
 		}
-		return false, fmt.Errorf("bottle or signature configs must be added as loose data")
+		return false, nil
 	case target.MediaType == jws.MediaTypeEnvelope ||
 		target.MediaType == cose.MediaTypeEnvelope:
 		// signature layers are not cached, instead added as loose data

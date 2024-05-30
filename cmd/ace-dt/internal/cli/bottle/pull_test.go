@@ -68,40 +68,11 @@ func Test_Functional_PullWriteBottleID(t *testing.T) {
 	helper.SendBottleToReg(remoteBottle.RootDir, remoteBottle.RegRef)
 	helper.PruneCache()
 
-	bottleIDFile := filepath.Join(t.TempDir(), "bottleID")
-	helper.CommandHelper.RunCommand("pull", remoteBottle.RegRef, "--bottle-dir", helper.BottleHelper.RootDir, "--write-bottle-id", bottleIDFile)
+	bottleIDFile := filepath.Join(helper.BottleHelper.RootDir, ".dt", "bottleid")
+	helper.CommandHelper.RunCommand("pull", remoteBottle.RegRef, "--bottle-dir", helper.BottleHelper.RootDir)
 
 	helper.BottleHelper.Load()
 	helper.VerifyBottleIDFile(bottleIDFile)
-
-	helper.EqualBottles(remoteBottle.RootDir, helper.BottleHelper.RootDir)
-}
-
-func Test_Functional_PullVerifyID(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping test in short mode.")
-	}
-
-	rootReg := os.Getenv("TEST_REGISTRY")
-	if rootReg == "" {
-		t.Skip("Skipping because TEST_REGISTRY is not set")
-	}
-
-	defer leaktest.Check(t)() //nolint
-	rootCmd := rootTestCmd()
-
-	helper := NewTestHelper(t, rootCmd)
-
-	remoteBottle := NewBottleHelper(t)
-	remoteBottle.AddArbitraryFileParts(15)
-	remoteBottle.SetTempBottleRef(rootReg)
-	helper.SendBottleToReg(remoteBottle.RootDir, remoteBottle.RegRef)
-	helper.PruneCache()
-
-	remoteBottle.Load()
-	bottleID := remoteBottle.Bottle.GetBottleID()
-
-	helper.CommandHelper.RunCommand("pull", remoteBottle.RegRef, "--bottle-dir", helper.BottleHelper.RootDir, "--check-bottle-id", bottleID.String())
 
 	helper.EqualBottles(remoteBottle.RootDir, helper.BottleHelper.RootDir)
 }

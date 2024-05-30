@@ -56,7 +56,7 @@ func Scatter(ctx context.Context, opts ScatterOptions) error { //nolint:gocognit
 	}
 
 	// subset is a map of images to scatter if a source file is defined in the action.
-	subset, err := processSourcesFile(ctx, opts.SubsetFile, nil, opts.ConcurrentHTTP)
+	subset, err := ProcessSourcesFile(ctx, opts.SubsetFile, nil, opts.ConcurrentHTTP)
 	if err != nil {
 		return fmt.Errorf("error processing the source file: %w", err)
 	}

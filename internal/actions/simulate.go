@@ -87,10 +87,11 @@ func (action *Simulate) Run(ctx context.Context) error {
 	for i := 0; i < action.NumTasks; i++ {
 		subUI := counterUI.SubTask("task_" + strconv.Itoa(i+1))
 		time.Sleep(1 * time.Second)
+		c := i + 1
 		g.Go(func() error {
 			subUI.Infof("working...")
 			defer subUI.Complete()
-			return runCounterTasks(ctx, subUI, i+1)
+			return runCounterTasks(ctx, subUI, c)
 		})
 	}
 

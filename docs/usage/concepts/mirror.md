@@ -267,7 +267,7 @@ localhost:5000/{{ $annotation }}
 Example usage from the sample template above:
 
 - `index.docker.io/library/busybox:1.36.1` would be mapped to `localhost:5000/index.docker.io/library/busybox:1.36.1`.
-- `reg.gitlab.com/act3-ai/asce/data/tool/bottle/mnist:v1.6` would be mapped to `localhost:5000/reg.gitlab.com/act3-ai/asce/data/tool/bottle/mnist:v1.6`.
+- `reg.git.act3-ace.com/ace/data/tool/bottle/mnist:v1.6` would be mapped to `localhost:5000/reg.git.act3-ace.com/ace/data/tool/bottle/mnist:v1.6`.
 
 After the `scatter.tmpl` file has been created, the scatter command can be run.
 
@@ -461,6 +461,48 @@ If a user wanted to clone the three images in the `sources.list` file, they woul
 - `secret.reg.example.com/quay.io/ceph/ceph:v17.2`
 - `secret.reg.example.com/docker.io/curlimages/curl:7.73.0`
 - `secret.reg.example.com/docker.io/konstin2/maturin@sha256:a203e1071d73c6452715eb819701cb49ca18e0dcd82fe13928de2724c4f2861f`
+
+### Archive
+
+The `ace-dt mirror archive` command takes the input file of `gather`, a local `tar` destination path, and a tag and creates a `tar` file of the gathered artifact. It is a combination of `ace-dt mirror gather` and `ace-dt mirror serialize` that is useful when the user does not require an intermediate remote repository on the low side for auditing purposes.
+
+The `source-file` should contain a list of the fully-qualified image references (with the source registry) to gather into the target repository.
+
+Syntax:
+
+```sh
+ace-dt mirror archive sources.list path/to/destfile.tar sync-1
+```
+
+Example usage:
+
+For example, given a `sources.list` file (shown below), a local `archive.tar` path, and a `sync-1` tag:
+
+```text
+quay.io/ceph/ceph:v17.2
+docker.io/curlimages/curl:7.73.0
+docker.io/konstin2/maturin@sha256:a203e1071d73c6452715eb819701cb49ca18e0dcd82fe13928de2724c4f2861f
+```
+
+The 3 images in the above `sources.list` file would be gathered to local cache, tagged as `sync-1`, and then serialized to the local `archive.tar` file.
+
+### Unarchive
+
+The `ace-dt mirror unarchive` command takes the output `tar` file of `archive` or `serialize`, reconstructs the contents to local cache, and scatters them according to the [ruleset](#optional-ruleset-types) defined by the user. It is a combination of `ace-dt mirror deserialize` and `ace-dt mirror scatter` that is useful when the user does not require an intermediary registry for auditing purposes.
+
+Syntax:
+
+```sh
+ace-dt mirror unarchive path/to/destfile.tar [ruleSet]=path/to/ruleset sync-1
+```
+
+Example usage:
+
+For example, given an existing `archive.tar` file that was tagged as `sync-1` and a given ruleset of `nest=localhost:5000`, the 3 images in the tar file would be scattered as follows:
+
+- `localhost:5000/quay.io/ceph/ceph:v17.2`
+- `localhost:5000/docker.io/curlimages/curl:7.73.0`
+- `localhost:5000/docker.io/konstin2/maturin@sha256:a203e1071d73c6452715eb819701cb49ca18e0dcd82fe13928de2724c4f2861f`
 
 ## See Also
 

@@ -4,27 +4,24 @@ apiVersion: project.act3-ace.io/v1beta1
 
 # Project metadata used in Blueprints
 meta:
-    name: ace-dt
-    title: ACE Data Tool
-    description: This a CLI tool for packaging, uploading, and downloading data from OCI registries
-    repository: https://gitlab.com/act3-ai/asce/data/tool.git
-    authors:
-        - name: Justen Stall
-          email: justen.stall@udri.udayton.edu
-
-# GitLab settings defined for "act3-pt ci setup"
-gitlab: {}
+  name: ace-dt
+  title: ACE Data Tool
+  description: This a CLI tool for packaging, uploading, and downloading data from OCI registries
+  repository: https://gitlab.com/act3-ai/asce/data/tool.git
+  authors:
+    - name: Chase Grund
+      email: chase.grund@udri.udayton.edu
 
 # List of Blueprints configured for this project
 blueprints:
-    - ref: https://git.act3-ace.com/devsecops/blueprints/act3-base.git@v0.0.7
-      inputs:
-        defaultAssignee: cgrund
-        envPrefix: ACE_DT
-        executableName: ace-dt
-        groupName: config.dt.act3-ace.ai
-        modulePath: gitlab.com/act3-ai/asce/data/tool/git
-    - ref: https://git.act3-ace.com/devsecops/blueprints/mkdocs-base-site.git@cedd3c7
+  - ref: https://git.act3-ace.com/devsecops/blueprints/act3-base.git@v0.0.7
+    inputs:
+      defaultAssignee: cgrund
+      envPrefix: ACE_DT
+      executableName: ace-dt
+      groupName: config.dt.act3-ace.ai
+      modulePath: gitlab.com/act3-ai/asce/data/tool/git
+  - ref: https://git.act3-ace.com/devsecops/blueprints/mkdocs-base-site.git@cedd3c7
 
 # Edit configuration interactively:
 #   Edit metadata:         act3-pt edit

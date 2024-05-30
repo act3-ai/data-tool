@@ -1,129 +1,222 @@
 package bottle
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"io/fs"
+	"log/slog"
+	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
 
+	"github.com/google/go-containerregistry/pkg/registry"
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/registry/remote"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
-	tbottle "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
-	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
-	tbtl "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
+	tbtl "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
+	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 	tlog "gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
-// StoreInfo defines an oras.GraphTarget, a "reference" to it, and a function to access it.
-type StoreInfo struct {
-	Ref         string // our fake registry ref, ultimately used by the VirtualPartTracker
-	Store       *orasutil.CheckedStorage
-	NewTargetFn reg.NewGraphTargetFn
+var (
+	srcInfo          *SrcStoreInfo        // source registry information
+	destInfo         *DestStoreInfo       // destination registry information
+	config           *conf.Configuration  // handle plain-http registries
+	blobInfoCacheDir string               // virtual part tracking
+	origDescs        []ocispec.Descriptor // ensure entire bottle makes it to the destination, MUST have order: [manifest, config, parts...]
+)
+
+// SrcStoreInfo defines an oras.GraphTarget, a "reference" to it, and a function to access it.
+type SrcStoreInfo struct {
+	Ref   string // our fake registry ref, ultimately used by the VirtualPartTracker
+	Store *orasutil.CheckedStorage
+}
+
+// GraphTarget implements registry.GraphTargeter
+func (s *SrcStoreInfo) GraphTarget(ctx context.Context, ref string) (oras.GraphTarget, error) {
+	return s.Store.Target, nil
+}
+
+// ReadOnlyGraphTarget implements registry.GraphTargeter
+func (s *SrcStoreInfo) ReadOnlyGraphTarget(ctx context.Context, ref string) (oras.ReadOnlyGraphTarget, error) {
+	return s.Store.Target, nil
+}
+
+// DestStoreInfo defines an oras.GraphTarget, a "reference" to it, and a function to access it.
+type DestStoreInfo struct {
+	Ref           string // our fake registry ref, ultimately used by the VirtualPartTracker
+	Store         *orasutil.CheckedStorage
+	VirtualTarget oras.GraphTarget // for vitual part handling
+}
+
+// GraphTarget implements registry.GraphTargeter
+func (d *DestStoreInfo) GraphTarget(ctx context.Context, ref string) (oras.GraphTarget, error) {
+	switch {
+	case ref == srcInfo.Ref:
+		// this case hits when we discover our virtual parts in another target
+		return d.VirtualTarget, nil
+	case ref == destInfo.Ref:
+		// this case hits when we're simply connecting to the destination target
+		return d.Store.Target, nil
+	default:
+		return d.Store.Target, nil
+	}
+}
+
+// ReadOnlyGraphTarget implements registry.GraphTargeter
+func (d *DestStoreInfo) ReadOnlyGraphTarget(ctx context.Context, ref string) (oras.ReadOnlyGraphTarget, error) {
+	switch {
+	case ref == srcInfo.Ref:
+		// this case hits when we discover our virtual parts in another target
+		return d.VirtualTarget, nil
+	case ref == destInfo.Ref:
+		// this case hits when we're simply connecting to the destination target
+		return d.Store.Target, nil
+	default:
+		return d.Store.Target, nil
+	}
+}
+
+// NOTE: We may want to support env vars here such that we can test with
+// specific zot, harbor, etc. registries.
+func TestMain(m *testing.M) {
+	os.Exit(testMain(m))
+}
+
+func testMain(m *testing.M) int {
+	log := slog.New(slog.Default().Handler())
+	ctx := logger.NewContext(context.Background(), log)
+
+	config = conf.New()
+	config.AddConfigOverride(
+		conf.WithConcurrency(1),
+		conf.WithCachePath(blobInfoCacheDir),
+	)
+
+	var err error
+	srcReg := httptest.NewServer(registry.New())
+	defer srcReg.Close()
+	destReg := httptest.NewServer(registry.New())
+	defer destReg.Close()
+
+	log.InfoContext(ctx, "initializing source and destination registries", "source", srcReg.URL, "dest", destReg.URL)
+	srcInfo, destInfo, err = initRegistries(ctx, srcReg.URL, destReg.URL)
+	if err != nil {
+		panic(fmt.Sprintf("failed to initialize source registry: %v", err))
+	}
+
+	// init blobInfoCacheDir
+	blobInfoCacheDir, err = os.MkdirTemp("", "blobinfocache-*")
+	if err != nil {
+		panic(fmt.Sprintf("initializing blobinfocache directory: %v", err))
+	}
+	defer func() {
+		err := os.RemoveAll(blobInfoCacheDir)
+		if err != nil {
+			panic(fmt.Sprintf("cleaning up blob info cache: %v", err))
+		}
+	}()
+	log.InfoContext(ctx, "initialized cache directory", "cacheDir", blobInfoCacheDir)
+
+	log.InfoContext(ctx, "setting up source bottle", "reference", srcInfo.Ref)
+	origDescs, err = setupExampleBottle(ctx, srcInfo.Ref)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to setup source bottle: %v\n", err))
+	}
+
+	// run tests
+	return m.Run()
 }
 
 func Test_VirtualParts(t *testing.T) {
-	ctx := context.Background()
-	log := tlog.Logger(t, 0)
-	ctx = logger.NewContext(ctx, log)
+	ctx := logger.NewContext(context.Background(), tlog.Logger(t, -6))
 
-	config := conf.NewConfiguration("testagent")
-	cfg := config.Get(ctx)
-
-	// init bottle
-	t.Log("Creating test bottle")
-	btlDir := t.TempDir()
-	partNames := []string{"alpha.txt", "beta.txt", "gamma.txt"}
-	createBottle(t, btlDir, partNames)
-
-	btl, err := LoadAndUpgradeBottle(ctx, cfg, btlDir)
-	if err != nil {
-		t.Fatalf("loading test bottle: error = %v", err)
-	}
-
-	// commit bottle
-	if err := commit(ctx, cfg, btl, "", false); err != nil {
-		t.Fatalf("committing bottle: error = %v", err)
-	}
-
-	// collect original descriptors for future validation
-	origDescs := make([]ocispec.Descriptor, 0, len(partNames)+2)
-	origDescs = append(origDescs, btl.Manifest.GetManifestDescriptor())
-	origDescs = append(origDescs, btl.Manifest.GetConfigDescriptor())
-	origDescs = append(origDescs, btl.Manifest.GetLayerDescriptors()...)
-	t.Logf("Constructed origDescs: %v", origDescs)
-
-	// init src and dest oras.GraphTargets
-	srcInfo, destInfo := initSrcDest()
-
-	t.Log("Pushing bottle to source registry")
-	push(t, ctx, config, btlDir, srcInfo) // src starts with bottle
+	partNames := []string{"part1.txt", "part2.txt"}
 
 	// pull part of the bottle from src, i.e. setup virtual parts
 	t.Log("Pulling bottle from source registry with part selection")
 	pullDir := t.TempDir()
 	partSelection := selectParts(partNames, 1) // select one part
-	pull(t, ctx, config, pullDir, srcInfo, partSelection)
+	pull(t, ctx, pullDir, srcInfo, partSelection)
 
 	// push bottle to destination
 	t.Log("Pushing bottle to desintation registry")
-	push(t, ctx, config, pullDir, destInfo)
+	push(t, ctx, pullDir, destInfo)
 
 	// verify that the entire bottle exists in the destination
 	t.Log("Validating bottle at destination")
 
 	// validate manifest
-	for _, desc := range origDescs {
+	validateDescs := origDescs
+	for _, desc := range validateDescs {
 		exists, err := destInfo.Store.Target.Exists(ctx, desc)
 		switch {
 		case err != nil:
 			t.Errorf("checking descriptor existence in destination repository: mediatype = '%s', digest = '%s', error = %v", desc.MediaType, desc.Digest, err)
 		case !exists:
-			t.Errorf("descriptor not found in desintation repository: mediatype = '%s', digest = '%s'", desc.MediaType, desc.Digest)
+			t.Errorf("descriptor not found in destination repository: mediatype = '%s', digest = '%s'", desc.MediaType, desc.Digest)
 		default:
 			// if the manifest exists, everythign else should as well but we continue to be safe
-			t.Logf("Successfully verified bottle manifest existence in destination, mediatype = '%s', digest = '%s", desc.MediaType, desc.Digest)
+			t.Logf("Successfully verified descriptor in destination, mediatype = '%s', digest = '%s", desc.MediaType, desc.Digest)
 		}
 	}
 	t.Log("Validation successful")
 }
 
 // push pushes a bottle to an oras.GraphTarget identified by destInfo.
-func push(t *testing.T, ctx context.Context, config *conf.Configuration, btlDir string, destInfo StoreInfo) { //nolint
+func push(t *testing.T, ctx context.Context, btlDir string, destInfo *DestStoreInfo) { //nolint
 	t.Helper()
 	cfg := config.Get(ctx)
-	btl, err := LoadAndUpgradeBottle(ctx, cfg, btlDir)
+	btl, err := bottle.LoadBottle(btlDir,
+		bottle.WithCachePath(blobInfoCacheDir),
+		bottle.WithBlobInfoCache(blobInfoCacheDir),
+	)
 	if err != nil {
 		t.Fatalf("loading test bottle: error = %v", err)
 	}
+	if err := btl.LoadLocalLabels(); err != nil {
+		t.Fatalf("loading test bottle labes: error = %v", err)
+	}
 
 	// commit bottle
-	if err := commit(ctx, cfg, btl, "", false); err != nil {
+	if err := commit(ctx, cfg, btl, false); err != nil {
 		t.Fatalf("committing bottle: error = %v", err)
 	}
 
-	// build transfer options
-	opts := []tbtl.TransferOption{
-		tbtl.WithNewGraphTargetFn(destInfo.NewTargetFn),
+	pushOpts := tbtl.PushOptions{
+		TransferOptions: tbottle.TransferOptions{
+			CachePath: blobInfoCacheDir,
+		},
 	}
 
-	transferCfg := tbtl.NewTransferConfig(ctx, destInfo.Ref, btlDir, config, opts...)
-	if err := tbottle.PushBottle(ctx, btl, *transferCfg, tbottle.WithSignatures()); err != nil {
+	store := storage.NewDataStore(btl)
+	defer store.Close()
+
+	if err := tbtl.PushBottle(ctx, btl, store, destInfo, destInfo.Ref, pushOpts); err != nil {
 		t.Fatalf("pushing bottle to source repository: error = %v", err)
 	}
 }
 
 // pull pulls a bottle, with parts identified by partSelection, from an oras.GraphTarget identified by srcInfo.
-func pull(t *testing.T, ctx context.Context, config *conf.Configuration, pullDir string, srcInfo StoreInfo, partSelection map[string]bool) { //nolint
+func pull(t *testing.T, ctx context.Context, pullDir string, srcInfo *SrcStoreInfo, //nolint
+	partSelection map[string]bool,
+) {
 	t.Helper()
 
 	selection := make([]string, 0)
@@ -133,15 +226,24 @@ func pull(t *testing.T, ctx context.Context, config *conf.Configuration, pullDir
 		}
 	}
 
-	// build transfer options
-	opts := []tbtl.TransferOption{
-		tbtl.WithNewGraphTargetFn(srcInfo.NewTargetFn),
-		tbtl.WithPartSelection(nil, selection, nil),
+	transferOpts := tbottle.TransferOptions{
+		Concurrency: 1,
+		CachePath:   blobInfoCacheDir,
 	}
 
-	transferCfg := tbtl.NewTransferConfig(ctx, srcInfo.Ref, pullDir, config, opts...)
+	src, desc, err := tbottle.Resolve(ctx, srcInfo.Ref, config, transferOpts)
+	if err != nil {
+		t.Fatalf("resolving source reference: %v", err)
+	}
 
-	_, err := tbtl.Pull(ctx, *transferCfg)
+	pullOpts := tbottle.PullOptions{
+		TransferOptions: transferOpts,
+		PartSelectorOptions: tbottle.PartSelectorOptions{
+			Names: selection,
+		},
+	}
+
+	err = tbottle.Pull(ctx, src, desc, pullDir, pullOpts)
 	if err != nil {
 		t.Fatalf("pulling bottle from source: error = %v", err)
 	}
@@ -165,82 +267,107 @@ func pull(t *testing.T, ctx context.Context, config *conf.Configuration, pullDir
 	}
 }
 
-// initSrcDest initializes an oras.GraphTarget for both a source and destination, backed by a memory.Store.
-// Returns the store itself and associated metadata within a StoreInfo struct.
-//
-// NOTE: We may want to support env vars here such that we can test with
-// specific zot, harbor, etc. registries.
-func initSrcDest() (srcInfo StoreInfo, destInfo StoreInfo) {
-	// define source information and handler func
+func setupExampleBottle(ctx context.Context, fullRef string) ([]ocispec.Descriptor, error) {
+	log := logger.FromContext(ctx)
+	i := strings.LastIndex(fullRef, ":")
 
-	srcInfo.Ref = "sourceregistry/repository:tag"
-	srcInfo.Store = &orasutil.CheckedStorage{
-		Target: memory.New(),
-	}
-	srcInfo.NewTargetFn = func(ctx context.Context, ref string) (oras.GraphTarget, error) {
-		return srcInfo.Store.Target, nil
-	}
+	ref := fullRef[:i]
+	tag := fullRef[i+1:]
 
-	// define dest info and handler func
-	destInfo.Ref = "destinationregistry/repository:tag"
-	destInfo.Store = &orasutil.CheckedStorage{
-		Target: memory.New(),
-	}
-	destInfo.NewTargetFn = func(ctx context.Context, ref string) (oras.GraphTarget, error) {
-		// typically we would connect to the registry here
-		switch {
-		case ref == srcInfo.Ref:
-			// this case hits when we discover our virtual parts in another target
-			return srcInfo.Store.Target, nil
-		case ref == destInfo.Ref:
-			// this case hits when we're simply connecting to the destination target
-			return destInfo.Store.Target, nil
-		default:
-			return destInfo.Store.Target, nil
-		}
-	}
-	return
-}
-
-// createBottle builds and saves a bottle, returning its path and part names.
-func createBottle(t *testing.T, btlDir string, partNames []string) {
-	t.Helper()
-
-	createParts(t, btlDir, partNames)
-
-	opts := []bottle.BOption{
-		bottle.WithLocalPath(btlDir),
-		bottle.DisableCache(true),
-	}
-	btl, err := bottle.NewBottle(opts...)
+	r, err := remote.NewRepository(ref)
 	if err != nil {
-		t.Fatalf("creating test bottle: error = %v", err)
+		return nil, fmt.Errorf("connecting to source repository: %w", err)
 	}
-	if err := btl.Save(); err != nil {
-		t.Fatalf("saving test bottle: error = %v", err)
+	r.PlainHTTP = true
+
+	part1Desc, err := pushPart1(ctx, r)
+	if err != nil {
+		return nil, err
 	}
+	log.InfoContext(ctx, "pushed part 1", "digest", part1Desc.Digest)
+
+	part2Desc, err := pushPart2(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	log.InfoContext(ctx, "pushed part 2", "digest", part2Desc.Digest)
+
+	configDesc, err := pushConfig(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	log.InfoContext(ctx, "pushed config", "digest", configDesc.Digest)
+
+	manDesc, err := pushManifest(ctx, r, tag)
+	if err != nil {
+		return nil, err
+	}
+	log.InfoContext(ctx, "pushed manifest", "digest", manDesc.Digest)
+
+	descs := make([]ocispec.Descriptor, 0, 4) // alloc: 2 parts, 1 config, 1 manifest
+	descs = append(descs, manDesc, configDesc, part1Desc, part2Desc)
+	return descs, nil
 }
 
-// createParts builds parts for a bottle.
-func createParts(t *testing.T, btlDir string, partNames []string) {
-	t.Helper()
-	for _, pn := range partNames {
-		createPart(t, btlDir, pn)
+func pushPart1(ctx context.Context, target oras.Target) (ocispec.Descriptor, error) {
+	content := []byte("test part one\n")
+	desc := ocispec.Descriptor{
+		MediaType: mediatype.MediaTypeLayer,
+		Digest:    digest.FromBytes(content),
+		Size:      14,
 	}
 
-	if err := bottle.CreateBottle(btlDir, true); err != nil {
-		t.Fatalf("creating bottle: error = %v", err)
+	if err := target.Push(ctx, desc, bytes.NewReader(content)); err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("pushing bottle contents: %w", err)
 	}
+	return desc, nil
 }
 
-// createPart adds a file to the bottle directory.
-func createPart(t *testing.T, btlDir, name string) {
-	t.Helper()
-
-	partPath := filepath.Join(btlDir, name)
-	if err := os.WriteFile(partPath, []byte("testing part "+name), 0o666); err != nil {
-		t.Fatalf("creating part %s: error = %v", name, err)
+func pushPart2(ctx context.Context, target oras.Target) (ocispec.Descriptor, error) {
+	content := []byte("test part two\n")
+	desc := ocispec.Descriptor{
+		MediaType: mediatype.MediaTypeLayer,
+		Digest:    digest.FromBytes(content),
+		Size:      14,
 	}
+
+	if err := target.Push(ctx, desc, bytes.NewReader(content)); err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("pushing bottle contents: %w", err)
+	}
+	return desc, nil
+}
+
+func pushConfig(ctx context.Context, target oras.Target) (ocispec.Descriptor, error) {
+	// If you change the config, update the matchBottleID in ExamplePull_validation
+	config := []byte(`{"kind":"Bottle","apiVersion":"data.act3-ace.io/v1","parts":[{"name":"part1.txt","size":14,"digest":"sha256:0a587a815606ceadb036832f1989f5e868296b6fa98ef39564b447e951cad78c","labels":{"foo":"bar"}},{"name":"part2.txt","size":14,"digest":"sha256:5f2802faa177eff7526372ada8f37e52251f321b003979811aa8e9fff10427b8"}]}`)
+	desc := ocispec.Descriptor{
+		MediaType: mediatype.MediaTypeBottleConfig,
+		Digest:    digest.FromBytes(config),
+		Size:      313,
+	}
+
+	if err := target.Push(ctx, desc, bytes.NewReader(config)); err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("pushing bottle manifest: %w", err)
+	}
+	return desc, nil
+}
+
+func pushManifest(ctx context.Context, target oras.Target, tag string) (ocispec.Descriptor, error) {
+	manifest := []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","artifactType":"application/vnd.act3-ace.bottle","config":{"mediaType":"application/vnd.act3-ace.bottle.config.v1+json","digest":"sha256:f47fbb9257c6d0dd1bdce6517c969f2cbef2e0f2d053c02ea96506e7fd3fafda","size":313},"layers":[{"mediaType":"application/vnd.act3-ace.bottle.layer.v1","digest":"sha256:0a587a815606ceadb036832f1989f5e868296b6fa98ef39564b447e951cad78c","size":14},{"mediaType":"application/vnd.act3-ace.bottle.layer.v1","digest":"sha256:5f2802faa177eff7526372ada8f37e52251f321b003979811aa8e9fff10427b8","size":14}]}`)
+	desc := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    digest.FromBytes(manifest),
+		Size:      int64(len(manifest)),
+	}
+
+	if err := target.Push(ctx, desc, bytes.NewReader(manifest)); err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("pushing bottle manifest: %w", err)
+	}
+
+	if err := target.Tag(ctx, desc, tag); err != nil {
+		return ocispec.Descriptor{}, fmt.Errorf("tagging bottle manifest: %w", err)
+	}
+	return desc, nil
 }
 
 // selectParts selects n parts from partNames, deterministically.
@@ -256,4 +383,59 @@ func selectParts(partNames []string, n int) map[string]bool {
 		}
 	}
 	return selectedParts
+}
+
+// initRegistries initializes a source and destinationregistry, adding plain-http endpoints to the provided configuration.
+func initRegistries(ctx context.Context, srcURL, destURL string) (*SrcStoreInfo, *DestStoreInfo, error) {
+	// build the oci reference
+	srcurl, err := url.Parse(srcURL)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parsing source registry url: %w", err)
+	}
+	srcRef := srcurl.Host + "/sourcerepo/name:v1"
+
+	// build the oci reference
+	desturl, err := url.Parse(destURL)
+	if err != nil {
+		return nil, nil, fmt.Errorf("parsing destination registry url: %w", err)
+	}
+	destRef := desturl.Host + "/destinationrepo/name:v1"
+
+	// add servers to config for plain-http
+	rcfg := v1alpha1.RegistryConfig{
+		Configs: map[string]v1alpha1.Registry{
+			srcurl.Host: {
+				Endpoints: []string{"http://" + srcurl.Host},
+			},
+			desturl.Host: {
+				Endpoints: []string{"http://" + desturl.Host},
+			},
+		},
+	}
+	config.AddConfigOverride(conf.WithRegistryConfig(rcfg))
+
+	// define source information
+	s := &SrcStoreInfo{}
+	s.Ref = srcRef
+	srcRepo, err := config.GraphTarget(ctx, s.Ref)
+	if err != nil {
+		return nil, nil, fmt.Errorf("initializing source target: %w", err)
+	}
+	s.Store = &orasutil.CheckedStorage{
+		Target: srcRepo,
+	}
+
+	// define dest info
+	d := &DestStoreInfo{}
+	d.Ref = destRef
+	destRepo, err := config.GraphTarget(ctx, d.Ref)
+	if err != nil {
+		return nil, nil, fmt.Errorf("initializing destination target: %w", err)
+	}
+	d.Store = &orasutil.CheckedStorage{
+		Target: destRepo,
+	}
+	d.VirtualTarget = s.Store.Target
+
+	return s, d, nil
 }

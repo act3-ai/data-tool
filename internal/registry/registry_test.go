@@ -25,6 +25,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/credentials"
 
 	regcache "gitlab.com/act3-ai/asce/data/tool/internal/registry/cache"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
@@ -78,7 +79,7 @@ func TestRegistryConfig(t *testing.T) {
 			},
 		}
 		rCache := regcache.NewRegistryCache()
-		_, err := CreateRepoWithCustomConfig(ctx, &regConfig, u.Host+"/img1", rCache, "test-agent")
+		_, err := CreateRepoWithCustomConfig(ctx, &regConfig, u.Host+"/img1", rCache, "test-agent", credentials.NewMemoryStore())
 		rne(err)
 	})
 
@@ -102,7 +103,7 @@ func TestRegistryConfig(t *testing.T) {
 			},
 		}
 		regCache := regcache.NewRegistryCache()
-		r, err := CreateRepoWithCustomConfig(ctx, &regConfig, u.Host+"/img1", regCache, "test-agent")
+		r, err := CreateRepoWithCustomConfig(ctx, &regConfig, u.Host+"/img1", regCache, "test-agent", credentials.NewMemoryStore())
 		rne(err)
 		assert.NotNil(t, r)
 	})

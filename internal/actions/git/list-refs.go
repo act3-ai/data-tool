@@ -24,7 +24,7 @@ func (action *ListRefs) Run(ctx context.Context) error {
 	rootUI := ui.FromContextOrNoop(ctx)
 
 	log.InfoContext(ctx, "Configuring OCI repository")
-	repo, err := action.Config.ConfigureRepository(ctx, action.Repo)
+	repo, err := action.Config.Repository(ctx, action.Repo)
 	if err != nil {
 		return fmt.Errorf("creating repository reference: %w", err)
 	}

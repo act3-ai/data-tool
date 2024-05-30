@@ -26,29 +26,11 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
 )
 
-// CredentialOption applies optional credential configuration.
-type CredentialOption func(credentials.Store)
-
-// WithCredential adds credentials for a registry to an existing credential store.
-func WithCredential(ctx context.Context, hostname string, cred auth.Credential) CredentialOption {
-	return func(cs credentials.Store) {
-		_ = cs.Put(ctx, credentials.ServerAddressFromHostname(hostname), cred)
-	}
-}
-
 // CreateRepoWithCustomConfig creates a remote.Repository object and sets it up based off
 // the custom parameters defined in registryConfig (inside ace-dt config file).
 func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig, ref string,
-	cache *regcache.RegistryCache, userAgent string, fallbackCredStores ...credentials.Store,
+	cache *regcache.RegistryCache, userAgent string, credStore credentials.Store,
 ) (registry.Repository, error) {
-	// handle auth
-	storeOpts := credentials.StoreOptions{}
-	mainCredStore, err := credentials.NewStoreFromDocker(storeOpts)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get credential store: %w", err)
-	}
-	credStore := credentials.NewStoreWithFallbacks(mainCredStore, fallbackCredStores...)
-
 	// parse the reference
 	parsedRef, err := registry.ParseReference(ref)
 	if err != nil {

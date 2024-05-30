@@ -21,7 +21,6 @@ import (
 type Commit struct {
 	*Action
 
-	Write       WriteBottleOptions
 	Compression CompressionLevelOptions
 	NoDeprecate bool // Don't deprecate existing bottle
 }
@@ -37,10 +36,10 @@ func (action *Commit) Run(ctx context.Context) error {
 		return err
 	}
 
-	return commit(ctx, cfg, btl, action.Write.BottleIDFile, action.NoDeprecate)
+	return commit(ctx, cfg, btl, action.NoDeprecate)
 }
 
-func commit(ctx context.Context, cfg *v1alpha1.Configuration, btl *bottle.Bottle, bottleIDFile string, noDeprecate bool) error {
+func commit(ctx context.Context, cfg *v1alpha1.Configuration, btl *bottle.Bottle, noDeprecate bool) error {
 	log := logger.FromContext(ctx)
 
 	rootUI := ui.FromContextOrNoop(ctx)
@@ -94,12 +93,10 @@ func commit(ctx context.Context, cfg *v1alpha1.Configuration, btl *bottle.Bottle
 
 	log.InfoContext(ctx, "bottle commit command complete")
 
-	return bottle.SaveExtraBottleInfo(ctx, btl, bottleIDFile)
+	return bottle.SaveExtraBottleInfo(ctx, btl)
 }
 
 // deprecate deprecates the previous bottleID, then saves the new bottle configuration.
-//
-//nolint:sloglint
 func deprecate(log *slog.Logger, u *ui.Task, btl *bottle.Bottle, dgst digest.Digest) error {
 	log.Info("BottleID changed, deprecating previous bottleID")
 	btl.DeprecateBottleID(dgst)

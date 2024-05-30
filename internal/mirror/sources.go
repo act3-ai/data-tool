@@ -24,14 +24,14 @@ import (
 
 // Source represents a single source line in the `sources.list` file. It includes the source reference (name) and any user-defined labels.
 type Source struct {
-	name   string
-	labels map[string]string
+	Name   string
+	Labels map[string]string
 }
 
-// processes the `sources.list` file and returns a slice of Source objects
+// ProcessSourcesFile processes the `sources.list` file and returns a slice of Source objects
 // that include the source reference, remote repository, descriptor, and the user-defined labels.
 // If selectors or platforms filters are passed, then the source list will be modified to only include entries that follow those filters.
-func processSourcesFile(ctx context.Context,
+func ProcessSourcesFile(ctx context.Context,
 	sourceFile string,
 	sels selectors.LabelSelectorSet,
 	concurrency int,
@@ -85,8 +85,8 @@ func processSourcesFile(ctx context.Context,
 
 			srcMutex.Lock()
 			sourceList = append(sourceList, Source{
-				name:   src,
-				labels: lbls,
+				Name:   src,
+				Labels: lbls,
 			})
 			srcMutex.Unlock()
 			//}
@@ -100,7 +100,7 @@ func processSourcesFile(ctx context.Context,
 	}
 
 	slices.SortFunc(sourceList, func(a, b Source) int {
-		return cmp.Compare(a.name, b.name)
+		return cmp.Compare(a.Name, b.Name)
 	})
 
 	return sourceList, nil
@@ -173,7 +173,7 @@ func matchFilter(filters selectors.LabelSelectorSet, annotations map[string]stri
 func createSourcesMap(sources []Source) map[string]map[string]string {
 	subsetMap := make(map[string]map[string]string, len(sources))
 	for _, s := range sources {
-		subsetMap[s.name] = s.labels
+		subsetMap[s.Name] = s.Labels
 	}
 	return subsetMap
 }

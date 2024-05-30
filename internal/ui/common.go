@@ -20,13 +20,13 @@ func processUpdate(log *slog.Logger, trackers map[string]*taskTracker, evt event
 	trk := trackers[prefix]
 	switch e := evt.(type) {
 	case *infoUpdate:
-		log.Info("Processing infoUpdate") //nolint:sloglint
+		log.Info("Processing infoUpdate")
 		if trk == nil {
 			panic(fmt.Sprintf("Info() called on non-existent Task %q with message %s", name, e.message))
 		}
 		return strings.Join(name, separator) + " ↦ " + e.message + "\n"
 	case *taskUpdate:
-		log.Info("Processing taskUpdate", "complete", e.done) //nolint:sloglint
+		log.Info("Processing taskUpdate", "complete", e.done)
 		var parentTrk *taskTracker
 		if len(name) > 0 {
 			parent := strings.Join(name[:len(name)-1], null)
@@ -52,7 +52,7 @@ func processUpdate(log *slog.Logger, trackers map[string]*taskTracker, evt event
 			if parentTrk != nil {
 				parentTrk.counter.AddTotal(1)
 			}
-			log.Info("Starting task", "name", strings.Join(name, separator)) //nolint:sloglint
+			log.Info("Starting task", "name", strings.Join(name, separator))
 			return ""
 		}
 
@@ -80,7 +80,7 @@ func processUpdate(log *slog.Logger, trackers map[string]*taskTracker, evt event
 		return fmt.Sprintf("%s ↦ Completed %s\n", strings.Join(name, separator), trk.FormatCompleted(dt))
 
 	case *progressUpdate:
-		log.Info("Processing progressUpdate") //nolint:sloglint
+		log.Info("Processing progressUpdate")
 		// update progress bar data by adding the relative update
 		if trk == nil {
 			panic(fmt.Sprintf("Update() called on non-existent Task: %q", name))

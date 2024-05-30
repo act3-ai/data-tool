@@ -38,7 +38,7 @@ func (action *Clone) Run(ctx context.Context, sourceFile, mappingSpec string) er
 		Log:            log,
 		SourceFile:     sourceFile,
 		RootUI:         rootUI,
-		RepoFunc:       action.Config.ConfigureRepository,
+		RepoFunc:       action.Config.Repository,
 		Recursive:      action.Recursive,
 		DryRun:         action.Check,
 	}

@@ -7,7 +7,6 @@ import (
 
 	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
 	"gitlab.com/act3-ai/asce/data/tool/internal/python"
-
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
@@ -15,8 +14,6 @@ import (
 // We can use https://github.com/krolaw/zipstream to read the zip with a io.Reader
 
 // filter distribution entries (for a single project) based on the specific requirement provided by the user.
-//
-//nolint:sloglint
 func filterDistributionEntries(log *slog.Logger,
 	entries []python.DistributionEntry,
 	sels selectors.LabelSelectorSet,

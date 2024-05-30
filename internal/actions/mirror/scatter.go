@@ -24,7 +24,7 @@ func (action *Scatter) Run(ctx context.Context, sourceRepo, mappingSpec string) 
 
 	rootUI := ui.FromContextOrNoop(ctx)
 
-	src, err := action.Config.ConfigureRepository(ctx, sourceRepo)
+	src, err := action.Config.Repository(ctx, sourceRepo)
 	if err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ func (action *Scatter) Run(ctx context.Context, sourceRepo, mappingSpec string) 
 		RootUI:         rootUI,
 		DryRun:         action.Check,
 		Recursive:      action.Recursive,
-		RepoFunc:       action.Config.ConfigureRepository,
+		RepoFunc:       action.Config.Repository,
 	}
 
 	// run mirror scatter

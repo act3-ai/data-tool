@@ -28,7 +28,7 @@ func (action *Deserialize) Run(ctx context.Context, sourceFile string, dest stri
 
 	log := logger.FromContext(ctx)
 
-	repo, err := action.Config.ConfigureRepository(ctx, dest)
+	repo, err := action.Config.Repository(ctx, dest)
 	if err != nil {
 		return err
 	}

@@ -42,7 +42,7 @@ type Config struct {
 type LFSConfig struct {
 	// LFS bundles may be useful in the future. It may be useful to store
 	// a which bundle an LFS file is in, similar to the current git bundle mechanism.
-	// See https://gitlab.com/act3-ai/asce/data/tool/-/issues/503.
+	// See https://git.act3-ace.com/ace/data/tool/-/issues/503.
 
 	// Objects map[string]string `json:"objects"` // layer digest : OID
 }

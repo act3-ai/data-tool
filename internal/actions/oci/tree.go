@@ -51,7 +51,7 @@ func (action *Tree) Run(ctx context.Context, out io.Writer, rawRef string) error
 		ref = r
 	default:
 		// remote reference
-		repo, err := action.Config.ConfigureRepository(ctx, rawRef)
+		repo, err := action.Config.Repository(ctx, rawRef)
 		if err != nil {
 			return err
 		}

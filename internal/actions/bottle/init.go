@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
-
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"

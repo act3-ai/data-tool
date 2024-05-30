@@ -19,7 +19,6 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
 	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
-
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 

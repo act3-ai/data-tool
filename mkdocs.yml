@@ -61,25 +61,25 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Get Started:
-    - Quick Start Guide: get-started/quick-start-guide.md
-    - Configuration Guide: get-started/configuration-guide.md
-    - Installation Guide: get-started/installation-guide.md
+      - Quick Start Guide: get-started/quick-start-guide.md
+      - Configuration Guide: get-started/configuration-guide.md
+      - Installation Guide: get-started/installation-guide.md
   - User Guide: usage/user-guide.md
   - Concepts:
-    - About: usage/concepts/about.md
-    - Bottle Creator Guide: usage/concepts/bottle-creator.md
-    - Bottle Anatomy Guide: usage/concepts/bottle-anatomy.md
-    - Labels and Selectors Guide: usage/concepts/labels-selectors.md
-    - Mirror Usage Guide: usage/concepts/mirror.md
+      - About: usage/concepts/about.md
+      - Bottle Creator Guide: usage/concepts/bottle-creator.md
+      - Bottle Anatomy Guide: usage/concepts/bottle-anatomy.md
+      - Labels and Selectors Guide: usage/concepts/labels-selectors.md
+      - Mirror Usage Guide: usage/concepts/mirror.md
   - Tutorials:
-    - About: usage/tutorials/about.md
-    - Mirror Tutorial: usage/tutorials/mirror.md
-    - Bottle Anatomy Tutorial: usage/tutorials/bottle-anatomy.md
+      - About: usage/tutorials/about.md
+      - Mirror Tutorial: usage/tutorials/mirror.md
+      - Bottle Anatomy Tutorial: usage/tutorials/bottle-anatomy.md
   - Support:
-    - Get Support: support/about.md
-    - FAQ: support/faq.md
+      - Get Support: support/about.md
+      - FAQ: support/faq.md
   - Contribute:
-    - Developer Guide: contribute/developer-guide.md
+      - Developer Guide: contribute/developer-guide.md
 # Examples of commonly used nav pages are provided below for convenience
   # - "Get Started": quick-start-guide.md
   # - "User Guide": user-guide.md

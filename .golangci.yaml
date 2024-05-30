@@ -80,10 +80,10 @@ linters-settings:
       #   arguments: [120]
       - name: unhandled-error
         arguments:
-        - strings.Builder.Write
-        - strings.Builder.WriteRune
-        - strings.Builder.WriteString
-        - strings.Builder.WriteByte
+          - strings.Builder.Write
+          - strings.Builder.WriteRune
+          - strings.Builder.WriteString
+          - strings.Builder.WriteByte
 
       - name: blank-imports
       - name: context-as-argument
@@ -129,7 +129,7 @@ linters-settings:
     # Put imports beginning with prefix after 3rd-party packages.
     # It's a comma-separated list of prefixes.
     # Default: ""
-    local-prefixes: git.act3-ace.com/ace
+    local-prefixes: gitlab.com/act3-ai/asce
 
   wrapcheck:
     ignoreSigs:
@@ -165,23 +165,23 @@ linters-settings:
     rules:
       nontest:
         files:
-        - $all
-        - "!$test"
-        - "!**/cmd/ace-dt/internal/cli/internal/functesting/*.go"
+          - $all
+          - "!$test"
+          - "!**/cmd/ace-dt/internal/cli/internal/functesting/*.go"
         deny:
-        - pkg: github.com/stretchr/testify
-          desc: Testify is only for test code
+          - pkg: github.com/stretchr/testify
+            desc: Testify is only for test code
 
       transfer:
         files:
-        - "**/pkg/transfer/*.go"
+          - "**/pkg/transfer/*.go"
         deny:
-        - pkg: "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
-          desc: pkg/transfer should not depend on bottles
-        - pkg: "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
-          desc: pkg/transfer should not depend on bottles
-        - pkg: "gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-          desc: pkg/transfer should not depend on bottles
+          - pkg: "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
+            desc: pkg/transfer should not depend on bottles
+          - pkg: "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
+            desc: pkg/transfer should not depend on bottles
+          - pkg: "gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+            desc: pkg/transfer should not depend on bottles
   
   sloglint:
     # Enforce not mixing key-value pairs and attributes.
@@ -198,7 +198,7 @@ linters-settings:
 
     # Enforce using methods that accept a context.
     # Default: false
-    context-only: true
+    context: scope
 
     # Enforce using static values for log messages.
     # Default: false
@@ -222,15 +222,15 @@ issues:
   # exclude-use-default: false
 
   include:
-  # - EXC0001
-  - EXC0002
-  - EXC0005
-  - EXC0009
-  - EXC0011
-  - EXC0012
-  - EXC0013
-  - EXC0014
-  - EXC0015
+    # - EXC0001
+    - EXC0002
+    - EXC0005
+    - EXC0009
+    - EXC0011
+    - EXC0012
+    - EXC0013
+    - EXC0014
+    - EXC0015
 
   exclude-rules:
     - path: (.+)_test.go
@@ -238,4 +238,3 @@ issues:
         - wrapcheck
         - godot
         - dupl
-  
