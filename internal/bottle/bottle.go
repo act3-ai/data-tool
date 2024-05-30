@@ -800,6 +800,15 @@ func (btl *Bottle) partName(pth string) (string, error) {
 
 	relPath = filepath.ToSlash(relPath)
 
+	// relative path returns directory navigation if a relative path can be found by navigating up to a common base dir
+	// this occurs for instance if cwd is not within the bottle dir, and the path to the part is provided relative to
+	// the bottle dir.  e.g. labeling part.txt located at /path/to/bottle/part.txt while cwd= /path/to/another/dir
+	// We can probably automatically fix this for the user here by joining the provided path with the bottle dir, but
+	// there might be corner cases with that approach... instead just give an error so the user can clarify intention.
+	if strings.HasPrefix(relPath, "../") || relPath == ".." {
+		return "", fmt.Errorf("artifact path \"%s\" is not relative to bottle directory", absPath)
+	}
+
 	if !sutil.IsPortablePath(relPath) {
 		return "", fmt.Errorf("path \"%s\" is not portable.  Derived from \"%s\"", relPath, pth)
 	}

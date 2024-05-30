@@ -47,7 +47,6 @@ View information prior to commit:
 		},
 	}
 
-	WriteBottleIDFlags(cmd.Flags(), &action.Write)
 	CompressionLevelFlags(cmd.Flags(), &action.Compression)
 
 	// Add flag no-deprecate to disable deprecation

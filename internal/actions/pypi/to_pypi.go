@@ -34,7 +34,7 @@ func (action *ToPyPI) Run(ctx context.Context, ociRepo, pypi string) error {
 
 	action.client = retry.DefaultClient
 
-	src, err := action.Config.ConfigureRepository(ctx, ociRepo)
+	src, err := action.Config.Repository(ctx, ociRepo)
 	if err != nil {
 		return err
 	}

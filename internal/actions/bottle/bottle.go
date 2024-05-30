@@ -19,11 +19,6 @@ type Action struct {
 	Dir string // Bottle directory
 }
 
-// WriteBottleOptions defines the options for writing bottles.
-type WriteBottleOptions struct {
-	BottleIDFile string // File path to write the bottle ID after a bottle operation
-}
-
 // CompressionLevelOptions defines options for bottle part Compression Levels.
 type CompressionLevelOptions struct {
 	Level string // change the compression level of compressed bottle parts

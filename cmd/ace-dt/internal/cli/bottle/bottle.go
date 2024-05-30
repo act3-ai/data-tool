@@ -73,16 +73,11 @@ Use part command to add part level labels.
 
 // TODO the below functions should take a FlagSet instead of a command
 
-// WriteBottleIDFlags adds flag for writing bottle ID to a cobra command.
-func WriteBottleIDFlags(flags *pflag.FlagSet, action *bottleactions.WriteBottleOptions) {
-	flags.StringVar(&action.BottleIDFile, "write-bottle-id", "", "File path to write the bottle ID after a bottle operation")
-}
-
 // PartSelectorFlags adds flags for part selectors.
 func PartSelectorFlags(flags *pflag.FlagSet, action *bottle.PartSelectorOptions) {
 	flags.BoolVar(&action.Empty, "empty", false, "retrieve empty bottle, only containing metadata")
-	flags.StringArrayVarP(&action.Selectors, "selector", "l", []string{}, "Provide selectors for which parts to retrieve. Format \"name=value\"")
-	flags.StringArrayVarP(&action.Parts, "part", "p", []string{}, "Parts to retrieve")
+	flags.StringArrayVarP(&action.Labels, "selector", "l", []string{}, "Provide selectors for which parts to retrieve. Format \"name=value\"")
+	flags.StringArrayVarP(&action.Names, "part", "p", []string{}, "Parts to retrieve")
 	flags.StringArrayVarP(&action.Artifacts, "artifact", "u", []string{}, "Retrieve only parts containing the provided public artifact type")
 }
 

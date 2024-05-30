@@ -9,8 +9,6 @@ import (
 	"sync"
 	"time"
 
-	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
-
 	"oras.land/oras-go/v2/errdef"
 
 	"gitlab.com/act3-ai/asce/data/telemetry/pkg/types"
@@ -19,10 +17,10 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/status"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
-	tbottle "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
+	tbtl "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	tbtl "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
-
+	telem "gitlab.com/act3-ai/asce/data/tool/pkg/telemetry"
+	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
@@ -30,7 +28,6 @@ import (
 type Push struct {
 	*Action
 
-	Write       WriteBottleOptions
 	Telemetry   actions.TelemetryOptions
 	Compression CompressionLevelOptions
 
@@ -54,14 +51,14 @@ func (action *Push) Run(ctx context.Context) error {
 
 	// first we must commit, this saves everything: manifest, config, archived parts, etc.
 	log.InfoContext(ctx, "committing bottle")
-	if err := commit(ctx, cfg, btl, action.Write.BottleIDFile, action.NoDeprecate); err != nil {
+	if err := commit(ctx, cfg, btl, action.NoDeprecate); err != nil {
 		return err
 	}
 
 	if action.NoOverwrite {
 		log.InfoContext(ctx, "checking for existing bottles")
 		parsedref := ref.RepoFromString(action.Ref)
-		repo, err := action.Config.ConfigureRepository(ctx, parsedref.String())
+		repo, err := action.Config.Repository(ctx, parsedref.String())
 		if err != nil {
 			return fmt.Errorf("creating repository reference: %w", err)
 		}
@@ -81,10 +78,17 @@ func (action *Push) Run(ctx context.Context) error {
 
 	}
 
-	transferCfg := tbtl.NewTransferConfig(ctx, action.Ref, action.Dir, action.Config)
+	store := storage.NewDataStore(btl)
+	defer store.Close()
 
 	log.InfoContext(ctx, "pushing bottle with signatures")
-	if err := tbottle.PushBottle(ctx, btl, *transferCfg, tbottle.WithSignatures()); err != nil {
+	pushOpts := tbtl.PushOptions{
+		TransferOptions: tbottle.TransferOptions{
+			Concurrency: cfg.ConcurrentHTTP,
+			CachePath:   cfg.CachePath,
+		},
+	}
+	if err := tbtl.PushBottle(ctx, btl, store, action.Config, action.Ref, pushOpts); err != nil {
 		return fmt.Errorf("pushing bottle and signatures: %w", err)
 	}
 
@@ -94,29 +98,21 @@ func (action *Push) Run(ctx context.Context) error {
 	}
 
 	// Handle telemetry
-	telem := bottle.NewTelemetryAdapter(cfg.Telemetry, cfg.TelemetryUserName)
-
-	// send telemetry
-	telemUrls, err := telem.SendTelemetry(logger.NewContext(ctx, logger.V(log, 1)), btl, r, types.EventPush)
+	rawManifest, err := btl.Manifest.GetManifestRaw()
 	if err != nil {
-		return err
+		return fmt.Errorf("getting bottle manifest: %w", err)
 	}
 
-	summary, err := sigcustom.NewSummaryFromBottle(ctx, btl)
+	telemAdapt := telem.NewAdapter(cfg.Telemetry, cfg.TelemetryUserName)
+	event := telemAdapt.NewEvent(r.String(), rawManifest, types.EventPush)
+
+	telemUrls, err := telemAdapt.NotifyTelemetry(ctx, store, btl.Manifest.GetManifestDescriptor(), action.Dir, event)
 	if err != nil {
-		return fmt.Errorf("generating signature detail message: %w", err)
-	}
-	if summary != nil {
-		err = telem.SendSignatures(logger.NewContext(ctx, logger.V(log, 1)), summary)
-		if err != nil {
-			return err
-		}
+		return fmt.Errorf("notifying telemetry: %w", err)
 	}
 
 	rootUI.Info(formatBottleURLs(telemUrls))
-
 	rootUI.Infof("Bottle push complete.  BottleID: %s\n", btl.GetBottleID())
-
 	return nil
 }
 

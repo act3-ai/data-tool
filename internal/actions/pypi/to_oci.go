@@ -21,7 +21,6 @@ import (
 	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
 	"gitlab.com/act3-ai/asce/data/tool/internal/python"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/go-common/pkg/redact"
 )
@@ -114,7 +113,7 @@ type ToOCI struct {
 func (action *ToOCI) Run(ctx context.Context, repository string, additionalRequirements ...string) error {
 	log := logger.FromContext(ctx)
 
-	repo, err := action.Config.ConfigureRepository(ctx, repository)
+	repo, err := action.Config.Repository(ctx, repository)
 	if err != nil {
 		return err
 	}
@@ -506,7 +505,7 @@ func transferBlob(ctx context.Context,
 	// possibly short circuit if the repository already has this blob
 	if expectedDigest != "" {
 		// Need Blobs().Resolve() here since we need the size (.Exists() does not give us that)
-		// Cannot use respository.Resolve() since that is only for manifests
+		// Cannot use repository.Resolve() since that is only for manifests
 		desc, err := target.Resolve(ctx, expectedDigest.String())
 		if err == nil {
 			desc.MediaType = mediaType

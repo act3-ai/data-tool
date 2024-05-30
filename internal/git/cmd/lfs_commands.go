@@ -37,7 +37,7 @@ func newGitLFSCmd(log *slog.Logger, dir, altGitLFSExec string) *gitLFSCmd {
 }
 
 func (lfs *gitLFSCmd) log(args []string, out []byte) {
-	lfs.logger.Info("Executed git-lfs Command", "command", args, "output", string(out)) //nolint:sloglint
+	lfs.logger.Info("Executed git-lfs Command", "command", args, "output", string(out))
 }
 
 // Run executes a git lfs command, returning the parsed output.

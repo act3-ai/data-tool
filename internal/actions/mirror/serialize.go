@@ -16,7 +16,7 @@ type Serialize struct {
 
 // Run runs the mirror serialize action.
 func (action *Serialize) Run(ctx context.Context, ref string, destFile string, existingImages []string, n, bs, hwm int) error {
-	repo, err := action.Config.ConfigureRepository(ctx, ref)
+	repo, err := action.Config.Repository(ctx, ref)
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ func (action *Serialize) Run(ctx context.Context, ref string, destFile string, e
 		ExistingCheckpoints: action.ExistingCheckpoints,
 		ExistingImages:      existingImages,
 		Recursive:           action.Recursive,
-		RepoFunc:            action.Config.ConfigureRepository,
+		RepoFunc:            action.Config.Repository,
 		SourceRepo:          repo,
 		SourceReference:     repo.Reference.ReferenceOrDefault(),
 	}

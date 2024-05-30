@@ -62,7 +62,7 @@ func (bdc *BoltBlobInfoCache) view(fn func(tx *bolt.Tx) error) (retErr error) {
 
 	lockPath(bdc.path)
 	defer unlockPath(bdc.path)
-	db, err := bolt.Open(bdc.path, 0600, &bolt.Options{ReadOnly: true})
+	db, err := bolt.Open(bdc.path, 0o600, &bolt.Options{ReadOnly: true})
 	if err != nil {
 		return fmt.Errorf("failed to open bolt db %w", err)
 	}
@@ -83,7 +83,7 @@ func (bdc *BoltBlobInfoCache) view(fn func(tx *bolt.Tx) error) (retErr error) {
 func (bdc *BoltBlobInfoCache) update(fn func(tx *bolt.Tx) error) (retErr error) {
 	lockPath(bdc.path)
 	defer unlockPath(bdc.path)
-	db, err := bolt.Open(bdc.path, 0600, nil)
+	db, err := bolt.Open(bdc.path, 0o600, nil)
 	if err != nil {
 		return fmt.Errorf("open failure for boltdb in update %w", err)
 	}

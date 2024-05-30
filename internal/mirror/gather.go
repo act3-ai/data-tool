@@ -60,7 +60,7 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) err
 	g.SetLimit(opts.ConcurrentHTTP)
 
 	opts.Log.InfoContext(ctx, "Opening repository source file", "path", opts.SourceFile)
-	sourceList, err := processSourcesFile(ctx, opts.SourceFile, nil, opts.ConcurrentHTTP)
+	sourceList, err := ProcessSourcesFile(ctx, opts.SourceFile, nil, opts.ConcurrentHTTP)
 	if err != nil {
 		return err
 	}
@@ -70,12 +70,12 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) err
 		task := opts.RootUI.SubTask(fmt.Sprintf("Source %d", i))
 		g.Go(func() error {
 			defer task.Complete()
-			task.Infof("Copying %s", src.name)
+			task.Infof("Copying %s", src.Name)
 			log := logger.V(opts.Log, 1)
-			log.InfoContext(gctx, "copying", "srcReference", "dest reference", src.name, opts.Dest)
+			log.InfoContext(gctx, "copying", "srcReference", "dest reference", src.Name, opts.Dest)
 			// TODO: add progress back in... use GraphCopyOptions pre and post manifest
 			numBytes := atomic.Int64{}
-			c, err := NewCopier(ctx, log, src.name, opts.Dest, nil, registry.Reference{}, ocispec.Descriptor{}, opts.DestTarget, opts.DestReference, opts.Recursive, platforms, opts.RepoFunc)
+			c, err := NewCopier(ctx, log, src.Name, opts.Dest, nil, registry.Reference{}, ocispec.Descriptor{}, opts.DestTarget, opts.DestReference, opts.Recursive, platforms, opts.RepoFunc)
 			if err != nil {
 				return err
 			}
@@ -101,9 +101,9 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) err
 
 			if platforms == nil {
 				if err := Copy(gctx, c); err != nil {
-					return fmt.Errorf("copying from %s: %w", src.name, err)
+					return fmt.Errorf("copying from %s: %w", src.Name, err)
 				}
-				desc, err := annotateManifest(src.name, c.root, src.labels, nil)
+				desc, err := annotateManifest(src.Name, c.root, src.Labels, nil)
 				if err != nil {
 					return err
 				}
@@ -115,10 +115,10 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) err
 			} else {
 				platformDescriptors, err := CopyFilterOnPlatform(gctx, c)
 				if err != nil {
-					return fmt.Errorf("copying with specific platforms for source %s: %w", src.name, err)
+					return fmt.Errorf("copying with specific platforms for source %s: %w", src.Name, err)
 				}
 				for _, d := range platformDescriptors {
-					d, err := annotateManifest(src.name, d, src.labels, c.originatingIndex)
+					d, err := annotateManifest(src.Name, d, src.Labels, c.originatingIndex)
 					if err != nil {
 						return err
 					}

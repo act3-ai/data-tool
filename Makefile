@@ -14,7 +14,7 @@ IMAGE_REPO=$(REGISTRY_NAME)/ace/data/tool
 CONTROLLER_GEN_VERSION?=v0.14.0
 CRD_REF_DOCS_VERSION?=v0.0.11
 KO_VERSION?=v0.15.2
-GOLANGCI_LINT_VERSION?=v1.57.2
+GOLANGCI_LINT_VERSION?=v1.58.2
 
 REGISTRY_CONTAINER ?= data-test-registry
 TELEMETRY_CONTAINER ?= data-test-telemetry
@@ -120,14 +120,14 @@ integration: build start-services
 
 	# This tests an authenticated pull using custom config
 	ACE_DT_TELEMETRY_URL=http://$(TELEMETRY_HOST) bin/ace-dt bottle pull reg.git.act3-ace.com/ace/data/tool/bottle/mnist:v1.6 -d integration/bottle
-	ACE_DT_TELEMETRY_URL=http://$(TELEMETRY_HOST) bin/ace-dt bottle push $(REGISTRY_HOST)/bottle/mnist:v1.6 -d integration/bottle --write-bottle-id integration/bottleid
+	ACE_DT_TELEMETRY_URL=http://$(TELEMETRY_HOST) bin/ace-dt bottle push $(REGISTRY_HOST)/bottle/mnist:v1.6 -d integration/bottle
 	# add a newline
 	cat integration/bottleid ; echo
-	curl -sSfvo integration/location.txt http://$(TELEMETRY_HOST)/api/location?bottle_digest=$(shell cat integration/bottleid)
+	curl -sSfvo integration/location.txt http://$(TELEMETRY_HOST)/api/location?bottle_digest=$(shell cat integration/bottle/.dt/bottleid)
 	cat integration/location.txt
 	grep reg.git.act3-ace.com/ace/data/tool/bottle/mnist integration/location.txt
 	grep $(REGISTRY_HOST)/bottle/mnist integration/location.txt
-	ACE_DT_TELEMETRY_URL=http://$(TELEMETRY_HOST) bin/ace-dt bottle pull bottle:$(shell cat integration/bottleid) -d integration/bottle-pull
+	ACE_DT_TELEMETRY_URL=http://$(TELEMETRY_HOST) bin/ace-dt bottle pull bottle:$(shell cat integration/bottle/.dt/bottleid) -d integration/bottle-pull
 
 	# $(MAKE) stop-services
 

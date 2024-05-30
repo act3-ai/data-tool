@@ -173,6 +173,14 @@ func (r Ref) API() string {
 	return tmpref.Scheme + "://" + tmpref.APIString()
 }
 
+// TagOrDigest returns the tag or digest of a ref.
+func (r Ref) TagOrDigest() string {
+	if r.Digest != "" {
+		return r.Digest
+	}
+	return r.Tag
+}
+
 func getNameTagAndDigest(nametag string) (name string, tag string, dgst string) {
 	nd := strings.Split(nametag, "@")
 	if len(nd) > 1 {

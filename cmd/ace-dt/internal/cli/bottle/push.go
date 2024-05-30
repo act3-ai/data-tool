@@ -14,7 +14,6 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
 	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-
 	"gitlab.com/act3-ai/asce/go-common/pkg/redact"
 )
 
@@ -46,7 +45,6 @@ by passing the --no-deprecate flag.`,
 	cmd.Flags().BoolVarP(&action.NoOverwrite, "no-overwrite", "n", false, "Only push data if if doesn't already exist")
 	cmd.Flags().BoolVar(&action.NoDeprecate, "no-deprecate", false, "Disable deprecation of previous bottle version")
 
-	WriteBottleIDFlags(cmd.Flags(), &action.Write)
 	CompressionLevelFlags(cmd.Flags(), &action.Compression)
 	flag.TelemetryURLFlags(cmd.Flags(), &action.Telemetry)
 	ui.AddOptionsFlags(cmd.Flags(), &uiOptions)
@@ -74,7 +72,7 @@ Then push like normal:
 	ace-dt bottle push REGISTRY/REPO/NAME:TAG -d ./TESTSET
 
 Share a bottle with other users by giving them the bottle reference
-OR, share the bottle ID (--write-bottle-id flag) for Telemetry Server support.
+OR, share the bottle ID for Telemetry Server support.
 `
 
 	return cmd

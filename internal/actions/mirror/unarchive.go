@@ -78,7 +78,7 @@ func (action *Unarchive) Run(ctx context.Context, sourceFile, mappingSpec, refer
 		RootUI:         rootUI,
 		DryRun:         action.DryRun,
 		Recursive:      action.Recursive,
-		RepoFunc:       action.Config.ConfigureRepository,
+		RepoFunc:       action.Config.Repository,
 	}
 
 	// run scatter

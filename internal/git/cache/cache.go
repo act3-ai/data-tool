@@ -160,7 +160,7 @@ func (c *Cache) resolveUncachedOCILFSFiles(ctx context.Context, layers []ocispec
 
 // copyLFSFromOCI copies a git-lfs file stored as an OCI layer, written to objDest.
 //
-// TODO: This is inefficient and not a good interface. See issue https://gitlab.com/act3-ai/asce/data/tool/-/issues/504.
+// TODO: This is inefficient and not a good interface. See issue https://git.act3-ace.com/ace/data/tool/-/issues/504.
 func copyLFSFromOCI(ctx context.Context, target oras.GraphTarget, objDest string, layerDesc ocispec.Descriptor) error {
 	log := logger.FromContext(ctx)
 

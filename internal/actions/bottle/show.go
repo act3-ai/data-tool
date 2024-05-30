@@ -14,8 +14,8 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
 	"gitlab.com/act3-ai/asce/data/tool/internal/print"
-	tbtl "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
-
+	telem "gitlab.com/act3-ai/asce/data/tool/pkg/telemetry"
+	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
@@ -30,32 +30,43 @@ type Show struct {
 // Run runs the bottle show action.
 func (action *Show) Run(ctx context.Context, out io.Writer) error {
 	log := logger.FromContext(ctx)
-
 	log.InfoContext(ctx, "bottle show command activated")
 
 	cfg := action.Config.Get(ctx)
 
 	// check if input is a reference, else fall back to bottle directory
 	var btl *bottle.Bottle
-
 	if action.Ref != "" {
-		var err error
-		log.InfoContext(ctx, "Showing bottle information", "ref", action.Ref)
 
-		var opts []tbtl.TransferOption
-		// part selection options
-		if action.PartSelector.Empty {
-			opts = append(opts, tbtl.WithNoParts())
-		} else {
-			opts = append(opts, tbtl.WithPartSelection(action.PartSelector.Selectors,
-				action.PartSelector.Parts,
-				action.PartSelector.Artifacts))
+		telemAdapt := telem.NewAdapter(cfg.Telemetry, cfg.TelemetryUserName)
+
+		log.InfoContext(ctx, "resolving reference with telemetry", "ref", action.Ref)
+		transferOpts := tbottle.TransferOptions{
+			Concurrency: cfg.ConcurrentHTTP,
+			CachePath:   cfg.CachePath,
+		}
+		src, desc, event, err := telemAdapt.ResolveWithTelemetry(ctx, action.Ref, action.Config, transferOpts)
+		if err != nil {
+			return fmt.Errorf("resolving bottle reference: %w", err)
 		}
 
-		transferCfg := tbtl.NewTransferConfig(ctx, action.Ref, action.Dir, action.Config, opts...)
-		cfgBytes, manBytes, err := tbtl.FetchBottleMetadata(ctx, *transferCfg)
+		log.InfoContext(ctx, "fetching bottle metdata")
+		pullOpts := tbottle.PullOptions{
+			TransferOptions: tbottle.TransferOptions{
+				Concurrency: cfg.ConcurrentHTTP,
+				CachePath:   cfg.CachePath,
+			},
+			PartSelectorOptions: action.PartSelector,
+		}
+		cfgBytes, manBytes, err := tbottle.FetchBottleMetadata(ctx, src, desc, pullOpts)
 		if err != nil {
 			return fmt.Errorf("fetching bottle metadata: %w", err)
+		}
+
+		log.InfoContext(ctx, "notifying telemetry")
+		_, err = telemAdapt.NotifyTelemetry(ctx, src, desc, action.Dir, event)
+		if err != nil {
+			return fmt.Errorf("notifying telemetry: %w", err)
 		}
 
 		manifestHandler := oci.ManifestFromData(ocispec.MediaTypeImageManifest, manBytes)

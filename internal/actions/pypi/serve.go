@@ -23,7 +23,7 @@ func (action *Serve) Run(ctx context.Context, repository string) error {
 	log := logger.FromContext(ctx)
 
 	// setup crane options
-	repo, err := action.Config.ConfigureRepository(ctx, repository)
+	repo, err := action.Config.Repository(ctx, repository)
 	if err != nil {
 		return err
 	}

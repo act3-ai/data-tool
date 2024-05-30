@@ -16,8 +16,6 @@ import (
 // Edit represents the bottle edit action.
 type Edit struct {
 	*Action
-
-	Write WriteBottleOptions
 }
 
 // Run runs the bottle edit action.
@@ -54,9 +52,7 @@ func (action *Edit) Run(ctx context.Context, out io.Writer) error {
 			return fmt.Errorf("error loading temporary data bottle configuration for editing: %w", err)
 		}
 
-		validationErr := checkBottle(ctx, bottlePath, editFile)
-
-		if validationErr == nil {
+		if validationErr := checkBottle(ctx, bottlePath, editFile); validationErr == nil {
 			keepEditing = false
 			// Replace the config file with the updated copy (os.Rename automatically source file)
 			log.InfoContext(ctx, "Edits made were valid")
@@ -65,8 +61,7 @@ func (action *Edit) Run(ctx context.Context, out io.Writer) error {
 			}
 			log.InfoContext(ctx, "Edits were saved to disk")
 
-		} else if validationErr != nil {
-
+		} else {
 			if _, err := fmt.Fprintln(out, validationErr.Error()); err != nil {
 				return err
 			}

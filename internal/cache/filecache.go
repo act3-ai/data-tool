@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -345,7 +346,7 @@ func (bc *BottleFileCache) RemoveMote(dgst digest.Digest) error {
 
 // Prune removes bottle items until the total size of the cache is less than or
 // equal to maxSize.
-func (bc *BottleFileCache) Prune(maxSize int64) error {
+func (bc *BottleFileCache) Prune(ctx context.Context, maxSize int64) error {
 	// TODO: cached files are now stored in the digest algorithm subdirectories.  The below code should be adjusted to
 	// consider all existing algorithm subdirs instead of just sha256
 	algPath := filepath.Join(bc.localPath, "sha256")
@@ -366,6 +367,9 @@ func (bc *BottleFileCache) Prune(maxSize int64) error {
 		return err
 	}
 	for _, info := range infos {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		if strings.HasSuffix(info.Name(), ".boltdb") {
 			nonCacheSize += info.Size()
 			continue

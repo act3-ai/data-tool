@@ -23,7 +23,6 @@ type Sign struct {
 	UserIdentity string
 	KeyID        string
 
-	Write       WriteBottleOptions
 	NoDeprecate bool // Don't deprecate existing bottle when committing.
 }
 
@@ -42,7 +41,7 @@ func (action *Sign) Run(ctx context.Context, keyAlias string) error {
 	}
 
 	// commit creates a bottle manifest handler
-	if err := commit(ctx, cfg, bottle, action.Write.BottleIDFile, action.NoDeprecate); err != nil {
+	if err := commit(ctx, cfg, bottle, action.NoDeprecate); err != nil {
 		return err
 	}
 

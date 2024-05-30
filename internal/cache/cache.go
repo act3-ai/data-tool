@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"context"
 	"errors"
 	"io"
 
@@ -79,7 +80,7 @@ type MoteCache interface {
 	RemoveMote(dgst digest.Digest) error
 
 	// Prune removes cached items until the size is less than or equal to maxSize
-	Prune(maxSize int64) error
+	Prune(ctx context.Context, maxSize int64) error
 }
 
 // Mote is a representation of a single item in a cache, an abstraction that may

@@ -165,8 +165,8 @@ func Test_Functional_CommitWriteBottleID(t *testing.T) {
 	// set the bottle dir for all other commands to use when running
 	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
 	helper.CommandHelper.RunCommand("init")
-	bottleIDFile := filepath.Join(t.TempDir(), "bottleID")
-	helper.CommandHelper.RunCommand("commit", "--write-bottle-id", bottleIDFile)
+	bottleIDFile := filepath.Join(helper.BottleHelper.RootDir, ".dt", "bottleid")
+	helper.CommandHelper.RunCommand("commit")
 	helper.RequirePartNum(4)
 
 	helper.BottleHelper.Load()

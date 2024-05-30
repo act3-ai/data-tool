@@ -12,24 +12,21 @@ import (
 
 // SaveExtraBottleInfo saves the bottle ID and config JSON and the pull command used
 // This data is never read by ace-dt and is only saved as a convenience to the user.
-func SaveExtraBottleInfo(ctx context.Context, btl *Bottle, additionalBottleIDFile string) error {
+func SaveExtraBottleInfo(ctx context.Context, btl *Bottle) error {
 	log := logger.FromContext(ctx)
-	if additionalBottleIDFile != "" {
-		logger.V(log, 1).InfoContext(ctx, "Saving additional bottle ID to file", "path", additionalBottleIDFile)
-		if err := os.WriteFile(additionalBottleIDFile, []byte(btl.GetBottleID()), 0o666); err != nil {
-			return fmt.Errorf("unable to save additional bottleID file: %w", err)
-		}
-	}
-	// this must always write to the .dt/bottleid and optionally write to additionalBottleIDFile
 
+	// this must always write to the .dt/bottleid
+	log.InfoContext(ctx, "saving bottleID")
 	if err := SaveBottleID(btl); err != nil {
 		return err
 	}
 
+	log.InfoContext(ctx, "savingg bottle config")
 	if err := SaveBottleConfig(btl); err != nil {
 		return err
 	}
 
+	log.InfoContext(ctx, "saving bottle manifest")
 	if err := SaveBottleManifest(btl); err != nil {
 		return err
 	}

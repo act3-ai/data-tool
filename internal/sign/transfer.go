@@ -12,7 +12,6 @@ import (
 	notationreg "github.com/notaryproject/notation-go/registry"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2"
 	content "oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
 
@@ -24,7 +23,7 @@ import (
 
 // Pull copies all signatures referring to the subject descriptor from source to btlPath.
 // Safe to call if no signatures exist.
-func Pull(ctx context.Context, btlPath string, source oras.GraphTarget, subject ocispec.Descriptor) error {
+func Pull(ctx context.Context, btlPath string, source content.ReadOnlyGraphStorage, subject ocispec.Descriptor) error {
 	log := logger.FromContext(ctx)
 
 	log.InfoContext(ctx, "Discovering Bottle Signatures")
@@ -63,7 +62,7 @@ func Pull(ctx context.Context, btlPath string, source oras.GraphTarget, subject 
 }
 
 // fetchNotarySig fetches all contents of a notary signature manifest.
-func fetchNotarySig(ctx context.Context, source oras.GraphTarget, manifestDesc ocispec.Descriptor) (SigsManifestHandler, error) {
+func fetchNotarySig(ctx context.Context, source content.ReadOnlyGraphStorage, manifestDesc ocispec.Descriptor) (SigsManifestHandler, error) {
 	// fetch the manifest itself
 	rawManifest, err := content.FetchAll(ctx, source, manifestDesc)
 	if err != nil {

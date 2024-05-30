@@ -2,6 +2,10 @@
 package actions
 
 import (
+	"fmt"
+
+	"oras.land/oras-go/v2/registry/remote/credentials"
+
 	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
 )
 
@@ -13,9 +17,15 @@ type DataTool struct {
 
 // NewTool creates a new tool action.
 func NewTool(version string) *DataTool {
+	storeOpts := credentials.StoreOptions{}
+	credStore, err := credentials.NewStoreFromDocker(storeOpts)
+	if err != nil {
+		panic(fmt.Sprintf("failed to get credential store: %s", err))
+	}
+
 	return &DataTool{
 		version: version,
-		Config:  conf.NewConfiguration("ace-dt/+" + version),
+		Config:  conf.New(conf.WithCredentialStore(credStore)),
 	}
 }
 

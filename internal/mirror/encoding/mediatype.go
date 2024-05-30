@@ -31,3 +31,8 @@ func IsImage(mt string) bool {
 func IsManifest(mt string) bool {
 	return IsImage(mt) || IsIndex(mt)
 }
+
+// IsOCICompliant returns true if the manifest is of an official OCI media type (i.e., not docker).
+func IsOCICompliant(mt string) bool {
+	return mt == ocispec.MediaTypeImageManifest || mt == ocispec.MediaTypeImageIndex
+}

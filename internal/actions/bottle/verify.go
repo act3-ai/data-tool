@@ -19,7 +19,6 @@ type Verify struct {
 	*Action
 
 	// DigestAlg   string
-	Write     WriteBottleOptions
 	Telemetry actions.TelemetryOptions
 }
 

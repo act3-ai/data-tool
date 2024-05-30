@@ -88,7 +88,7 @@ func (lbi *LayerBlobInfo) GetSources(ctx context.Context, bic BIC) map[digest.Di
 // RecordLayerSource adds the layer described by desc to the local blob info cache, with the provided srcRef as the
 // known source location.  The desc should describe the manifest-level layer (eg, possibly compressed/encrypted).
 func RecordLayerSource(ctx context.Context, bic BIC, desc ocispec.Descriptor, srcRef ref.Ref) {
-	refStr := srcRef.URL()
+	refStr := srcRef.StringWithScheme()
 	srcTransport := TransportFromImageName(refStr)
 	// TODO do we really want to do this?
 	if bic != nil {

@@ -38,7 +38,7 @@ func (action *Gather) Run(ctx context.Context, sourceFile string, dest string) e
 		action.ExtraAnnotations = make(map[string]string)
 	}
 
-	destTarget, err := action.Config.ConfigureRepository(ctx, dest)
+	destTarget, err := action.Config.Repository(ctx, dest)
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func (action *Gather) Run(ctx context.Context, sourceFile string, dest string) e
 		IndexFallback:  action.IndexFallback,
 		DestReference:  destTarget.Reference,
 		Recursive:      action.Recursive,
-		RepoFunc:       action.Config.ConfigureRepository,
+		RepoFunc:       action.Config.Repository,
 	}
 
 	// run the gather function

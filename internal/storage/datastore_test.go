@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"io"
 	"sync"
 	"testing"
@@ -59,8 +60,8 @@ func (m mockMoteCache) CommitMote(ref string, mote cache.Mote, commitMode int) e
 func (m mockMoteCache) CreateMote(dgst digest.Digest, mediaType string, size int64) (cache.Mote, error) {
 	return testMote, nil
 }
-func (m mockMoteCache) RemoveMote(dgst digest.Digest) error { return nil }
-func (m mockMoteCache) Prune(maxSize int64) error           { return nil }
+func (m mockMoteCache) RemoveMote(dgst digest.Digest) error            { return nil }
+func (m mockMoteCache) Prune(ctx context.Context, maxSize int64) error { return nil }
 
 type mockCacheProvider struct{}
 

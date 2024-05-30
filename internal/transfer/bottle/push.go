@@ -18,19 +18,17 @@ import (
 	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
 	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
-	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
-
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // PushBottle copies a bottle to a remote location via oras.ExtendedCopyGraph. ReferrerOptions are used
 // to include refferers of the bottle in the copy.
-func PushBottle(ctx context.Context, btl *bottle.Bottle, tOpts tbottle.TransferConfig, rOpts ...ReferrerOption) error {
+func PushBottle(ctx context.Context, btl *bottle.Bottle, store *storage.DataStore, gt reg.GraphTargeter, reference string, pushCfg PushOptions, rOpts ...ReferrerOption) error {
 	log := logger.FromContext(ctx)
-	store := storage.NewDataStore(btl)
 
 	// prepare referrers
 	log.InfoContext(ctx, "preparing bottle referrers")
+	rOpts = append(rOpts, withSignatures()) // always push with signatures
 	for _, o := range rOpts {
 		if err := o(ctx, btl, store); err != nil {
 			return fmt.Errorf("preparing bottle referrers: %w", err)
@@ -39,11 +37,11 @@ func PushBottle(ctx context.Context, btl *bottle.Bottle, tOpts tbottle.TransferC
 
 	// prep bottle, parts should have already been prepped via commit
 	log.InfoContext(ctx, "preparing bottle metadata")
-	if err := addBottleMetadataToStore(ctx, btl, store); err != nil {
+	if err := AddBottleMetadataToStore(ctx, btl, store); err != nil {
 		return fmt.Errorf("preparing bottle metadata: %w", err)
 	}
 
-	destRef, err := ref.FromString(tOpts.Reference)
+	destRef, err := ref.FromString(reference)
 	if err != nil {
 		return fmt.Errorf("parsing destination repository reference: %w", err)
 	}
@@ -51,13 +49,13 @@ func PushBottle(ctx context.Context, btl *bottle.Bottle, tOpts tbottle.TransferC
 	// copy bottle
 	extCopyOpts := oras.ExtendedCopyGraphOptions{
 		CopyGraphOptions: oras.CopyGraphOptions{
-			Concurrency: tOpts.Concurrency,
-			PreCopy:     prePush(btl, store, destRef, tOpts.NewGraphTargetFn), // cross-registry virtual part handling
-			MountFrom:   pushMountFrom(btl, destRef),                          // cross-repo virtual part mounting (same registry)
+			Concurrency: pushCfg.Concurrency,              // TODO: this should be a method, which already exists, but we're in a different pkg
+			PreCopy:     prePush(btl, store, destRef, gt), // cross-registry virtual part handling
+			MountFrom:   pushMountFrom(btl, destRef),      // cross-repo virtual part mounting (same registry)
 		},
 	}
 
-	repo, err := tOpts.NewGraphTargetFn(ctx, destRef.String())
+	repo, err := gt.GraphTarget(ctx, destRef.String())
 	if err != nil {
 		return fmt.Errorf("creating repository reference: %w", err)
 	}
@@ -79,8 +77,8 @@ func PushBottle(ctx context.Context, btl *bottle.Bottle, tOpts tbottle.TransferC
 // ReferrerOption prepares a bottle's referrers for transfer via oras.ExtendedCopyGraph.
 type ReferrerOption func(ctx context.Context, btl *bottle.Bottle, store *storage.DataStore) error
 
-// WithSignatures prepares a bottle's signatures for transfer via oras.ExtendedCopyGraph.
-func WithSignatures() ReferrerOption {
+// withSignatures prepares a bottle's signatures for transfer via oras.ExtendedCopyGraph.
+func withSignatures() ReferrerOption {
 	return func(ctx context.Context, btl *bottle.Bottle, store *storage.DataStore) error {
 		manDesc := btl.Manifest.GetManifestDescriptor()
 		if err := sigcustom.PrepareSigsGraph(ctx, btl.GetPath(), store, manDesc); err != nil {
@@ -90,24 +88,24 @@ func WithSignatures() ReferrerOption {
 	}
 }
 
-// addBottleMetadataToStore adds config and manifest data to the DataStore as loose files for oras to find.  Another
+// AddBottleMetadataToStore adds config and manifest data to the DataStore as loose files for oras to find.  Another
 // option would be to cache these.
-func addBottleMetadataToStore(ctx context.Context, btl *bottle.Bottle, store *storage.DataStore) error {
+func AddBottleMetadataToStore(ctx context.Context, btl *bottle.Bottle, store *storage.DataStore) error {
 	manData, err := btl.Manifest.GetManifestRaw()
 	if err != nil {
-		return fmt.Errorf("bottle manifest not configured before push")
+		return fmt.Errorf("bottle manifest not configured before push: %w", err)
 	}
 	cfgData, err := btl.GetConfiguration()
 	if err != nil {
-		return fmt.Errorf("bottle manifest not configured before push")
+		return fmt.Errorf("bottle manifest not configured before push: %w", err)
 	}
 	_, err = store.AddLooseData(ctx, bytes.NewReader(manData), btl.Manifest.GetManifestDescriptor().MediaType, nil)
 	if err != nil {
-		return fmt.Errorf("unable to add manifest data to data store")
+		return fmt.Errorf("unable to add manifest data to data store: %w", err)
 	}
 	_, err = store.AddLooseData(ctx, bytes.NewReader(cfgData), mediatype.MediaTypeBottleConfig, nil)
 	if err != nil {
-		return fmt.Errorf("unable to add manifest data to data store")
+		return fmt.Errorf("unable to add manifest data to data store: %w", err)
 	}
 	return nil
 }
@@ -123,17 +121,13 @@ func pushMountFrom(btl *bottle.Bottle, dest ref.Ref) func(ctx context.Context, d
 		log := logger.FromContext(ctx).With("digest", desc.Digest)
 
 		bicSources := cache.LocateLayer(ctx, btl.BIC(), desc, dest, true)
-		if !mediatype.IsLayer(desc.MediaType) || (btl.VirtualPartTracker == nil && len(bicSources) < 1) {
+		if !mediatype.IsLayer(desc.MediaType) && len(bicSources) < 1 {
 			// no sources available for cross-repo mounting
 			return []string{}, nil
 		}
 
-		// sources ∪ bicSources
-		vptSources := btl.VirtualPartTracker.Sources(desc.Digest, dest)
-		sources := dedupSources(vptSources, bicSources)
-
 		validSources := make([]string, 0)
-		for _, source := range sources {
+		for _, source := range bicSources {
 			if !dest.Match(source, ref.RefMatchReg) {
 				// virtual part is from another registry and should be handled by PreCopy func
 				log.DebugContext(ctx, "virtual part identified in another registry", "source", source.String())
@@ -154,17 +148,16 @@ func pushMountFrom(btl *bottle.Bottle, dest ref.Ref) func(ctx context.Context, d
 
 // prePush returns and oras.CopyGraphOptions PreCopy func. It first attempts to locate
 // the part in the cache. On a cache hit, it resumes the basic copy (from the cache). On a cache miss,
-// it instead attempts to copy the part from its known source locations resolved with the bottle's
-// VirtualPartTracker.
+// it instead attempts to copy the part from its known source locations resolved with the blob info cache.
 //
 // PreCopy handles the current descriptor before it is copied. PreCopy can
 // return a SkipNode to signal that desc should be skipped when it already
 // exists in the target.
-func prePush(btl *bottle.Bottle, cacheStorage *storage.DataStore, dest ref.Ref, newRepoFn reg.NewGraphTargetFn) func(ctx context.Context, desc ocispec.Descriptor) error {
+func prePush(btl *bottle.Bottle, cacheStorage *storage.DataStore, dest ref.Ref, gt reg.GraphTargeter) func(ctx context.Context, desc ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
 		log := logger.FromContext(ctx).With("digest", desc.Digest)
 
-		if btl.VirtualPartTracker == nil || !mediatype.IsLayer(desc.MediaType) {
+		if !mediatype.IsLayer(desc.MediaType) {
 			return nil
 		}
 
@@ -181,26 +174,25 @@ func prePush(btl *bottle.Bottle, cacheStorage *storage.DataStore, dest ref.Ref, 
 		}
 
 		// sources ∪ bicSources
-		vptSources := btl.VirtualPartTracker.Sources(desc.Digest, dest)
-		bicSources := cache.LocateLayer(ctx, btl.BIC(), desc, dest, true)
-		sources := dedupSources(vptSources, bicSources)
+		bicSources := cache.LocateLayer(ctx, btl.BIC(), desc, dest, false)
 
 		errs := make([]error, 0)
-		for _, source := range sources { // sources is always of length 1, but let's be safe incase this changes
+		for _, source := range bicSources { // sources is always of length 1, but let's be safe incase this changes
 			if dest.Match(source, ref.RefMatchReg) {
 				// virtual part is from the same registry, and should have already been handled by the MountFrom func
 				continue
 			}
+			src := source.String()
 			// ensure we've attempted to copy from another registry at least once
-			log.DebugContext(ctx, "attempting cross-registry copy of virtual part", "source", source)
+			log.DebugContext(ctx, "attempting cross-registry copy of virtual part", "source", src)
 
 			// connect to source & dest
-			srcRepo, err := newRepoFn(ctx, source.String())
+			srcRepo, err := gt.GraphTarget(ctx, src)
 			if err != nil {
-				errs = append(errs, fmt.Errorf("configuring source repository '%s': %w", source.String(), err))
+				errs = append(errs, fmt.Errorf("configuring source repository '%s': %w", src, err))
 				continue
 			}
-			destRepo, err := newRepoFn(ctx, dest.String())
+			destRepo, err := gt.GraphTarget(ctx, dest.RepoString())
 			if err != nil {
 				// should be impossible, as the calling fn has already successfully connected to the desintation
 				return fmt.Errorf("configuring destination repository: %w", err)
@@ -209,7 +201,7 @@ func prePush(btl *bottle.Bottle, cacheStorage *storage.DataStore, dest ref.Ref, 
 			// copy from source to dest
 			rc, err := srcRepo.Fetch(ctx, desc)
 			if err != nil {
-				errs = append(errs, fmt.Errorf("fetching part from source '%s': %w", source.String(), err))
+				errs = append(errs, fmt.Errorf("fetching part from source '%s': %w", src, err))
 				continue
 			}
 			if err := destRepo.Push(ctx, desc, rc); err != nil {
@@ -217,38 +209,16 @@ func prePush(btl *bottle.Bottle, cacheStorage *storage.DataStore, dest ref.Ref, 
 				continue
 			}
 
-			if err := rc.Close(); err != nil {
-				errs = append(errs, fmt.Errorf("closing part fetcher: %w", err))
+			err = rc.Close()
+			if err != nil {
+				return fmt.Errorf("closing part fetcher: %w", err)
 			}
+
 			log.DebugContext(ctx, "successfully completed cross-registry copy of virtual part")
-			if len(errs) < 1 {
-				return oras.SkipNode
-			}
+			return oras.SkipNode
+
 		}
 
-		if len(errs) > 0 {
-			return errors.Join(errs...)
-		}
-
-		return nil
+		return errors.Join(errs...)
 	}
-}
-
-// dedupSources takes the union of two sets of source references. It deduplicates
-// the set while ensuring sources within the primary set take precedence.
-func dedupSources(primary, secondary []ref.Ref) []ref.Ref {
-	result := make([]ref.Ref, 0, len(primary)+len(secondary))
-	result = append(result, primary...) // primary takes precedence
-
-	dedup := make(map[string]struct{}, len(primary))
-	for _, src := range primary {
-		dedup[src.String()] = struct{}{}
-	}
-	for _, src := range secondary {
-		if _, exists := dedup[src.String()]; !exists {
-			result = append(result, src)
-		}
-	}
-
-	return result
 }

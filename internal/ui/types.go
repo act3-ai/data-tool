@@ -51,7 +51,7 @@ func newRootTask(log *slog.Logger, updates chan<- event) *Task {
 // This is a transient informational message.
 func (tsk *Task) Info(a ...any) {
 	msg := fmt.Sprint(a...)
-	tsk.log.Info("Informational", "message", msg) //nolint:sloglint
+	tsk.log.Info("Informational", "message", msg)
 	if tsk.updates != nil {
 		tsk.updates <- &infoUpdate{
 			eventBase: eventBase{time.Now(), tsk.name},
@@ -72,7 +72,7 @@ func (tsk *Task) Infof(format string, args ...any) {
 // This is a "prefix" for all information in this task.
 // You must call Complete() when done with the work in this Task.
 func (tsk *Task) SubTask(name string) *Task {
-	tsk.log.Info("Creating child task", "name", name) //nolint:sloglint
+	tsk.log.Info("Creating child task", "name", name)
 
 	// we need new memory for the slice since we reuse tsk.name
 	newName := make([]string, len(tsk.name)+1)
@@ -96,7 +96,7 @@ func (tsk *Task) SubTask(name string) *Task {
 // SubTaskWithProgress creates a task supporting progress.
 // You must call Complete() on the progress when finished.
 func (tsk *Task) SubTaskWithProgress(name string) *Progress {
-	tsk.log.Info("Creating child task with progress", "name", name) //nolint:sloglint
+	tsk.log.Info("Creating child task with progress", "name", name)
 	newTask := tsk.SubTask(name)
 	if tsk.updates != nil {
 		tsk.updates <- &progressUpdate{
@@ -109,7 +109,7 @@ func (tsk *Task) SubTaskWithProgress(name string) *Progress {
 
 // Complete the task.  Must be called exactly once.
 func (tsk *Task) Complete() {
-	tsk.log.Info("Completed") //nolint:sloglint
+	tsk.log.Info("Completed")
 	if tsk.updates != nil {
 		tsk.updates <- &taskUpdate{
 			eventBase: eventBase{time.Now(), tsk.name},

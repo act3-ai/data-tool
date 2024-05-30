@@ -32,7 +32,7 @@ type PushDir struct {
 
 // Run performs the pushdir operation.
 func (action *PushDir) Run(ctx context.Context, dir, ref string) error {
-	repo, err := action.Config.ConfigureRepository(ctx, ref)
+	repo, err := action.Config.Repository(ctx, ref)
 	if err != nil {
 		return err
 	}

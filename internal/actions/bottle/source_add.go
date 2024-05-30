@@ -9,8 +9,8 @@ import (
 
 	latest "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-	tbtl "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
-
+	telem "gitlab.com/act3-ai/asce/data/tool/pkg/telemetry"
+	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
@@ -49,21 +49,36 @@ func (action *SourceAdd) Run(ctx context.Context, srcName, srcURI string, out io
 		}
 		srcURI = "bottle:" + bottleID.String()
 	} else if action.ReferenceForURI {
-		log.InfoContext(ctx, "bottle reference found for URI, requesting bottleID")
 
-		// build transfer options
-		opts := []tbtl.TransferOption{
-			tbtl.WithNoParts(),
+		// if the reference follows the bottle scheme, then resolving with telemetry is not necessary as we should
+		// be able to directly add the source. However, we resolve it anyways as if telemetry cannot find it, adding
+		// the source doesn't achieve anything; perhaps an indication of telemetry data loss or an invalid bottle source reference
+		cfg := action.Config.Get(ctx)
+		telemAdapt := telem.NewAdapter(cfg.Telemetry, cfg.TelemetryUserName)
+
+		log.InfoContext(ctx, "resolving reference with telemetry", "ref", srcURI)
+		transferOpts := tbottle.TransferOptions{
+			Concurrency: cfg.ConcurrentHTTP,
+			CachePath:   cfg.CachePath,
+		}
+		src, desc, _, err := telemAdapt.ResolveWithTelemetry(ctx, srcURI, action.Config, transferOpts)
+		if err != nil {
+			return fmt.Errorf("resolving bottle reference: %w", err)
 		}
 
-		transferCfg := tbtl.NewTransferConfig(ctx, srcURI, action.Dir, action.Config, opts...)
-
-		cfgBytes, _, err := tbtl.FetchBottleMetadata(ctx, *transferCfg)
+		pullOpts := tbottle.PullOptions{
+			PartSelectorOptions: tbottle.PartSelectorOptions{
+				Empty: true,
+			},
+		}
+		cfgBytes, _, err := tbottle.FetchBottleMetadata(ctx, src, desc, pullOpts)
 		if err != nil {
 			return fmt.Errorf("fetching bottleID from registry reference: %w", err)
 		}
+		// we don't notify telemetry, in favor of notifying on push
 
 		srcURI = "bottle:" + digest.FromBytes(cfgBytes).String()
+
 	}
 
 	// Create source info

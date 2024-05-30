@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
 )
 
 // TestHelper is a struct that contains helpers to make it easier to design functional tests.
@@ -51,13 +51,15 @@ func (h *TestHelper) CheckRegForBottle(regRef string, expectedDigest digest.Dige
 	ctx := h.getContext()
 	rcfg := h.GetConfig().RegistryConfig
 
-	rt := reg.NewRemoteTargeter(&rcfg, "ace-dt/0.0.0")
-	target, err := rt.NewRemoteTarget(ctx, regRef)
+	c := conf.New()
+	c.AddConfigOverride(conf.WithRegistryConfig(rcfg))
+
+	gt, err := c.Repository(ctx, regRef)
 	if err != nil {
 		return fmt.Errorf("creating repository %q: %w", regRef, err)
 	}
 
-	desc, err := target.Resolve(ctx, regRef)
+	desc, err := gt.Resolve(ctx, regRef)
 	if err != nil {
 		return fmt.Errorf("resolving bottle reference: %w", err)
 	}

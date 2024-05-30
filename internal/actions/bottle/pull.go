@@ -2,12 +2,14 @@ package bottle
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	tbtl "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
+	telem "gitlab.com/act3-ai/asce/data/tool/pkg/telemetry"
+	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
@@ -15,11 +17,8 @@ import (
 type Pull struct {
 	*Action
 
-	Write        WriteBottleOptions
 	Telemetry    actions.TelemetryOptions
 	PartSelector bottle.PartSelectorOptions
-
-	CheckBottleID string // bottle id in string format (e.g. sha256:abcdef01234...). If not empty, this value is checked against an incoming bottle to ensure they match.
 }
 
 // Run runs the bottle pull action.
@@ -27,26 +26,36 @@ func (action *Pull) Run(ctx context.Context, bottleRef string) error {
 	log := logger.FromContext(ctx)
 	rootUI := ui.FromContextOrNoop(ctx)
 
-	// build transfer options
-	opts := []tbtl.TransferOption{
-		tbtl.WithBottleIDFile(action.Write.BottleIDFile),
+	cfg := action.Config.Get(ctx)
+	telemAdapt := telem.NewAdapter(cfg.Telemetry, cfg.TelemetryUserName)
+
+	log.InfoContext(ctx, "resolving reference with telemetry", "ref", bottleRef)
+	transferOpts := tbottle.TransferOptions{
+		Concurrency: cfg.ConcurrentHTTP,
+		CachePath:   cfg.CachePath,
 	}
-
-	// part selection options
-	if action.PartSelector.Empty {
-		opts = append(opts, tbtl.WithNoParts())
-	} else {
-		opts = append(opts, tbtl.WithPartSelection(action.PartSelector.Selectors,
-			action.PartSelector.Parts,
-			action.PartSelector.Artifacts))
-	}
-
-	transferCfg := tbtl.NewTransferConfig(ctx, bottleRef, action.Dir, action.Config, opts...)
-
-	log.InfoContext(ctx, "pulling with telemetry", "reference", bottleRef, "pullPath", action.Dir)
-	telemURLs, err := tbtl.Pull(ctx, *transferCfg)
+	src, desc, event, err := telemAdapt.ResolveWithTelemetry(ctx, bottleRef, action.Config, transferOpts)
 	if err != nil {
-		return err
+		return fmt.Errorf("resolving bottle reference: %w", err)
+	}
+
+	log.InfoContext(ctx, "pulling bottle", "reference", bottleRef, "pullPath", action.Dir)
+	pullOpts := tbottle.PullOptions{
+		TransferOptions: tbottle.TransferOptions{
+			Concurrency: cfg.ConcurrentHTTP,
+			CachePath:   cfg.CachePath,
+		},
+		PartSelectorOptions: action.PartSelector,
+	}
+	err = tbottle.Pull(ctx, src, desc, action.Dir, pullOpts)
+	if err != nil {
+		return fmt.Errorf("pulling bottle: %w", err)
+	}
+
+	log.InfoContext(ctx, "notifying telemetry")
+	telemURLs, err := telemAdapt.NotifyTelemetry(ctx, src, desc, action.Dir, event)
+	if err != nil {
+		return fmt.Errorf("notifying telemetry: %w", err)
 	}
 
 	rootUI.Info(formatBottleURLs(telemURLs))

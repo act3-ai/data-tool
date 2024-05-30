@@ -10,7 +10,6 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/flag"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/oci"
-
 	"gitlab.com/act3-ai/asce/go-common/pkg/redact"
 
 	"github.com/spf13/cobra"
@@ -47,9 +46,6 @@ where <digest> is often of the form sha256:<sha256 digest, lower case hex encode
 		},
 	}
 
-	cmd.Flags().StringVar(&action.CheckBottleID, "check-bottle-id", "", "Supply a bottle id (eg. sha256:abcdef...) to have ace-dt verify the bottle configuration contents after pull")
-
-	WriteBottleIDFlags(cmd.Flags(), &action.Write)
 	PartSelectorFlags(cmd.Flags(), &action.PartSelector)
 	flag.TelemetryURLFlags(cmd.Flags(), &action.Telemetry)
 	ui.AddOptionsFlags(cmd.Flags(), &uiOptions)

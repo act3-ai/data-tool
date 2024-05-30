@@ -61,7 +61,7 @@ func (action *Archive) Run(ctx context.Context, sourceFile, destFile, reference 
 		IndexFallback:  action.IndexFallback,
 		DestReference:  registry.Reference{Reference: reference},
 		Recursive:      action.Recursive,
-		RepoFunc:       action.Config.ConfigureRepository,
+		RepoFunc:       action.Config.Repository,
 	}
 
 	// run the gather function
@@ -75,7 +75,7 @@ func (action *Archive) Run(ctx context.Context, sourceFile, destFile, reference 
 		ExistingCheckpoints: action.ExistingCheckpoints,
 		ExistingImages:      existingImages,
 		Recursive:           action.Recursive,
-		RepoFunc:            action.Config.ConfigureRepository,
+		RepoFunc:            action.Config.Repository,
 		SourceRepo:          store,
 		SourceReference:     reference,
 	}

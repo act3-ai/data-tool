@@ -1,4 +1,4 @@
-FROM reg.gitlab.com/act3-ai/asce/data/tool/ace-dt as acedt
+FROM reg.git.act3-ace.com/ace/data/tool/ace-dt as acedt
 
 FROM docker.io/library/ubuntu as base
 

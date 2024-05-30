@@ -1,7 +1,6 @@
 package sign
 
 import (
-	"bytes"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -97,21 +96,11 @@ func (l *notarySigLayer) GetPayload() ([]byte, error) {
 
 // GetPayloadBase64 returns the payload, base64 encoded. GetPayloadBase64 implements Signature.
 func (l *notarySigLayer) GetPayloadBase64() (string, error) {
-	buf := new(bytes.Buffer)
-	encoder := base64.NewEncoder(base64.StdEncoding, buf)
-	if _, err := encoder.Write(l.payload); err != nil {
-		return "", fmt.Errorf("encoding payload: %w", err)
-	}
-	if err := encoder.Close(); err != nil {
-		return "", fmt.Errorf("closing encoder: %w", err)
-	}
-
-	result, err := io.ReadAll(buf)
+	payload, err := l.GetPayload()
 	if err != nil {
-		return "", fmt.Errorf("reading encoded result: %w", err)
+		return "", fmt.Errorf("getting payload: %w", err)
 	}
-
-	return string(result), err
+	return base64.StdEncoding.EncodeToString(payload), nil
 }
 
 // GetKeyRetrieverForPayload calls the correct KeyRetriever constructor determined by the signature's mediatype.
