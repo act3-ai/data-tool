@@ -158,6 +158,19 @@ func promptForMoreEdit(out io.Writer) int {
 // and filePath is an optional path to a yaml file containing bottle configuration data.  If the filePath is empty, the
 // default entry.yaml file within the bottlePath is used.
 func checkBottle(ctx context.Context, bottlePath string, filePath string) error {
+	if filePath != "" {
+		btl, err := bottle.NewReadOnlyBottle()
+		// currently this cannot return an error, but check anyway to avoid surprises in the future
+		if err != nil {
+			return err
+		}
+		err = btl.ConfigureFromFile(filePath)
+		if err != nil {
+			return err
+		}
+		return btl.Definition.ValidateWithContext(ctx)
+	}
+
 	btl, err := bottle.LoadBottle(bottlePath,
 		bottle.DisableDestinationCreate(true),
 		bottle.DisableCache(true),

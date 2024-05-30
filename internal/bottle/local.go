@@ -155,25 +155,38 @@ func (btl *Bottle) updateDefinitionParts() {
 	}
 }
 
+// ConfigureFromFile reads bottle configuration from the filename provided. This is the entry.yaml file containing
+// metadata, but NOT including part data.  For a complete bottle, the parts.json file should be loaded as well (such as
+// with WithLocalPartFile(partFileName)(btl) ).
+func (btl *Bottle) ConfigureFromFile(filePath string) error {
+	data, err := os.ReadFile(filePath)
+	if errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("bottle configuration file not found (Has the bottle been initialized?): %w", err)
+	}
+	if err != nil {
+		return fmt.Errorf("error reading bottle config file: %w", err)
+	}
+
+	err = btl.Configure(data)
+	if err != nil {
+		return err
+	}
+
+	// HACK we invalidate the configuration because the data we are passing in is not the config (it is YAML and missing the part information after all)
+	btl.invalidateConfiguration()
+
+	return nil
+}
+
 // fromFile defines a source for a bottle definition to be
 // the provided file path.
 func fromFile(path string) BOption {
 	return func(btl *Bottle) error {
 		btl.localPath = path
-		data, err := os.ReadFile(EntryFile(path))
-		if errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("bottle configuration file not found (Has the bottle been initialized?): %w", err)
-		}
-		if err != nil {
-			return fmt.Errorf("error reading bottle config file: %w", err)
-		}
-
-		err = btl.Configure(data)
+		err := btl.ConfigureFromFile(EntryFile(path))
 		if err != nil {
 			return err
 		}
-		// HACK we invalidate the configuration because the data we are passing in is not the config (it is YAML and missing the part information after all)
-		btl.invalidateConfiguration()
 
 		// load the local parts data from the parts file (if it exists)
 		return WithLocalPartFile(partsFile(path))(btl)
