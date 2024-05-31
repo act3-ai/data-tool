@@ -359,7 +359,7 @@ func (pp prettyPrinter) printImageIndex(ctx context.Context, fetcher content.Fet
 		sum += n
 	}
 
-	return sum, pp.nest(prefixLastInfo).printSummary(sum, desc)
+	return sum, pp.nest(prefixLastInfo).printSummary(sum)
 }
 
 // printImageManifest prints the image manifest and its parts.
@@ -427,7 +427,7 @@ func (pp prettyPrinter) printImageManifest(ctx context.Context, fetcher content.
 		sum += n
 	}
 
-	return sum, pp.nest(prefixLastInfo).printSummary(sum, desc)
+	return sum, pp.nest(prefixLastInfo).printSummary(sum)
 }
 
 func (pp prettyPrinter) printDescriptor(itemName string, desc ocispec.Descriptor) error {
@@ -477,7 +477,7 @@ func (pp prettyPrinter) printHeader(name string, annotations map[string]string) 
 	return err
 }
 
-func (pp prettyPrinter) printSummary(sum int64, desc ocispec.Descriptor) error {
+func (pp prettyPrinter) printSummary(sum int64) error {
 	_, err := fmt.Fprintf(pp.out, "%s%s total\n", pp.prefix, Bytes(sum))
 	return err
 }
