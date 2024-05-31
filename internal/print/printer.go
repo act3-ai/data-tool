@@ -463,7 +463,7 @@ func (pp prettyPrinter) printDescriptor(itemName string, desc ocispec.Descriptor
 		annos = formatAnnotations(desc.Annotations)
 	}
 
-	_, err := fmt.Fprintf(pp.out, "%s%s⟶[%6s] %s%s%s %s %s\n", pp.prefix, itemName, size, formatMediaType(desc.MediaType), artifactType, platform, dgst, annos)
+	_, err := fmt.Fprintf(pp.out, "%s%s[%6s] %s%s%s %s %s\n", pp.prefix, itemName, size, formatMediaType(desc.MediaType), artifactType, platform, dgst, annos)
 	return err
 }
 
