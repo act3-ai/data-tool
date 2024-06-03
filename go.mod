@@ -15,8 +15,8 @@ require (
 	github.com/gosuri/uitable v0.0.4
 	github.com/klauspost/compress v1.17.8
 	github.com/kopoli/go-terminal-size v0.0.0-20170219200355-5c97524c8b54
-	github.com/notaryproject/notation-core-go v1.0.2
-	github.com/notaryproject/notation-go v1.1.0
+	github.com/notaryproject/notation-core-go v1.0.3
+	github.com/notaryproject/notation-go v1.1.1
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/sourcegraph/conc v0.3.0
@@ -48,12 +48,13 @@ require (
 	github.com/docker/docker v26.0.0+incompatible // indirect
 	github.com/fxamacker/cbor/v2 v2.6.0 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.5 // indirect
-	github.com/go-ldap/ldap/v3 v3.4.6 // indirect
+	github.com/go-ldap/ldap/v3 v3.4.8 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20240419095408-642f0ee99ae2 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/neilotoole/slogt v1.1.0 // indirect
+	github.com/notaryproject/notation-plugin-framework-go v1.0.0 // indirect
 	github.com/veraison/go-cose v1.1.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
