@@ -29,20 +29,20 @@ Data Tool is designed to help researchers and AI/ML practitioners:
 
 The documentation for ACE Data Tool is organized as follows:
 
-- **[Quick Start Guide](docs/quick-start-guide.md)**: provides documentation for downloading, installing, and configuring Data Tool
-- **[User Guide](docs/user-guide.md)**: provides an overview of Data Tool, introduces new users to key concepts, and explains basic usage
-- **[Bottle Creator Guide](docs/bottle-creator-guide.md)**: documents the process and known best practices for creating high quality bottles
-- **[Mirror User Guide](docs/mirror-user-guide.md)**: documents specific considerations and known best practices for using Data Tool's mirror features
-- **[Labels and Selectors Guide](docs/labels.md)**: provides an overview of the relationship between labels created in ACE Data Tool and selectors used in ACE Telemetry Server to build queries and locate data bottles
+- **[Quick Start Guide](docs/get-started/quick-start-guide.md)**: provides documentation for downloading, installing, and configuring Data Tool
+- **[User Guide](docs/usage/user-guide.md)**: provides an overview of Data Tool, introduces new users to key concepts, and explains basic usage
+- **[Bottle Creator Guide](docs/usage/concepts/bottle-creator.md)**: documents the process and known best practices for creating high quality bottles
+- **[Mirror User Guide](docs/usage/concepts/mirror.md)**: documents specific considerations and known best practices for using Data Tool's mirror features
+- **[Labels and Selectors Guide](docs/usage/concepts/labels-selectors.md)**: provides an overview of the relationship between labels created in ACE Data Tool and selectors used in ACE Telemetry Server to build queries and locate data bottles
 
 ## How to Contribute
 
-See the **[Developer Guide](docs/developer-guide.md)** for contributing code to the ACE Data Tool repository.
+See the **[Developer Guide](docs/contribute/developer-guide.md)** for contributing code to the ACE Data Tool repository.
 
 ## Support
 
-- **[Mattermost channel](https://chat.git.act3-ace.com/act3/channels/act3-pt)**: create a post in the ACT3 Data Tool channel for assistance
-- **[FAQ](docs/faq.md)**: see the frequently asked (and answered) questions for ACE Data Tool
+- **[Mattermost channel](https://chat.git.act3-ace.com/act3/channels/ace-dt)**: create a post in the ACT3 Data Tool channel for assistance
+- **[FAQ](docs/support/faq.md)**: see the frequently asked (and answered) questions for ACE Data Tool
 <!-- TODO reactivate when functional - **[Create a GitLab issue by email](mailto:incoming+ace-data-tool-238-cpdx5kax2g659873veqpf97dt-issue@mail.act3-ace.com)** -->
 
 ---
