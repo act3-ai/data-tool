@@ -1,3 +1,11 @@
+git.act3-ace.com/ace/data/schema v1.2.13 h1:F6u7KCF1WFrkO1zQuCA4PiYzIh6kamfX9XYnRxJQgWk=
+git.act3-ace.com/ace/data/schema v1.2.13/go.mod h1:6GJ5yd02my+Fx+TGfkgHDDKcC3ueMsSB0Et+FvKHbq4=
+git.act3-ace.com/ace/data/telemetry v0.20.0 h1:RUkU02311tyCbqwU0P0YnNBTcNtXgTbHOKX7STqcsAw=
+git.act3-ace.com/ace/data/telemetry v0.20.0/go.mod h1:WLPVSOMDew5EvuX8C9gfU256ZIfdk7FzZvkksfYAW+Q=
+git.act3-ace.com/ace/data/telemetry v0.20.1 h1:+urTPf+6cnyg7ccJQblUEjDsGfOcnTS+hc6hqPkvu+I=
+git.act3-ace.com/ace/data/telemetry v0.20.1/go.mod h1:WLPVSOMDew5EvuX8C9gfU256ZIfdk7FzZvkksfYAW+Q=
+git.act3-ace.com/ace/go-common v0.0.0-20240319120227-e77a013aa92d h1:ou5/uM7NF6YEfArm3wnCMfZri6+lHYDjogKJNNTrfvs=
+git.act3-ace.com/ace/go-common v0.0.0-20240319120227-e77a013aa92d/go.mod h1:gVgXMJokXq/GAmW07OdzNDQvKHCiYnBvk0+seOBadHs=
 github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 h1:mFRzDkZVAjdal+s7s0MwaRv9igoPqLRdzOLzw/8Xvq8=
 github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358/go.mod h1:chxPXzSsl7ZWRAuOIE23GDNzjWuZquvFlgA8xmpunjU=
 github.com/MakeNowJust/heredoc/v2 v2.0.1 h1:rlCHh70XXXv7toz95ajQWOWQnN4WNLt0TdpZYIR/J6A=
@@ -222,12 +230,6 @@ github.com/xeipuuv/gojsonschema v1.2.0/go.mod h1:anYRn/JVcOK2ZgGU+IjEV4nwlhoK5sQ
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.2.1/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
-gitlab.com/act3-ai/asce/data/schema v0.0.0-20240515135820-820f65b6a194 h1:KdLC/s9IvPh1m3sp8i4EXKerqnXD5Zf56KuUg38bCb4=
-gitlab.com/act3-ai/asce/data/schema v0.0.0-20240515135820-820f65b6a194/go.mod h1:7PuqJLHO3uKgqSnxqD4kyEdwHY2TBIpTNN8TQMIZI1c=
-gitlab.com/act3-ai/asce/data/telemetry v0.0.0-20240515140402-4210a3159060 h1:rzauEwJIbCdOK2W7pL6VPXxTRXogOuRPTOOUjWdCz7Y=
-gitlab.com/act3-ai/asce/data/telemetry v0.0.0-20240515140402-4210a3159060/go.mod h1:O8ZrsKkIDMCWjbbfDSKyImWOSy7FwsZ07G+lAW5Oxds=
-gitlab.com/act3-ai/asce/go-common v0.0.0-20240515134838-75dff81e3d47 h1:krrjg5MtriP457uBFHBBmd+X34rZH9ELreyswJ4OZUA=
-gitlab.com/act3-ai/asce/go-common v0.0.0-20240515134838-75dff81e3d47/go.mod h1:LDmEwGP6Hfxv0IiSa5IvHhSyUCW1vryI7qSniKB09IA=
 go.etcd.io/bbolt v1.3.10 h1:+BqfJTcCzTItrop8mq/lbzL8wSGtj94UO/3U31shqG0=
 go.etcd.io/bbolt v1.3.10/go.mod h1:bK3UQLPJZly7IlNmV7uVHJDxfe5aK9Ll93e/74Y9oEQ=
 go.uber.org/multierr v1.11.0 h1:blXXJkSxSSfBVBlC76pxqeO+LN3aDfLQo+309xJstO0=

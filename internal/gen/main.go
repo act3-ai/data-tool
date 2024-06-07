@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
+	"git.act3-ace.com/ace/go-common/pkg/genschema"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis"
-	"gitlab.com/act3-ai/asce/go-common/pkg/genschema"
 )
 
 func main() {

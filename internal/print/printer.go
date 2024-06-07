@@ -16,7 +16,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
+	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
 	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/descriptor"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"

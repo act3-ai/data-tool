@@ -7,7 +7,7 @@ import (
 
 	"oras.land/oras-go/v2/registry/remote/credentials"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 // Logout represents the logout action.

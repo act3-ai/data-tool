@@ -12,7 +12,7 @@ import (
 	oras "oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 // Helper assists in pushing to or fetching from an OCI compliant registry.

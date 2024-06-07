@@ -21,12 +21,12 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 
+	"git.act3-ace.com/ace/go-common/pkg/ioutil"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
 	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
 	"gitlab.com/act3-ai/asce/data/tool/internal/print"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	"gitlab.com/act3-ai/asce/go-common/pkg/ioutil"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // DeserializeOptions specify the requirements to run the mirror deserialize command.

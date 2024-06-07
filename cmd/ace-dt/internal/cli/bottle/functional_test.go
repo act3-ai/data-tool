@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
+	"git.act3-ace.com/ace/go-common/pkg/fsutil"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/functesting"
-	"gitlab.com/act3-ai/asce/go-common/pkg/fsutil"
 
 	"github.com/opencontainers/go-digest"
 	"github.com/spf13/cobra"

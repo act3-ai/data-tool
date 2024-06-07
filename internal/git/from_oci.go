@@ -13,11 +13,11 @@ import (
 	oras "oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/errdef"
 
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/git/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
 	"gitlab.com/act3-ai/asce/data/tool/internal/git/oci"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // FromOCI represents an OCI to git sync action.

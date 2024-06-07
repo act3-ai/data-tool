@@ -11,7 +11,7 @@ import (
 	"os"
 	"strings"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 // TarToStream archives a list of files

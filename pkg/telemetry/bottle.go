@@ -19,16 +19,16 @@ import (
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/errdef"
 
-	latest "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
-	telemv1alpha1 "gitlab.com/act3-ai/asce/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
-	"gitlab.com/act3-ai/asce/data/telemetry/pkg/client"
-	"gitlab.com/act3-ai/asce/data/telemetry/pkg/types"
+	latest "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
+	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
+	telemv1alpha1 "git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	"git.act3-ace.com/ace/data/telemetry/pkg/client"
+	"git.act3-ace.com/ace/data/telemetry/pkg/types"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
 	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // ErrTelemetrySend indicates that a telemetry send event was not properly

@@ -12,7 +12,7 @@ import (
 
 	"github.com/notaryproject/notation-go/verifier/truststore"
 
-	telemsig "gitlab.com/act3-ai/asce/data/telemetry/pkg/signature"
+	telemsig "git.act3-ace.com/ace/data/telemetry/pkg/signature"
 )
 
 // PublicKeyProvider returns a PublicKey associated with a digital signature.

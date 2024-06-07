@@ -12,14 +12,14 @@ import (
 
 	"github.com/opencontainers/go-digest"
 
-	latest "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
+	latest "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
+	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
 	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // partStatuses is a collection of file entry lists that organize them into various

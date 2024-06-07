@@ -16,7 +16,7 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
+	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -24,9 +24,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 
-	bottle "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io"
-	cfgdef "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
-	sutil "gitlab.com/act3-ai/asce/data/schema/pkg/util"
+	bottle "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io"
+	cfgdef "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
+	sutil "git.act3-ace.com/ace/data/schema/pkg/util"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
 	"gitlab.com/act3-ai/asce/data/tool/internal/cache"

@@ -20,7 +20,7 @@ import (
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
+	"git.act3-ace.com/ace/data/schema/pkg/selectors"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"

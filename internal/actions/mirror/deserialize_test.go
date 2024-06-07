@@ -26,11 +26,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"oras.land/oras-go/v2/content/oci"
 
+	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"git.act3-ace.com/ace/go-common/pkg/test"
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
 	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
 	"gitlab.com/act3-ai/asce/data/tool/internal/print"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
-	"gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 func TestDeserialize(t *testing.T) {

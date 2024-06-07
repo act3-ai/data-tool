@@ -10,7 +10,8 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
+	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
@@ -19,7 +20,6 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Resolve uses the source ReadOnlyGraphTargeter to resolve an OCI reference to a manifest descriptor.

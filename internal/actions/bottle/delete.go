@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 // Delete represents the bottle delete action.

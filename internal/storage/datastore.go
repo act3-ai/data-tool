@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	orascontent "oras.land/oras-go/v2/content"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
+	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
 	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
 	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"

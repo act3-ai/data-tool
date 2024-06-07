@@ -5,7 +5,7 @@
 package v1alpha1
 
 import (
-	config_telemetry_act3_ace_iov1alpha1 "gitlab.com/act3-ai/asce/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	config_telemetry_act3_ace_iov1alpha1 "git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 

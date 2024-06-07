@@ -6,9 +6,9 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Gather represents the mirror gather action.

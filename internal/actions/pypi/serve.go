@@ -7,8 +7,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/httputil"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"git.act3-ace.com/ace/go-common/pkg/httputil"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 // Serve is the action for starting the server.

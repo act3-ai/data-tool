@@ -12,7 +12,7 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
 
-	"gitlab.com/act3-ai/asce/data/telemetry/pkg/types"
+	"git.act3-ace.com/ace/data/telemetry/pkg/types"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
 )

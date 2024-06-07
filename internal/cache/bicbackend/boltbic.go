@@ -10,7 +10,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	bolt "go.etcd.io/bbolt"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 // BoltCache creates a BoltDB backed blob info cache. Note the BIC isn't opened until read/write operations.

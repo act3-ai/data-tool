@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/util"
+	"git.act3-ace.com/ace/data/schema/pkg/util"
 )
 
 // ErrNonPortablePath is used to denote a filename/path that contains invalid characters.

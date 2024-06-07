@@ -9,7 +9,7 @@ import (
 
 	"github.com/djherbis/atime"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/fsutil"
+	"git.act3-ace.com/ace/go-common/pkg/fsutil"
 )
 
 // DirSize returns the size of a directory.

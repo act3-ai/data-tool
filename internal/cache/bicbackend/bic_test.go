@@ -7,8 +7,8 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
-	"gitlab.com/act3-ai/asce/go-common/pkg/test"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"git.act3-ace.com/ace/go-common/pkg/test"
 )
 
 const (

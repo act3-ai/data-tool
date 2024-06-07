@@ -17,7 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
-	v1 "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
+	v1 "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
 )
 

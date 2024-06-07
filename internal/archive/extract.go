@@ -9,7 +9,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 func makeTarReadPipestream(path string) (PipeReader, error) {

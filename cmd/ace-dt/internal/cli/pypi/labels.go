@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
+	"git.act3-ace.com/ace/data/schema/pkg/selectors"
 	"gitlab.com/act3-ai/asce/data/tool/internal/python"
 )
 

@@ -21,9 +21,9 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/memory"
 
+	"git.act3-ace.com/ace/go-common/pkg/logger"
+	tlog "git.act3-ace.com/ace/go-common/pkg/test"
 	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
-	tlog "gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 // lfsTest is an extension of test to aid in validating git lfs files.

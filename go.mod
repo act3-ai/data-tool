@@ -3,6 +3,9 @@ module gitlab.com/act3-ai/asce/data/tool
 go 1.22.2
 
 require (
+	git.act3-ace.com/ace/data/schema v1.2.13
+	git.act3-ace.com/ace/data/telemetry v0.20.1
+	git.act3-ace.com/ace/go-common v0.0.0-20240319120227-e77a013aa92d
 	github.com/Masterminds/sprig/v3 v3.2.3
 	github.com/adrg/xdg v0.4.0
 	github.com/dustin/go-humanize v1.0.1
@@ -19,9 +22,6 @@ require (
 	github.com/sourcegraph/conc v0.3.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/pflag v1.0.5
-	gitlab.com/act3-ai/asce/data/schema v0.0.0-20240515135820-820f65b6a194
-	gitlab.com/act3-ai/asce/data/telemetry v0.0.0-20240515140402-4210a3159060
-	gitlab.com/act3-ai/asce/go-common v0.0.0-20240515134838-75dff81e3d47
 	go.etcd.io/bbolt v1.3.10
 	golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842
 	golang.org/x/net v0.25.0

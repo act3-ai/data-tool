@@ -14,7 +14,7 @@ ace-dt bottle commit 2> >(jq -j -f log.jq)
 
 ### Style Guidelines: Logging Best Practices
 
-The Data team uses `gitlab.com/act3-ai/asce/go-common/pkg/logger`, which uses [slog](https://pkg.go.dev/log/slog) internally.
+The Data team uses `git.act3-ace.com/ace/go-common/pkg/logger`, which uses [slog](https://pkg.go.dev/log/slog) internally.
 
 - Logs should be JSONL formatted but other formats can be supported. They are not meant to be consumed by a user but rather by a developer or operator.
 - The logging system is not part of the UX.
@@ -40,7 +40,7 @@ Example 1:
 import (
    "context"
 
-   "gitlab.com/act3-ai/asce/go-common/pkg/logger"
+   "git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 func DoWork(ctx context.Context, a string) error {
@@ -56,7 +56,7 @@ Example 2:
 import (
    "context"
 
-   "gitlab.com/act3-ai/asce/go-common/pkg/logger"
+   "git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 func DoWork(ctx context.Context) error {

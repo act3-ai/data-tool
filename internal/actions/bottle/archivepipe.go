@@ -12,12 +12,12 @@ import (
 	"strings"
 	"sync"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 
 	"github.com/opencontainers/go-digest"
 	"golang.org/x/sync/errgroup"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
+	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
 	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/cache"

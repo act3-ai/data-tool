@@ -12,9 +12,9 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/registry"
 
+	"git.act3-ace.com/ace/go-common/pkg/httputil"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/python"
-	"gitlab.com/act3-ai/asce/go-common/pkg/httputil"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 func (a *App) handleAbout(w http.ResponseWriter, r *http.Request) error {

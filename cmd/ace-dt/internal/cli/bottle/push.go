@@ -9,12 +9,12 @@ import (
 
 	"github.com/spf13/cobra"
 
-	telemv1alpha1 "gitlab.com/act3-ai/asce/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	telemv1alpha1 "git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	"git.act3-ace.com/ace/go-common/pkg/redact"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/flag"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
 	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"gitlab.com/act3-ai/asce/go-common/pkg/redact"
 )
 
 // pushCmd represents the push command.

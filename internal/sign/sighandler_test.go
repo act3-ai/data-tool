@@ -12,9 +12,9 @@ import (
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
-	tlog "gitlab.com/act3-ai/asce/go-common/pkg/test"
+	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
+	tlog "git.act3-ace.com/ace/go-common/pkg/test"
 )
 
 // TODO: We'll likely have to update the bottle's signature if we change

@@ -8,7 +8,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	"k8s.io/utils/set"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 // locationKey only exists to make lookup in knownLocations easier.

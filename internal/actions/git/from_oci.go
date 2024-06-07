@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/git"
 	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // FromOCI represents the git rebuild action.

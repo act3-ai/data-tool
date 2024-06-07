@@ -13,8 +13,8 @@ import (
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/errdef"
 
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // PushDir represents the oci pushdir action.
