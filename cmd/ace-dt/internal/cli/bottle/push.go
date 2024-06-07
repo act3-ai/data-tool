@@ -66,8 +66,9 @@ by passing the --no-deprecate flag.`,
 To push the bottle TESTSET to the registry REGISTRY/REPO/NAME:TAG:
 	ace-dt bottle push REGISTRY/REPO/NAME:TAG -d ./TESTSET
 
-To add a telemetry server, and send metadata after the push, first use ace-dt config:
-	ace-dt config --telemetry.url host.url.com
+To add a telemetry server, and send metadata after the push, set the telemetry URL and username (see ace-dt config --help):
+	export ACE_DT_TELEMETRY_URL=http://127.0.0.1:8100
+	export ACE_DT_TELEMETRY_USERNAME=exampleuser
 Then push like normal:
 	ace-dt bottle push REGISTRY/REPO/NAME:TAG -d ./TESTSET
 
