@@ -1,7 +1,5 @@
 git.act3-ace.com/ace/data/schema v1.2.13 h1:F6u7KCF1WFrkO1zQuCA4PiYzIh6kamfX9XYnRxJQgWk=
 git.act3-ace.com/ace/data/schema v1.2.13/go.mod h1:6GJ5yd02my+Fx+TGfkgHDDKcC3ueMsSB0Et+FvKHbq4=
-git.act3-ace.com/ace/data/telemetry v0.20.0 h1:RUkU02311tyCbqwU0P0YnNBTcNtXgTbHOKX7STqcsAw=
-git.act3-ace.com/ace/data/telemetry v0.20.0/go.mod h1:WLPVSOMDew5EvuX8C9gfU256ZIfdk7FzZvkksfYAW+Q=
 git.act3-ace.com/ace/data/telemetry v0.20.1 h1:+urTPf+6cnyg7ccJQblUEjDsGfOcnTS+hc6hqPkvu+I=
 git.act3-ace.com/ace/data/telemetry v0.20.1/go.mod h1:WLPVSOMDew5EvuX8C9gfU256ZIfdk7FzZvkksfYAW+Q=
 git.act3-ace.com/ace/go-common v0.0.0-20240319120227-e77a013aa92d h1:ou5/uM7NF6YEfArm3wnCMfZri6+lHYDjogKJNNTrfvs=
@@ -91,8 +89,6 @@ github.com/gorilla/schema v1.3.0 h1:rbciOzXAx3IB8stEFnfTwO3sYa6EWlQk79XdyustPDA=
 github.com/gorilla/schema v1.3.0/go.mod h1:Dg5SSm5PV60mhF2NFaTV1xuYYj8tV8NOPRo4FggUMnM=
 github.com/gosuri/uitable v0.0.4 h1:IG2xLKRvErL3uhY6e1BylFzG+aJiwQviDDTfOKeKTpY=
 github.com/gosuri/uitable v0.0.4/go.mod h1:tKR86bXuXPZazfOTG1FIzvjIdXzd0mo4Vtn16vt0PJo=
-github.com/hashicorp/go-version v1.6.0 h1:feTTfFNnjP967rlCxM/I9g701jU+RN74YKx2mOkIeek=
-github.com/hashicorp/go-version v1.6.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09ZGVZPK5anwXA=
 github.com/hashicorp/go-version v1.7.0 h1:5tqGy27NaOTB8yJKUZELlFAS/LTKJkrmONwQKeRZfjY=
 github.com/hashicorp/go-version v1.7.0/go.mod h1:fltr4n8CU8Ke44wwGCBoEymUuxUHl09ZGVZPK5anwXA=
 github.com/huandu/xstrings v1.3.3/go.mod h1:y5/lhBue+AyNmUVz9RLU9xbLR0o4KIIExikq4ovT0aE=
