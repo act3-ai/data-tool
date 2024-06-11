@@ -112,7 +112,7 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 	return createRegistryRepository(ctx, cachedReg, parsedRef)
 }
 
-// if a nil TLS is passed, return a client with a logging transport (if ACE_DT_HTTP_LOG is set) wrapped in a retry transport.
+// if a nil TLS is passed, return a client with a logging transport wrapped in a retry transport.
 // if a TLS config exists, search for TLS certs and append to client.
 func newHTTPClientWithOps(cfg *v1alpha1.TLS, hostName, customCertPath string) (*http.Client, error) {
 	transport := http.DefaultTransport
