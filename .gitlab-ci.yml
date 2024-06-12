@@ -11,7 +11,7 @@ include:
 
 renovate:
   variables:
-    RENOVATE_ASSIGNEES: "cgrund"
+    RENOVATE_ASSIGNEES: "njoslin"
 
 project tool blueprint lint:
   rules:
