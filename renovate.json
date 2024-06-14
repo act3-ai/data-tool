@@ -1,6 +1,6 @@
 {
   "assignees": [
-    "cgrund"
+    "njoslin"
   ],
   "ignorePaths": ["**/testdata/**"]
 }
