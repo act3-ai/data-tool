@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"strconv"
 	"sync"
 
 	"github.com/dustin/go-humanize"
 	"golang.org/x/sync/errgroup"
 
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 	security "gitlab.com/act3-ai/asce/data/tool/internal/security"
 )
 
@@ -76,12 +78,15 @@ type Artifact struct {
 // Run executes the security scan Run() action.
 func (action *Scan) Run(ctx context.Context, out io.Writer) error {
 	cfg := action.Config.Get(ctx)
+	log := logger.FromContext(ctx)
 
 	// iterate through artifactDetails in sourceFile or in a gathered object!
 	artifactDetails, err := security.ResolveScanReferences(ctx, action.SourceFile, action.GatherArtifactReference, action.Config.Repository, cfg.ConcurrentHTTP, action.DryRun)
 	if err != nil {
 		return err
 	}
+	noArtifacts := strconv.Itoa(len(artifactDetails))
+	log.InfoContext(ctx, "Resolved references", noArtifacts, "")
 
 	results, err := scanArtifacts(ctx, artifactDetails, cfg.ConcurrentHTTP)
 	if err != nil {
@@ -163,7 +168,7 @@ func calculateResults(results *Results) (*ArtifactScanResults, error) {
 }
 
 func scanArtifacts(ctx context.Context, artifactDetails []security.ArtifactDetails, concurrentHTTP int) ([]*ArtifactScanResults, error) {
-	g, _ := errgroup.WithContext(ctx)
+	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrentHTTP)
 	scanned := ScanningResults{
 		results: []*ArtifactScanResults{},
@@ -173,8 +178,10 @@ func scanArtifacts(ctx context.Context, artifactDetails []security.ArtifactDetai
 		g.Go(func() error {
 			var res *Results
 			reference := formatReference(detail)
+			log := logger.FromContext(ctx)
 			// if an SBOM exists, grype that instead, need to pull the blob though
 			if len(detail.SBOM) != 0 {
+				log.InfoContext(ctx, "SBOM digest for reference", reference, detail.SBOMDigest)
 				for _, v := range detail.SBOM {
 					var results *Results
 					results, err := grypeSBOM(ctx, v)
@@ -190,7 +197,8 @@ func scanArtifacts(ctx context.Context, artifactDetails []security.ArtifactDetai
 					}
 				}
 			} else {
-				results, err := grypeReference(ctx, reference)
+				log.InfoContext(ctx, "Scanning by reference", reference, detail.Source.Name)
+				results, err := grypeReference(ctx, detail.Source.Name)
 				if err != nil {
 					return err
 				}

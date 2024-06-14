@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/opencontainers/image-spec/specs-go"
+	notationreg "github.com/notaryproject/notation-go/registry"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2"
@@ -27,10 +27,8 @@ import (
 )
 
 const (
-	// ArtifactTypeNotarySignature represents the typical artifact type returned from notary signature artifacts.
-	ArtifactTypeNotarySignature = "application/vnd.cncf.notary.signature"
-	// MediaTypeSBOM represents a custom SBOM media type for ace artifacts.
-	MediaTypeSBOM = "application/vnd.act3-ace.sbom.v1+json"
+	// ArtifactTypeSPDX is the standard artifact type for SPDX formatted SBOMs.
+	ArtifactTypeSPDX = "application/spdx+json"
 )
 
 // ArtifactDetails contains all of the details needed for a given artifact.
@@ -246,9 +244,10 @@ func formatPlatformString(platform *ocispec.Platform) string {
 func (ad *ArtifactDetails) handlePredecessors(ctx context.Context, dryRun bool) error {
 	var hasSBOM bool
 	for _, p := range ad.Predecessors {
-		if p.ArtifactType == ArtifactTypeNotarySignature {
+		switch p.ArtifactType {
+		case notationreg.ArtifactTypeNotation:
 			ad.SignatureDigest = p.Digest.String()
-		} else {
+		case ArtifactTypeSPDX:
 			// try and extract sbom
 			_, manifestBytesSBOM, err := oras.FetchBytes(ctx, ad.repository, p.Digest.String(), oras.DefaultFetchBytesOptions)
 			if err != nil {
@@ -266,7 +265,8 @@ func (ad *ArtifactDetails) handlePredecessors(ctx context.Context, dryRun bool) 
 				ad.SBOM[l.Digest.String()] = b
 				hasSBOM = true
 			}
-
+		default:
+			continue
 		}
 	}
 	// if there is no SBOM present and it is not a dry run, generate and upload SBOM for the artifact
@@ -284,6 +284,7 @@ func (ad *ArtifactDetails) handlePredecessors(ctx context.Context, dryRun bool) 
 // GenerateSBOM will generate and attach an SBOM for a given artifact.
 // Returns the digest of the SBOM and the bytes or an error.
 func GenerateSBOM(ctx context.Context, reference string, repository oras.GraphTarget) (string, []byte, error) {
+
 	// fetch the main descriptor
 	desc, err := repository.Resolve(ctx, reference)
 	if err != nil {
@@ -291,11 +292,13 @@ func GenerateSBOM(ctx context.Context, reference string, repository oras.GraphTa
 	}
 
 	// exec out to syft to generate the SBOM
-	cmd := exec.CommandContext(ctx, "syft", "scan", reference, "-o", "syft-json")
+	log.InfoContext(ctx, "creating sbom", "reference", reference)
+	cmd := exec.CommandContext(ctx, "syft", "scan", reference, "-o", "spdx-json")
 	res, err := cmd.CombinedOutput()
 	if err != nil {
 		return "", nil, fmt.Errorf("error executing command: %s\n %w\n output: %s", cmd, err, string(res))
 	}
+	log.InfoContext(ctx, "SBOM created", "reference", reference, "SBOM Bytes", len(res))
 
 	// Upload the SBOM... create a manifest and encode SBOM into a layer.
 	// The SBOM manifest Subject field must point to the digest of the main reference passed.
@@ -304,61 +307,30 @@ func GenerateSBOM(ctx context.Context, reference string, repository oras.GraphTa
 		return "", nil, fmt.Errorf("pushing SBOM: %w", err)
 	}
 
-	// create an empty config and push it
+	// create an empty config and marshal it
 	config := ocispec.ImageConfig{}
 	cfg, err := json.Marshal(config)
 	if err != nil {
 		return "", nil, fmt.Errorf("marshalling empty config: %w", err)
 	}
+
+	// push the empty config
 	descCfg, err := oras.PushBytes(ctx, repository, ocispec.MediaTypeEmptyJSON, cfg)
 	if err != nil {
 		return "", nil, fmt.Errorf("pushing empty config: %w", err)
 	}
 
-	// create the SBOM manifest
-	manifest := ocispec.Manifest{
-		Versioned: specs.Versioned{
-			SchemaVersion: 2,
-		},
-		MediaType: ocispec.MediaTypeImageManifest,
-		Config:    descCfg,
-		Layers:    []ocispec.Descriptor{descSBOM},
-		Subject:   &desc,
+	packOpts := oras.PackManifestOptions{
+		Subject:          &desc,
+		Layers:           []ocispec.Descriptor{descSBOM},
+		ConfigDescriptor: &descCfg,
 	}
 
-	man, err := json.Marshal(manifest)
-	if err != nil {
-		return "", nil, fmt.Errorf("marshalling the SBOM manifest: %w", err)
-	}
-
-	// push the SBOM to the repository
-	_, err = oras.PushBytes(ctx, repository, ocispec.MediaTypeImageManifest, man)
+	log.InfoContext(ctx, "pushing SBOM", "reference", reference)
+	_, err = oras.PackManifest(ctx, repository, oras.PackManifestVersion1_1, ArtifactTypeSPDX, packOpts)
 	if err != nil {
 		return "", nil, fmt.Errorf("pushing SBOM manifest: %w", err)
 	}
-
+	log.InfoContext(ctx, "successfully pushed SBOM", "reference", reference)
 	return descSBOM.Digest.String(), res, nil
 }
-
-// TODO: add tag support?
-// get all tags
-// err = repo.Tags(context.Background(), r.ReferenceOrDefault(), func(tags []string) error {
-
-// 	baseVersion, _ := semver.NewVersion(r.ReferenceOrDefault())
-// 	// if err != nil {
-// 	// 	// return err
-// 	// }
-// 	if len(tags) > 0 {
-// 		newVersion, _ := semver.NewVersion(tags[len(tags)-1])
-// 		// if err != nil {
-// 		// 	// return err
-// 		// }
-// 		if newVersion != nil {
-// 			fmt.Printf("New tag available for %s! Current version: %s --> Newer Version: %s\n", reference, baseVersion, newVersion)
-// 		}
-// 	}
-// 	return nil
-// })
-// if err != nil {
-// 	return err
-// }
