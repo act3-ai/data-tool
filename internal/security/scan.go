@@ -21,6 +21,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 
 	"git.act3-ace.com/ace/data/schema/pkg/selectors"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
@@ -29,6 +30,8 @@ import (
 const (
 	// ArtifactTypeSPDX is the standard artifact type for SPDX formatted SBOMs.
 	ArtifactTypeSPDX = "application/spdx+json"
+	// ArtifactTypeHarborSBOM is the artifact type given to SBOMs generated via the Harbor UI.
+	ArtifactTypeHarborSBOM = "application/vnd.goharbor.harbor.sbom.v1"
 )
 
 // ArtifactDetails contains all of the details needed for a given artifact.
@@ -271,66 +274,119 @@ func (ad *ArtifactDetails) handlePredecessors(ctx context.Context, dryRun bool) 
 	}
 	// if there is no SBOM present and it is not a dry run, generate and upload SBOM for the artifact
 	if !hasSBOM && !dryRun {
-		digestSBOM, b, err := GenerateSBOM(ctx, ad.Source.Name, ad.repository)
+		sboms, err := GenerateSBOM(ctx, ad.Source.Name, ad.repository)
 		if err != nil {
 			return fmt.Errorf("error uploading SBOM for reference %s: %w", ad.Source.Name, err)
 		}
-		ad.SBOM[digestSBOM] = b
-		ad.SBOMDigest = digestSBOM
+		for k, v := range sboms {
+			ad.SBOM[k] = v
+		}
 	}
 	return nil
 }
 
 // GenerateSBOM will generate and attach an SBOM for a given artifact.
 // Returns the digest of the SBOM and the bytes or an error.
-func GenerateSBOM(ctx context.Context, reference string, repository oras.GraphTarget) (string, []byte, error) {
-
+func GenerateSBOM(ctx context.Context, reference string, repository oras.GraphTarget) (map[string][]byte, error) {
+	sboms := make(map[string][]byte)
+	log := logger.FromContext(ctx)
 	// fetch the main descriptor
 	desc, err := repository.Resolve(ctx, reference)
 	if err != nil {
-		return "", nil, fmt.Errorf("error resolving descriptor for %s: %w", reference, err)
+		return nil, fmt.Errorf("error resolving descriptor for %s: %w", reference, err)
 	}
 
-	// exec out to syft to generate the SBOM
-	log.InfoContext(ctx, "creating sbom", "reference", reference)
-	cmd := exec.CommandContext(ctx, "syft", "scan", reference, "-o", "spdx-json")
-	res, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", nil, fmt.Errorf("error executing command: %s\n %w\n output: %s", cmd, err, string(res))
-	}
-	log.InfoContext(ctx, "SBOM created", "reference", reference, "SBOM Bytes", len(res))
-
-	// Upload the SBOM... create a manifest and encode SBOM into a layer.
-	// The SBOM manifest Subject field must point to the digest of the main reference passed.
-	descSBOM, err := oras.PushBytes(ctx, repository, ocispec.MediaTypeImageLayer, res)
-	if err != nil {
-		return "", nil, fmt.Errorf("pushing SBOM: %w", err)
-	}
-
+	// TODO does an empty blob exist? If so we can skip this entirely.
 	// create an empty config and marshal it
 	config := ocispec.ImageConfig{}
 	cfg, err := json.Marshal(config)
 	if err != nil {
-		return "", nil, fmt.Errorf("marshalling empty config: %w", err)
+		return nil, fmt.Errorf("marshalling empty config: %w", err)
 	}
 
 	// push the empty config
 	descCfg, err := oras.PushBytes(ctx, repository, ocispec.MediaTypeEmptyJSON, cfg)
 	if err != nil {
-		return "", nil, fmt.Errorf("pushing empty config: %w", err)
+		return nil, fmt.Errorf("pushing empty config: %w", err)
 	}
 
-	packOpts := oras.PackManifestOptions{
-		Subject:          &desc,
-		Layers:           []ocispec.Descriptor{descSBOM},
-		ConfigDescriptor: &descCfg,
-	}
+	if encoding.IsIndex(desc.MediaType) {
+		var idx ocispec.Index
+		b, err := content.FetchAll(ctx, repository, desc)
+		if err != nil {
+			return nil, fmt.Errorf("fetching index: %w", err)
+		}
+		if err := json.Unmarshal(b, &idx); err != nil {
+			return nil, fmt.Errorf("decoding index: %w", err)
+		}
+		parsedRef, err := registry.ParseReference(reference)
+		if err != nil {
+			return nil, fmt.Errorf("parsing index reference: %w", err)
+		}
+		// get the manifests
+		for _, man := range idx.Manifests {
+			if man.ArtifactType == notationreg.ArtifactTypeNotation || man.ArtifactType == ArtifactTypeSPDX || man.ArtifactType == "application/vnd.in-toto+json" {
+				continue
+			}
+			refMan := registry.Reference{
+				Registry:   parsedRef.Registry,
+				Repository: parsedRef.Repository,
+				Reference:  man.Digest.String(),
+			}
 
-	log.InfoContext(ctx, "pushing SBOM", "reference", reference)
-	_, err = oras.PackManifest(ctx, repository, oras.PackManifestVersion1_1, ArtifactTypeSPDX, packOpts)
+			entry, err := GenerateSBOM(ctx, refMan.String(), repository)
+			if err != nil {
+				// ignore the error for now but log it out
+				// TODO: handle this better- usually fails on in-toto signature manifests and bottles, find a way to filter without having to download and interate through those manifests.
+				log.ErrorContext(ctx, "failed SBOM generation", "reference", refMan.String())
+				return nil, nil
+			}
+			for k, v := range entry {
+				sboms[k] = v
+			}
+		}
+	} else {
+		// unmarshall index, recurse manifests
+
+		// exec out to syft to generate the SBOM
+		res, err := syftReference(ctx, reference)
+		if err != nil {
+			return nil, err
+		}
+
+		// Upload the SBOM... create a manifest and encode SBOM into a layer.
+		// The SBOM manifest Subject field must point to the digest of the main reference passed.
+		descSBOM, err := oras.PushBytes(ctx, repository, ocispec.MediaTypeImageLayer, res)
+		if err != nil {
+			return nil, fmt.Errorf("pushing SBOM: %w", err)
+		}
+
+		packOpts := oras.PackManifestOptions{
+			Subject:          &desc,
+			Layers:           []ocispec.Descriptor{descSBOM},
+			ConfigDescriptor: &descCfg,
+		}
+
+		log.InfoContext(ctx, "pushing SBOM", "reference", reference)
+		_, err = oras.PackManifest(ctx, repository, oras.PackManifestVersion1_1, ArtifactTypeSPDX, packOpts)
+		if err != nil {
+			return nil, fmt.Errorf("pushing SBOM manifest: %w", err)
+		}
+		log.InfoContext(ctx, "successfully pushed SBOM", "reference", reference)
+		sboms[descSBOM.Digest.String()] = res
+	}
+	return sboms, nil
+}
+
+func syftReference(ctx context.Context, reference string) ([]byte, error) {
+	log := logger.FromContext(ctx)
+	// exec out to syft to generate the SBOM
+	log.InfoContext(ctx, "creating sbom", "reference", reference)
+	cmd := exec.CommandContext(ctx, "syft", "scan", reference, "-o", "spdx-json")
+	res, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", nil, fmt.Errorf("pushing SBOM manifest: %w", err)
+		return nil, fmt.Errorf("error executing command: %s\n %w\n output: %s", cmd, err, string(res))
 	}
-	log.InfoContext(ctx, "successfully pushed SBOM", "reference", reference)
-	return descSBOM.Digest.String(), res, nil
+	log.InfoContext(ctx, "created SBOM", "reference", reference)
+	return res, nil
 }

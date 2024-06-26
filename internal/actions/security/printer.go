@@ -29,15 +29,15 @@ func printJSON(out io.Writer, results []*ArtifactScanResults) error {
 }
 
 func printMarkdown(out io.Writer, results []*ArtifactScanResults) error {
-	xaxis := make([]string, len(results))
-	criticalCount := make([]int, len(results))
-	rows := make([]string, len(results))
 	platformMap := analyzePlatforms(results)
 	// sort artifacts by critical count
-	results = sortArtifacts(results, 10)
-	results = formatArtifactNames(results)
+	newResults := sortArtifacts(results, 10)
+	newResults = formatArtifactNames(newResults)
+	xaxis := make([]string, len(newResults))
+	criticalCount := make([]int, len(newResults))
+	rows := make([]string, len(newResults))
 
-	for i, res := range results {
+	for i, res := range newResults {
 		xaxis[i] = res.ShortenedName
 		criticalCount[i] = res.CriticalVulnCount
 		platformStringList := strings.Join(res.Platforms, ", ")

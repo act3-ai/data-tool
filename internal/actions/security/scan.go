@@ -45,7 +45,7 @@ type ArtifactScanResults struct {
 	IsSigned           bool     `json:"signed"`
 	SignatureReference string   `json:"signatureReference,omitempty"`
 	HasSBOM            bool     `json:"SBOM"`
-	SBOMReference      string   `json:"SBOMReference,omitempty"`
+	SBOMReference      []string `json:"SBOMReference,omitempty"`
 	ShortenedName      string
 }
 
@@ -167,7 +167,7 @@ func calculateResults(results *Results) (*ArtifactScanResults, error) {
 	return &securityResults, nil
 }
 
-func scanArtifacts(ctx context.Context, artifactDetails []security.ArtifactDetails, concurrentHTTP int) ([]*ArtifactScanResults, error) {
+func scanArtifacts(ctx context.Context, artifactDetails []security.ArtifactDetails, concurrentHTTP int) ([]*ArtifactScanResults, error) { //nolint:gocognit
 	g, ctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrentHTTP)
 	scanned := ScanningResults{
@@ -176,13 +176,17 @@ func scanArtifacts(ctx context.Context, artifactDetails []security.ArtifactDetai
 	}
 	for _, detail := range artifactDetails {
 		g.Go(func() error {
-			var res *Results
+			res := Results{
+				Matches: []Matches{},
+			}
 			reference := formatReference(detail)
 			log := logger.FromContext(ctx)
 			// if an SBOM exists, grype that instead, need to pull the blob though
 			if len(detail.SBOM) != 0 {
-				log.InfoContext(ctx, "SBOM digest for reference", reference, detail.SBOMDigest)
-				for _, v := range detail.SBOM {
+				// make a map for filtering out duplicates in the case of a multi-architecture index
+				m := make(map[string]Matches)
+				for d, v := range detail.SBOM {
+					log.InfoContext(ctx, "SBOM digest for reference", reference, d)
 					var results *Results
 					results, err := grypeSBOM(ctx, v)
 					if err != nil {
@@ -191,10 +195,16 @@ func scanArtifacts(ctx context.Context, artifactDetails []security.ArtifactDetai
 						if err != nil {
 							return err
 						}
-						res = r
+						res = *r
 					} else {
-						res = results
+						for _, match := range results.Matches {
+							m[match.Vulnerabilities.ID] = match
+						}
 					}
+				}
+				// once we have collected all of the vulnerability matches, we can add them to the results
+				for _, v := range m {
+					res.Matches = append(res.Matches, v)
 				}
 			} else {
 				log.InfoContext(ctx, "Scanning by reference", reference, detail.Source.Name)
@@ -202,9 +212,9 @@ func scanArtifacts(ctx context.Context, artifactDetails []security.ArtifactDetai
 				if err != nil {
 					return err
 				}
-				res = results
+				res = *results
 			}
-			partialResults, err := calculateResults(res)
+			partialResults, err := calculateResults(&res)
 			if err != nil {
 				return fmt.Errorf("counting vulnerabilities: %w", err)
 			}
@@ -221,7 +231,10 @@ func scanArtifacts(ctx context.Context, artifactDetails []security.ArtifactDetai
 
 			// add sbom and signature details
 			if len(detail.SBOM) != 0 {
-				partialResults.SBOMReference = detail.SBOMDigest
+				for d := range detail.SBOM {
+					partialResults.SBOMReference = append(partialResults.SBOMReference, d)
+				}
+
 				partialResults.HasSBOM = true
 			}
 			if partialResults.SignatureReference != "" {
