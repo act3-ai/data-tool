@@ -89,11 +89,11 @@ func (lfs *gitLFSCmd) Fetch(gitRemote string, argRevList ...string) error {
 	return err
 }
 
-// Push calls `git lfs push --all <gitRemote>`.
-func (lfs *gitLFSCmd) Push(gitRemote string, argRevList ...string) error {
-	args := []string{gitRemote}
-	args = append(args, argRevList...)
-	_, err := lfs.Run("push", args...)
+// Push calls `git lfs push <gitRemote> <args>...`.
+func (lfs *gitLFSCmd) Push(gitRemote string, args ...string) error {
+	a := []string{gitRemote}
+	a = append(a, args...)
+	_, err := lfs.Run("push", a...)
 	return err
 }
 

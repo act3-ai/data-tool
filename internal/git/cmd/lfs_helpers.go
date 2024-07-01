@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 )
@@ -16,8 +17,34 @@ const LFSObjsPath = "lfs/objects" // ignore '.git' dir as we clone with --bare
 // ResolveLFSOIDPath resolves a relative path to an lfs object: `lfs/objects/ab/bc/abcdef...`
 //
 // TODO: Do we need to support an alternative lfs objects path?
-func (c *Helper) ResolveLFSOIDPath(oid string) string {
+func ResolveLFSOIDPath(oid string) string {
 	return filepath.Join(LFSObjsPath, oid[0:2], oid[2:4], oid) // oid "abcdef" -> ab/cd/abcdef
+}
+
+// CreateFakeLFSFiles initializes placeholder LFS files with the same size as the original,
+// tricking git-lfs to believe the files already exsits, causing git-lfs to skip the transfer of those files.
+func CreateFakeLFSFiles(gitDir string, oids map[string]int64) error {
+	for obj, size := range oids {
+		oidPath := filepath.Join(gitDir, ResolveLFSOIDPath(obj))
+		if err := os.MkdirAll(filepath.Dir(oidPath), 0777); err != nil {
+			return fmt.Errorf("creating path to empty lfs obj: %w", err)
+		}
+
+		oidFile, err := os.Create(oidPath)
+		if err != nil {
+			return fmt.Errorf("creating empty lfs obj: %w", err)
+		}
+
+		_, err = oidFile.WriteAt([]byte{1}, size-1)
+		if err != nil {
+			return fmt.Errorf("writing to obj file at offset %d: %w", size-1, err)
+		}
+		if err := oidFile.Close(); err != nil {
+			return fmt.Errorf("closing obj file: %w", err)
+		}
+	}
+
+	return nil
 }
 
 // ListReachableLFSFiles lists all git lfs tracked files reachable from argRevList, returning
@@ -25,6 +52,12 @@ func (c *Helper) ResolveLFSOIDPath(oid string) string {
 //
 // TODO: This is a very expensive operation.
 func (c *Helper) ListReachableLFSFiles(argRevList ...string) ([]string, error) {
+	// none are reachable in an empty repo
+	r, err := c.ShowRefs()
+	if err != nil || len(r) < 1 { // either try to recover from error, or the repo is actually empty
+		return []string{}, nil
+	}
+
 	resolver := make(map[string]struct{}) // unlikely that we can predict how many new lfs files
 	reachable := make([]string, 0)
 

@@ -14,7 +14,7 @@ type Git interface {
 	CloneWithShared(gitRemote, reference string) error
 	Config(args ...string) error
 	Push(gitRemote string, refs ...string) error
-	Fetch(gitRemote string, args ...string) error
+	Fetch(args ...string) error
 	BundleCreate(destFile string, revList []string) error
 	ShowRefs(refs ...string) ([]string, error)
 	UpdateRef(ref string, commit string) error
@@ -22,6 +22,7 @@ type Git interface {
 	RemoteRemove(shortname string) error
 	LSRemote(args ...string) ([]string, error)
 	MergeBase(args ...string) error
+	CatFile(args ...string) error
 	Run(subCmd string, args ...string) ([]string, error)
 }
 
@@ -114,13 +115,9 @@ func (gc *gitCmd) LSRemote(args ...string) ([]string, error) {
 	return gc.Run("ls-remote", args...)
 }
 
-// Fetch calls `git fetch <gitRemote> <args>...` within the gitCmd's  directory.
-//
-// i.e. fetches from a bundle with the --tags flag, expecting a remote HEAD ref to have been set.
-func (gc *gitCmd) Fetch(gitRemote string, args ...string) error {
-	a := []string{gitRemote}
-	a = append(a, args...)
-	_, err := gc.Run("fetch", a...)
+// Fetch calls `git fetch <args>...` within the gitCmd's  directory.
+func (gc *gitCmd) Fetch(args ...string) error {
+	_, err := gc.Run("fetch", args...)
 	return err
 }
 
@@ -158,7 +155,6 @@ func (gc *gitCmd) BundleCreate(destFile string, revList []string) error {
 	args = append(args, "create", destFile)
 	args = append(args, revList...)
 	_, err := gc.Run("bundle", args...)
-
 	return err
 }
 
@@ -182,9 +178,10 @@ func (gc *gitCmd) MergeBase(args ...string) error {
 // Used for setting git config options.
 func (gc *gitCmd) Config(args ...string) error {
 	_, err := gc.Run("config", args...)
-	if err != nil {
-		return err
-	}
+	return err
+}
 
-	return nil
+func (gc *gitCmd) CatFile(args ...string) error {
+	_, err := gc.Run("cat-file", args...)
+	return err
 }

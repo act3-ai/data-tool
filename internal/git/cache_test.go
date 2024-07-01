@@ -8,17 +8,21 @@ import (
 	"path/filepath"
 	"testing"
 
+	oras "oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/memory"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	tlog "git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
 )
 
 func Test_GitCache(t *testing.T) {
 	ctx := context.Background()
-	ctx = logger.NewContext(ctx, tlog.Logger(t, -2))
+	ctx = logger.NewContext(ctx, tlog.Logger(t, 0))
 
+	// init
 	lfsSrc, lfsSrcHandler, srcServer, lfsDst, lfsDstHandler, dstServer := setupLFSServerHandlers(t, ctx)
 	defer lfsSrcHandler.cleanup() //nolint
 	defer srcServer.Close()
@@ -26,76 +30,25 @@ func Test_GitCache(t *testing.T) {
 	defer dstServer.Close()
 
 	target := memory.New() // oci target
-	toOCICache := t.TempDir()
-	fromOCICache := t.TempDir()
+	toOCICacheDir := t.TempDir()
+	fromOCICacheDir := t.TempDir()
 
 	// run LFS tests
 	for _, tt := range lfsTests {
+		// prepare ground-truth
+		gitOids, lfsOids := reachableOIDs(t, tt.t.args.argRevList, lfsSrcHandler.cmdHelper)
 
-		args := []string{"--objects"} // --objects is crucial, as this will tell us all objects that are fetched to the cache; else its just commits
-		args = append(args, tt.t.args.argRevList...)
-		reachableGitObjs, err := revList(lfsSrcHandler.cmdHelper, args...)
-		if err != nil {
-			t.Errorf("resolving reachable git objects: %v", err)
-		}
+		// run and validate ToOCI
+		t.Run(tt.t.name+":ToOCILFS-Cache", ToOCITestFn(ctx, t, lfsSrc, target, toOCICacheDir, srcServer.URL, gitOids, lfsOids, tt))
 
-		reachableLFSFiles, err := lfsSrcHandler.cmdHelper.ListReachableLFSFiles(tt.t.args.argRevList...)
-		if err != nil {
-			t.Errorf("resolving reachable lfs files: %v", err)
-		}
-
-		t.Run(tt.t.name+":ToOCILFS Cache", func(t *testing.T) {
-			syncOpts := SyncOptions{TmpDir: t.TempDir(), CacheDir: toOCICache}
-			cmdOpts := cmd.Options{LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: srcServer.URL}}
-			toOCITester, err := NewToOCI(ctx, target, tt.t.args.tag, lfsSrc, tt.t.args.argRevList, syncOpts, &cmdOpts)
-			if err != nil {
-				t.Errorf("creating ToOCI: %v", err)
-			}
-			defer toOCITester.Cleanup() //nolint
-
-			_, err = toOCITester.Run(ctx)
-			if err != nil {
-				t.Errorf("ToOCI() error = %v, wantErr %v", err, tt.t.wantErr)
-			}
-
-			if err := validateToOCICache(toOCITester.syncOpts.CacheDir, len(reachableGitObjs), len(reachableLFSFiles)); err != nil {
-				t.Errorf("resulting cache is invalid: %v", err)
-			}
-
-			if err := toOCITester.Cleanup(); err != nil {
-				t.Errorf("cleaning up toOCITester handler: %v", err)
-			}
-		})
-
-		t.Run(tt.t.name+"FromOCILFS Cache", func(t *testing.T) {
-			syncOpts := SyncOptions{TmpDir: t.TempDir(), CacheDir: fromOCICache}
-			cmdOpts := cmd.Options{LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: dstServer.URL}}
-			fromOCITester, err := NewFromOCI(ctx, target, tt.t.args.tag, lfsDst, syncOpts, &cmdOpts)
-			if err != nil {
-				t.Errorf("creating FromOCI: %v", err)
-			}
-			defer fromOCITester.Cleanup() //nolint
-
-			updatedRefs, err := fromOCITester.Run(ctx)
-			if err != nil {
-				t.Fatalf("from oci: %v", err)
-			}
-			t.Logf("updated refs: %s", updatedRefs)
-
-			if err := validateFromOCICache(ctx, fromOCITester.syncOpts.CacheDir, len(reachableGitObjs), len(reachableLFSFiles)); err != nil {
-				t.Errorf("resulting cache is invalid: %v", err)
-			}
-
-			if err := fromOCITester.Cleanup(); err != nil {
-				t.Errorf("cleaning up fromOCITester handler: %v", err)
-			}
-		})
+		// run and validate FromOCI
+		t.Run(tt.t.name+"FromOCILFS-Cache", FromOCITestFn(ctx, t, target, lfsDst, fromOCICacheDir, dstServer.URL, gitOids, lfsOids, tt))
 	}
 
+	// cleanup
 	if err := lfsSrcHandler.Cleanup(); err != nil {
 		t.Errorf("cleaning up source handler: %v", err)
 	}
-
 	if err := lfsDstHandler.Cleanup(); err != nil {
 		t.Errorf("cleaning up destination handler: %v", err)
 	}
@@ -103,7 +56,122 @@ func Test_GitCache(t *testing.T) {
 	t.Log("test complete")
 }
 
+// ToOCITestFn returns a function used to run and validate caching for ToOCI operations.
+func ToOCITestFn(ctx context.Context, t *testing.T, src string, dst oras.GraphTarget, cacheDir, srcServerURL string,
+	reachableGitOids, reachableLFSOids []string, tt lfsTest) func(t *testing.T) {
+	t.Helper()
+	return func(t *testing.T) {
+		t.Helper()
+		toOCIFStorePath := t.TempDir()
+		toOCIFStore, err := file.New(toOCIFStorePath)
+		if err != nil {
+			t.Fatalf("initializing to ocicache file store: %v", err)
+		}
+		defer toOCIFStore.Close()
+		toOCICmdOpts := cmd.Options{
+			LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: srcServerURL},
+		}
+		toOCICache, err := cache.NewCache(ctx, cacheDir, toOCIFStorePath, toOCIFStore, &toOCICmdOpts)
+		if err != nil {
+			t.Fatalf("initializing to oci base cache: %v", err)
+		}
+
+		toOCICacheLink, err := toOCICache.NewLink(ctx, tt.t.args.tag, toOCICmdOpts)
+		if err != nil {
+			t.Errorf("establishing to oci new cache link: %v", err)
+		}
+
+		syncOpts := SyncOptions{IntermediateDir: toOCIFStorePath, IntermediateStore: toOCIFStore, Cache: toOCICacheLink} // new intermediate dir, same to-oci cache dir
+		toOCITester, err := NewToOCI(ctx, dst, tt.t.args.tag, src, tt.t.args.argRevList, syncOpts, &toOCICmdOpts)
+		if err != nil {
+			t.Errorf("creating ToOCI: %v", err)
+		}
+		defer toOCITester.Cleanup() //nolint
+
+		_, err = toOCITester.Run(ctx)
+		if err != nil {
+			t.Errorf("ToOCI() error = %v, wantErr %v", err, tt.t.wantErr)
+		}
+
+		if err := validateToOCICache(toOCITester.syncOpts.Cache.CachePath(), len(reachableGitOids), len(reachableLFSOids)); err != nil {
+			t.Errorf("resulting cache is invalid: %v", err)
+		}
+
+		if err := toOCITester.Cleanup(); err != nil {
+			t.Errorf("cleaning up toOCITester handler: %v", err)
+		}
+	}
+}
+
+// FromOCITestFn returns a function used to run and validate caching for FromOCI operations.
+func FromOCITestFn(ctx context.Context, t *testing.T, src oras.GraphTarget, dst string, cacheDir, dstServerURL string,
+	reachableGitOids, reachableLFSOids []string, tt lfsTest) func(t *testing.T) {
+	t.Helper()
+	return func(t *testing.T) {
+		t.Helper()
+		fromOCIFStorePath := t.TempDir()
+		fromOCIFStore, err := file.New(fromOCIFStorePath)
+		if err != nil {
+			t.Fatalf("initializing from oci cache file store: %v", err)
+		}
+		defer fromOCIFStore.Close()
+		fromOCICmdOpts := cmd.Options{
+			LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: dstServerURL},
+		}
+		fromOCICache, err := cache.NewCache(ctx, cacheDir, fromOCIFStorePath, fromOCIFStore, &fromOCICmdOpts)
+		if err != nil {
+			t.Fatalf("initializing from oci base cache: %v", err)
+		}
+
+		fromOCICacheLink, err := fromOCICache.NewLink(ctx, tt.t.args.tag, fromOCICmdOpts)
+		if err != nil {
+			t.Errorf("establishing from oci new cache link: %v", err)
+		}
+
+		syncOpts := SyncOptions{IntermediateDir: fromOCIFStorePath, IntermediateStore: fromOCIFStore, Cache: fromOCICacheLink} // new intermediate dir, same from-oci cache dir
+		fromOCITester, err := NewFromOCI(ctx, src, tt.t.args.tag, dst, syncOpts, &fromOCICmdOpts)
+		if err != nil {
+			t.Errorf("creating FromOCI: %v", err)
+		}
+		defer fromOCITester.Cleanup() //nolint
+
+		updatedRefs, err := fromOCITester.Run(ctx)
+		if err != nil {
+			t.Fatalf("from oci: %v", err)
+		}
+		t.Logf("updated refs: %s", updatedRefs)
+
+		if err := validateFromOCICache(ctx, fromOCITester.syncOpts.Cache.CachePath(), len(reachableGitOids), len(reachableLFSOids)); err != nil {
+			t.Errorf("resulting cache is invalid: %v", err)
+		}
+
+		if err := fromOCITester.Cleanup(); err != nil {
+			t.Errorf("cleaning up fromOCITester handler: %v", err)
+		}
+	}
+}
+
+// reachableOIDs determines git and git-lfs objects reachable from a set of git references within the source repository.
+// The results are used for validation.
+func reachableOIDs(t *testing.T, argRevList []string, lfsSrcCmdHelper *cmd.Helper) ([]string, []string) {
+	t.Helper()
+	args := []string{"--objects"} // --objects is crucial, as this will tell us all objects that are fetched to the cache; else its just commits
+	args = append(args, argRevList...)
+	reachableGitOids, err := revList(lfsSrcCmdHelper, args...)
+	if err != nil {
+		t.Errorf("resolving reachable git objects: %v", err)
+	}
+
+	reachableLFSOids, err := lfsSrcCmdHelper.ListReachableLFSFiles(argRevList...)
+	if err != nil {
+		t.Errorf("resolving reachable lfs files: %v", err)
+	}
+
+	return reachableGitOids, reachableLFSOids
+}
+
 // validateToCache validates the number of git objects in a git cache directory.
+// TODO: validate the OIDs themselves as well.
 func validateToOCICache(cachePath string, expectedObjs, expectedLFSObjs int) error {
 	// git objects
 	objsDir := filepath.Join(cachePath, "objects")

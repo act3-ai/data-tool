@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"os"
 
+	"oras.land/oras-go/v2/content/file"
+
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/git"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 )
@@ -36,11 +39,11 @@ func (action *FromOCI) Run(ctx context.Context) error {
 		return fmt.Errorf("creating temporary directory for intermediate git repository: %w", err)
 	}
 
-	syncOpts := git.SyncOptions{
-		DTVersion: action.Version(),
-		TmpDir:    tmpDir,
-		CacheDir:  action.CacheDir,
+	fs, err := file.New(tmpDir)
+	if err != nil {
+		return fmt.Errorf("initializing shared filestore: %w", err)
 	}
+	defer fs.Close()
 
 	cmdOpts := cmd.Options{
 		GitOptions: cmd.GitOptions{
@@ -52,6 +55,31 @@ func (action *FromOCI) Run(ctx context.Context) error {
 			AltLFSExec: action.AltGitLFSExec,
 			ServerURL:  action.LFSServerURL,
 		},
+	}
+
+	var cacheLink cache.ObjectCacher
+	if action.CacheDir != "" {
+		objCache, err := cache.NewCache(ctx, action.CacheDir, tmpDir, fs, &cmdOpts)
+		if err != nil {
+			// continue without caching
+			goto Recover
+		}
+
+		// init cache link
+		link, err := objCache.NewLink(ctx, repo.Reference.Reference, cmdOpts)
+		if err != nil {
+			// continue without caching
+			goto Recover
+		}
+		cacheLink = link
+	}
+
+Recover:
+	syncOpts := git.SyncOptions{
+		UserAgent:         action.Config.UserAgent(),
+		IntermediateDir:   tmpDir,
+		IntermediateStore: fs,
+		Cache:             cacheLink,
 	}
 
 	fromOCI, err := git.NewFromOCI(ctx, repo, repo.Reference.Reference, action.GitRemote, syncOpts, &cmdOpts)
@@ -73,6 +101,10 @@ func (action *FromOCI) Run(ctx context.Context) error {
 
 	if err := fromOCI.Cleanup(); err != nil {
 		return fmt.Errorf("cleaning up fromOCI: %w", err)
+	}
+
+	if err := fs.Close(); err != nil {
+		return fmt.Errorf("closing shared file store: %w", err)
 	}
 
 	return nil

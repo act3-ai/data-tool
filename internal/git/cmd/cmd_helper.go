@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"path/filepath"
-	"strings"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
@@ -27,12 +25,6 @@ type Helper struct {
 // is not installed.
 func NewHelper(ctx context.Context, gitDir string, opts *Options) (*Helper, error) {
 	log := logger.FromContext(ctx)
-	u := ui.FromContextOrNoop(ctx)
-
-	_, err := CheckGitVersion(ctx, opts.AltGitExec)
-	if err != nil {
-		return &Helper{}, fmt.Errorf("validating git version: %w", err)
-	}
 
 	ch := &Helper{
 		Options: *opts,
@@ -45,26 +37,36 @@ func NewHelper(ctx context.Context, gitDir string, opts *Options) (*Helper, erro
 			WithLFS: true, // default behavior
 		}
 	}
+	ch.LFS = newGitLFSCmd(log, gitDir, ch.AltLFSExec)
 
-	if ch.WithLFS {
-		version, err := CheckGitLFSVersion(ctx, ch.AltLFSExec)
+	return ch, nil
+}
+
+// ValidateVersions checks if installed git and git-lfs versions meet minimum requirements.
+func (c *Helper) ValidateVersions(ctx context.Context) error {
+	u := ui.FromContextOrNoop(ctx)
+
+	_, err := CheckGitVersion(ctx, c.AltGitExec)
+	if err != nil {
+		return fmt.Errorf("validating git version: %w", err)
+	}
+
+	if c.WithLFS {
+		version, err := CheckGitLFSVersion(ctx, c.AltLFSExec)
 		switch {
 		case errors.Is(err, ErrLFSCmdNotFound):
 			u.Infof("Warning: git-lfs is not installed. Continuing without syncing git-lfs files.")
-			ch.WithLFS = false // override LFS setting
-			return ch, nil     // recover
+			c.WithLFS = false // override LFS setting
+			return nil        // recover
 		case err != nil:
 			u.Infof("Warning: git-lfs version is incompatible. Found version %s, minimum is %s. Continuing without syncing git-lfs files.", version, minGitLFSVersion)
-			ch.WithLFS = false // override LFS setting
-			return ch, nil     // recover
-		default:
-			ch.LFS = newGitLFSCmd(log, gitDir, ch.AltLFSExec)
+			c.WithLFS = false // override LFS setting
+			return nil        // recover
 		}
 	} else {
 		u.Infof("Warning: Overriding git-lfs syncing may prevent pushing to the destination with 'ace-dt git from-oci'. Continuing without syncing git-lfs files.")
 	}
-
-	return ch, nil
+	return nil
 }
 
 // Dir returns the path of the git directory.
@@ -100,7 +102,7 @@ func (c *Helper) LocalCommitsRefs(argRevList ...string) ([]string, []string, err
 // all references will be returned.
 func (c *Helper) RemoteCommitsRefs(remote string, argRevList ...string) ([]string, []string, error) {
 	args := make([]string, 0, len(argRevList)+2)
-	args = append(args, "--tags", "--heads", remote)
+	args = append(args, "--tags", "--heads", "--refs", remote)
 	args = append(args, argRevList...)
 	refsCommits, err := c.LSRemote(args...)
 	if err != nil {
@@ -109,28 +111,4 @@ func (c *Helper) RemoteCommitsRefs(remote string, argRevList ...string) ([]strin
 
 	commits, fullRefs := parseOIDRefs(refsCommits...)
 	return commits, fullRefs, nil
-}
-
-// FetchFromBundle is a more robust way to fetch from a remote that is a bundle.
-func (c *Helper) FetchFromBundle(bundlePath string) error {
-	shortname := strings.TrimSuffix(filepath.Base(bundlePath), ".bundle")
-	err := c.RemoteAdd(shortname, bundlePath)
-	if err != nil {
-		return fmt.Errorf("adding bundle as remote: %w", err)
-	}
-
-	args := []string{"--tags"}
-	if c.Force {
-		args = append(args, "--force")
-	}
-	if err := c.Git.Fetch(shortname, args...); err != nil {
-		return fmt.Errorf("fetching from bundle %s: %w", bundlePath, err)
-	}
-
-	err = c.RemoteRemove(shortname)
-	if err != nil {
-		return fmt.Errorf("removing remote bundle: %w", err)
-	}
-
-	return nil
 }

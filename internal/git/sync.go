@@ -10,6 +10,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	oras "oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 
@@ -24,9 +25,8 @@ type sync struct {
 	ociHelper *oci.Helper
 	cmdHelper *cmd.Helper
 
-	base  syncBase
-	lfs   syncLFS
-	cache cache.ObjectCache
+	base syncBase
+	lfs  syncLFS
 
 	syncOpts SyncOptions
 }
@@ -34,21 +34,22 @@ type sync struct {
 // syncBase represents a Commit Manifest and its Config.
 type syncBase struct {
 	manifest ocispec.Manifest
-	config   Config
+	config   oci.Config
 }
 
 // syncLFS represents a LFS Manifest and its Config.
 type syncLFS struct {
 	manifest ocispec.Manifest
-	config   LFSConfig // not used, remains for plumbing
+	config   oci.LFSConfig // not used, remains for plumbing
 }
 
 // SyncOptions modify git to OCI and OCI to git processes.
 type SyncOptions struct {
-	Clean     bool
-	DTVersion string
-	TmpDir    string
-	CacheDir  string
+	Clean             bool
+	UserAgent         string
+	IntermediateDir   string
+	IntermediateStore *file.Store // TODO: This is a duplicate of what's in OCIHelper, let's remove OCIHelper
+	Cache             cache.ObjectCacher
 }
 
 // FetchBaseManifestConfig fetches the base sync manifest and config, populating the Original with the
@@ -69,8 +70,8 @@ func (s *sync) FetchBaseManifestConfig(ctx context.Context) (ocispec.Descriptor,
 
 	switch {
 	case s.syncOpts.Clean || errors.Is(err, errdef.ErrNotFound):
-		s.base.config.Refs.Tags = make(map[string]ReferenceInfo, 0)
-		s.base.config.Refs.Heads = make(map[string]ReferenceInfo, 0)
+		s.base.config.Refs.Tags = make(map[string]oci.ReferenceInfo, 0)
+		s.base.config.Refs.Heads = make(map[string]oci.ReferenceInfo, 0)
 		return manifestDesc, errdef.ErrNotFound // propagate the error and handle accordingly, this can be ignored in ToOCI, but not in FromOCI
 	case err != nil:
 		return manifestDesc, fmt.Errorf("fetching base manifest: %w", err)
@@ -83,11 +84,11 @@ func (s *sync) FetchBaseManifestConfig(ctx context.Context) (ocispec.Descriptor,
 	}
 
 	// check types
-	if s.base.manifest.ArtifactType != ArtifactTypeSyncManifest { // likely error if we check artifact type in descriptor and not manifest itself
-		return manifestDesc, fmt.Errorf("expected base manifest artifact type %s, got %s", ArtifactTypeSyncManifest, manifestDesc.ArtifactType)
+	if s.base.manifest.ArtifactType != oci.ArtifactTypeSyncManifest { // likely error if we check artifact type in descriptor and not manifest itself
+		return manifestDesc, fmt.Errorf("expected base manifest artifact type %s, got %s", oci.ArtifactTypeSyncManifest, manifestDesc.ArtifactType)
 	}
-	if s.base.manifest.Config.MediaType != MediaTypeSyncConfig {
-		return manifestDesc, fmt.Errorf("expected base config media type %s, got %s", MediaTypeSyncConfig, s.base.manifest.Config.MediaType)
+	if s.base.manifest.Config.MediaType != oci.MediaTypeSyncConfig {
+		return manifestDesc, fmt.Errorf("expected base config media type %s, got %s", oci.MediaTypeSyncConfig, s.base.manifest.Config.MediaType)
 	}
 
 	log.InfoContext(ctx, "Fetching manifest config", "configDigest", s.base.manifest.Config.Digest.String())
@@ -106,58 +107,54 @@ func (s *sync) FetchBaseManifestConfig(ctx context.Context) (ocispec.Descriptor,
 
 // FetchLFSManifestConfig copies all predecessor manifests with the LFS manifest media type, returning a pointer to an OCI CAS storage
 // containing the result of the copy.
-func (s *sync) FetchLFSManifestConfig(ctx context.Context, root ocispec.Descriptor, clean bool) error {
+func (s *sync) FetchLFSManifestConfig(ctx context.Context, root ocispec.Descriptor, clean bool) (ocispec.Descriptor, error) {
 	log := logger.FromContext(ctx)
 
 	// TODO: This feels like a hacky way to test that the root did not exist before
 	if clean || (root.Digest == "") {
 		log.InfoContext(ctx, "Starting with a fresh LFS manifest")
 		// if adding config fields, initialize them here
-		return fmt.Errorf("clean option or subject not found: %w", errdef.ErrNotFound)
+		return ocispec.Descriptor{}, fmt.Errorf("clean option or subject not found: %w", errdef.ErrNotFound)
 	}
 
 	log.InfoContext(ctx, "Resolving commit manifest referrers", "root", root)
-	referrers, err := registry.Referrers(ctx, s.ociHelper.Target, root, ArtifactTypeLFSManifest)
+	referrers, err := registry.Referrers(ctx, s.ociHelper.Target, root, oci.ArtifactTypeLFSManifest)
 	log.InfoContext(ctx, "Found commit manifest referrers", "referrers", referrers)
 
 	// we expect one LFS manifest referrer
 	switch {
 	case len(referrers) < 1:
-		return errdef.ErrNotFound
+		return ocispec.Descriptor{}, errdef.ErrNotFound
 	case len(referrers) > 1:
-		return fmt.Errorf("expected 1 LFS referrer, got %d", len(referrers)) // should never hit
+		return ocispec.Descriptor{}, fmt.Errorf("expected 1 LFS referrer, got %d", len(referrers)) // should never hit
 	case err != nil:
-		return fmt.Errorf("resolving commit manifest predecessors: %w", err)
+		return ocispec.Descriptor{}, fmt.Errorf("resolving commit manifest predecessors: %w", err)
 	}
 	lfsManifestDesc := referrers[0]
 
 	log.InfoContext(ctx, "Fetching LFS manifest", "desc", lfsManifestDesc)
 	lfsManifestBytes, err := content.FetchAll(ctx, s.ociHelper.Target, lfsManifestDesc)
 	if err != nil {
-		return fmt.Errorf("fetching LFS manifest: %w", err)
+		return ocispec.Descriptor{}, fmt.Errorf("fetching LFS manifest: %w", err)
 	}
 
 	err = json.Unmarshal(lfsManifestBytes, &s.lfs.manifest)
 	if err != nil {
-		return fmt.Errorf("decoding LFS manifest descriptor: %w", err)
+		return ocispec.Descriptor{}, fmt.Errorf("decoding LFS manifest descriptor: %w", err)
 	}
 
 	// check types
 	// if config returns, check artifact type here
-	if s.lfs.manifest.ArtifactType != ArtifactTypeLFSManifest { // likely error if we check artifact type in descriptor and not manifest itself
-		return fmt.Errorf("expected LFS manifest artifact type %s, got %s", ArtifactTypeLFSManifest, lfsManifestDesc.ArtifactType)
+	if s.lfs.manifest.ArtifactType != oci.ArtifactTypeLFSManifest { // likely error if we check artifact type in descriptor and not manifest itself
+		return ocispec.Descriptor{}, fmt.Errorf("expected LFS manifest artifact type %s, got %s", oci.ArtifactTypeLFSManifest, lfsManifestDesc.ArtifactType)
 	}
 
-	return nil
+	return lfsManifestDesc, nil
 }
 
 // cleanup closes and cleans up any temporary files created during the sync process.
 func (s *sync) cleanup() error {
-	if err := s.ociHelper.FStore.Close(); err != nil {
-		return fmt.Errorf("closing filestore: %w", err)
-	}
-
-	if err := os.RemoveAll(s.syncOpts.TmpDir); err != nil {
+	if err := os.RemoveAll(s.syncOpts.IntermediateDir); err != nil {
 		return fmt.Errorf("cleaning up intermediate repository: %w", err)
 	}
 

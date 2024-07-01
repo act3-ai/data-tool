@@ -21,6 +21,7 @@ import (
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	tlog "git.act3-ace.com/ace/go-common/pkg/test"
 	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/oci"
 )
 
 type args struct {
@@ -240,8 +241,8 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 		t.Fatalf("setting up git rebuild dir: %v", err)
 	}
 
-	target := memory.New()
 	dtVersion := "devel"
+	target := memory.New() // oci target
 
 	// Use Cases
 	for _, tt := range tests {
@@ -259,7 +260,14 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 
 			// test sync
 			t.Run(tt.name+": ToOCI", func(t *testing.T) {
-				syncOpts := SyncOptions{DTVersion: dtVersion, TmpDir: t.TempDir()}
+				toOCIFStorePath := t.TempDir()
+				toOCIFStore, err := file.New(toOCIFStorePath)
+				if err != nil {
+					t.Fatalf("initializing to ocicache file store: %v", err)
+				}
+				defer toOCIFStore.Close()
+
+				syncOpts := SyncOptions{UserAgent: dtVersion, IntermediateDir: toOCIFStorePath, IntermediateStore: toOCIFStore}
 				toOCITester, err := NewToOCI(ctx, target, tt.args.tag, srcGitRemote, tt.args.argRevList, syncOpts, &cmd.Options{})
 				if err != nil {
 					t.Errorf("creating ToOCI: %v", err)
@@ -271,8 +279,8 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 					t.Errorf("ToOCI() error = %v, wantErr %v", err, tt.wantErr)
 				}
 
-				if commitManDesc.ArtifactType != ArtifactTypeSyncManifest {
-					t.Errorf("unexpected artifact type in descriptor of commit manifest, got '%s' want '%s'", commitManDesc.ArtifactType, ArtifactTypeSyncManifest)
+				if commitManDesc.ArtifactType != oci.ArtifactTypeSyncManifest {
+					t.Errorf("unexpected artifact type in descriptor of commit manifest, got '%s' want '%s'", commitManDesc.ArtifactType, oci.ArtifactTypeSyncManifest)
 				}
 
 				successors, err := content.Successors(ctx, target, commitManDesc)
@@ -305,7 +313,14 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 
 			// test rebuild
 			t.Run(tt.name+": FromOCI", func(t *testing.T) {
-				syncOpts := SyncOptions{DTVersion: dtVersion, TmpDir: t.TempDir()}
+				fromOCIFStorePath := t.TempDir()
+				fromOCIFStore, err := file.New(fromOCIFStorePath)
+				if err != nil {
+					t.Fatalf("initializing from oci cache file store: %v", err)
+				}
+				defer fromOCIFStore.Close()
+
+				syncOpts := SyncOptions{UserAgent: dtVersion, IntermediateDir: fromOCIFStorePath, IntermediateStore: fromOCIFStore}
 				fromOCITester, err := NewFromOCI(ctx, target, tt.args.tag, dstGitRemote, syncOpts, &cmd.Options{})
 				if err != nil {
 					t.Errorf("creating FromOCI: %v", err)
@@ -335,7 +350,14 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 	// Error Cases
 	for _, tt := range errorTests {
 		t.Run(tt.name, func(t *testing.T) {
-			syncOpts := SyncOptions{DTVersion: dtVersion, TmpDir: t.TempDir()}
+			toOCIFStorePath := t.TempDir()
+			toOCIFStore, err := file.New(toOCIFStorePath)
+			if err != nil {
+				t.Fatalf("initializing to ocicache file store: %v", err)
+			}
+			defer toOCIFStore.Close()
+
+			syncOpts := SyncOptions{UserAgent: dtVersion, IntermediateDir: toOCIFStorePath, IntermediateStore: toOCIFStore}
 			toOCITester, err := NewToOCI(ctx, target, tt.args.tag, srcGitRemote, tt.args.argRevList, syncOpts, &cmd.Options{})
 			if err != nil {
 				t.Errorf("creating ToOCI: %v", err)
@@ -374,7 +396,14 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 			}
 
 			t.Run(tt.name+": ToOCI", func(t *testing.T) {
-				syncOpts := SyncOptions{DTVersion: dtVersion, TmpDir: t.TempDir()}
+				toOCIFStorePath := t.TempDir()
+				toOCIFStore, err := file.New(toOCIFStorePath)
+				if err != nil {
+					t.Fatalf("initializing to ocicache file store: %v", err)
+				}
+				defer toOCIFStore.Close()
+
+				syncOpts := SyncOptions{UserAgent: dtVersion, IntermediateDir: toOCIFStorePath, IntermediateStore: toOCIFStore}
 				toOCITester, err := NewToOCI(ctx, target, tt.args.tag, srcGitRemote, tt.args.argRevList, syncOpts, &cmd.Options{})
 				if err != nil {
 					t.Errorf("creating ToOCI: %v", err)
@@ -386,8 +415,8 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 					t.Errorf("ToOCI() error = %v, wantErr %v", err, tt.wantErr)
 				}
 
-				if commitManDesc.ArtifactType != ArtifactTypeSyncManifest {
-					t.Errorf("unexpected artifact type in descriptor of commit manifest, got '%s' want '%s'", commitManDesc.ArtifactType, ArtifactTypeSyncManifest)
+				if commitManDesc.ArtifactType != oci.ArtifactTypeSyncManifest {
+					t.Errorf("unexpected artifact type in descriptor of commit manifest, got '%s' want '%s'", commitManDesc.ArtifactType, oci.ArtifactTypeSyncManifest)
 				}
 
 				successors, err := content.Successors(ctx, target, commitManDesc)
@@ -419,7 +448,14 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 
 			// test rebuild
 			t.Run(tt.name+": FromOCI", func(t *testing.T) {
-				syncOpts := SyncOptions{DTVersion: dtVersion, TmpDir: t.TempDir()}
+				fromOCIFStorePath := t.TempDir()
+				fromOCIFStore, err := file.New(fromOCIFStorePath)
+				if err != nil {
+					t.Fatalf("initializing from oci cache file store: %v", err)
+				}
+				defer fromOCIFStore.Close()
+
+				syncOpts := SyncOptions{UserAgent: dtVersion, IntermediateDir: fromOCIFStorePath, IntermediateStore: fromOCIFStore}
 				cmdOpts := &cmd.Options{
 					GitOptions: cmd.GitOptions{Force: true, AltGitExec: ""},
 					LFSOptions: &cmd.LFSOptions{},
@@ -494,7 +530,13 @@ func Test_FromOCINonExistantManifest(t *testing.T) {
 	target := memory.New()
 	tag := "nonexistantsync"
 
-	syncOpts := SyncOptions{TmpDir: t.TempDir()}
+	fs, err := file.New(t.TempDir())
+	if err != nil {
+		t.Fatalf("initializing file store: %v", err)
+	}
+	defer fs.Close()
+
+	syncOpts := SyncOptions{IntermediateDir: t.TempDir(), IntermediateStore: fs}
 	cmdOpts := &cmd.Options{
 		GitOptions: cmd.GitOptions{Force: true, AltGitExec: ""},
 		LFSOptions: &cmd.LFSOptions{},
@@ -528,9 +570,9 @@ func validateSync(ctx context.Context, pulledBundlesDir string, successors []oci
 
 	// ensure we get the config first, so we can compare it against bundles later.
 	// This may not be necessary, but added to be safe
-	if successors[0].MediaType != MediaTypeSyncConfig {
+	if successors[0].MediaType != oci.MediaTypeSyncConfig {
 		for i, desc := range successors {
-			if desc.MediaType == MediaTypeSyncConfig {
+			if desc.MediaType == oci.MediaTypeSyncConfig {
 				successors[0], successors[i] = successors[i], successors[0]
 				break
 			}
@@ -564,10 +606,12 @@ func validateSync(ctx context.Context, pulledBundlesDir string, successors []oci
 	return errors.Join(syncErrs...)
 }
 
-func prepSyncValidation(ctx context.Context, ch *cmd.Helper, target *memory.Store, successors []ocispec.Descriptor, pathToBundles string) (*Config, map[string]Commit, map[string]Commit, error) {
-	config := &Config{}
-	allBundleTags := make(map[string]Commit, 0) // ref:commit key:val pair
-	allBundleHeads := make(map[string]Commit, 0)
+func prepSyncValidation(ctx context.Context, ch *cmd.Helper, target *memory.Store,
+	successors []ocispec.Descriptor, pathToBundles string) (*oci.Config, map[string]oci.Commit, map[string]oci.Commit, error) {
+
+	var config = &oci.Config{}
+	allBundleTags := make(map[string]oci.Commit, 0) // ref:commit key:val pair
+	allBundleHeads := make(map[string]oci.Commit, 0)
 	syncErrs := make([]error, 0)
 
 	// verify the config and bundle
@@ -580,7 +624,7 @@ func prepSyncValidation(ctx context.Context, ch *cmd.Helper, target *memory.Stor
 	// prepare for validation
 	for _, desc := range successors {
 		switch desc.MediaType {
-		case MediaTypeSyncConfig:
+		case oci.MediaTypeSyncConfig:
 
 			// fetch & unmarshal config, fail instead of collecting errors here as we can't validate much without a config
 			cfgReader, err := target.Fetch(ctx, desc)
@@ -598,7 +642,7 @@ func prepSyncValidation(ctx context.Context, ch *cmd.Helper, target *memory.Stor
 				return nil, allBundleTags, allBundleHeads, fmt.Errorf("unmarshaling config: %w", err)
 			}
 
-		case MediaTypeBundleLayer:
+		case oci.MediaTypeBundleLayer:
 
 			// fetch the bundle
 			bundleName := desc.Annotations[ocispec.AnnotationTitle]
@@ -617,7 +661,7 @@ func prepSyncValidation(ctx context.Context, ch *cmd.Helper, target *memory.Stor
 
 			for _, entry := range bundleRefs {
 				split := strings.Fields(entry)
-				commit := Commit(split[0])
+				commit := oci.Commit(split[0])
 				fullBundleRef := split[1]
 
 				// if a ref already exists, it will be overwritten by the latest bundle - which is expected behavior
@@ -645,7 +689,7 @@ func prepSyncValidation(ctx context.Context, ch *cmd.Helper, target *memory.Stor
 // 1) Is the reference expected?
 // 2) Does the reference in the bundle exist in the config?
 // 3) Does the commit referenced by the tag in the bundle match the config?
-func validateBundles(ctx context.Context, config Config, foundTags, foundHeads map[string]Commit, expectedTags, expectedHeads map[string]bool) error {
+func validateBundles(ctx context.Context, config oci.Config, foundTags, foundHeads map[string]oci.Commit, expectedTags, expectedHeads map[string]bool) error {
 	bundleErrs := make([]error, 0)
 
 	for tag, bundleCommit := range foundTags {
@@ -698,9 +742,9 @@ func validateBundles(ctx context.Context, config Config, foundTags, foundHeads m
 }
 
 // validateConfig checks to see if a sync config contains the expected tag and head references, as well as a valid api field.
-func validateConfig(config Config, expectedAPIVersion string, expectedTagsMap,
-	expectedHeadsMap map[string]bool,
-) error {
+func validateConfig(config oci.Config, expectedAPIVersion string, expectedTagsMap,
+	expectedHeadsMap map[string]bool) error {
+
 	configErrs := make([]error, 0)
 
 	// catch extraneous tags

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -16,7 +15,6 @@ import (
 	"oras.land/oras-go/v2/errdef"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"gitlab.com/act3-ai/asce/data/tool/internal/git/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
 	"gitlab.com/act3-ai/asce/data/tool/internal/git/oci"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
@@ -32,41 +30,31 @@ type ToOCI struct {
 
 // NewToOCI returns a ToOCI object after validating git and/or git-lfs compatibility.
 func NewToOCI(ctx context.Context, target oras.GraphTarget, tag, srcGitRemote string, argRevList []string, syncOpts SyncOptions, cmdOpts *cmd.Options) (*ToOCI, error) {
-	u := ui.FromContextOrNoop(ctx)
-
 	toOCI := &ToOCI{
 		sync{
 			base:     syncBase{},
 			lfs:      syncLFS{},
-			cache:    nil,
 			syncOpts: syncOpts,
 		},
 		srcGitRemote,
 		argRevList,
 	}
 
-	var err error
-	toOCI.ociHelper, err = oci.NewOCIHelper(syncOpts.TmpDir, target, tag)
-	if err != nil {
-		return nil, fmt.Errorf("creating new ociHelper: %w", err)
+	toOCI.ociHelper = &oci.Helper{
+		Target:     target,
+		Tag:        tag,
+		FStore:     syncOpts.IntermediateStore,
+		FStorePath: syncOpts.IntermediateDir,
 	}
 
-	toOCI.cmdHelper, err = cmd.NewHelper(ctx, syncOpts.TmpDir, cmdOpts)
+	var err error
+	toOCI.cmdHelper, err = cmd.NewHelper(ctx, syncOpts.IntermediateDir, cmdOpts)
 	if err != nil {
 		return nil, fmt.Errorf("creating new cmdHelper: %w", err)
 	}
 
-	if syncOpts.CacheDir != "" {
-		if err := os.MkdirAll(syncOpts.CacheDir, 0o777); err != nil {
-			u.Infof("Unable to create cache directory, continuing without caching.")
-			return toOCI, nil
-		}
-
-		toOCI.cache, err = cache.NewCache(ctx, syncOpts.CacheDir, cmdOpts)
-		if err != nil {
-			u.Infof("Unable to access git object cache, continuing without caching.")
-			return toOCI, nil
-		}
+	if err := toOCI.cmdHelper.ValidateVersions(ctx); err != nil {
+		return nil, err
 	}
 
 	return toOCI, nil
@@ -114,15 +102,15 @@ func (t *ToOCI) Run(ctx context.Context) (ocispec.Descriptor, error) {
 	}
 
 	// try to cache, and recover if it fails
-	if t.syncOpts.CacheDir != "" {
-		log.DebugContext(ctx, "Utilizing git cache", "cacheDir", t.syncOpts.CacheDir)
-		if err := t.cache.UpdateFromGit(t.srcGitRemote, t.cmdHelper.Options, t.argRevList...); err != nil {
+	if t.syncOpts.Cache != nil {
+		log.DebugContext(ctx, "Utilizing git cache", "cacheDir", t.syncOpts.Cache.CachePath())
+		if err := t.syncOpts.Cache.UpdateFromGit(t.srcGitRemote, t.argRevList...); err != nil {
 			log.DebugContext(ctx, "Cache failed to update git objects", "error", err)
 			u.Infof("Failed to update cache with git objects, continuing without caching...")
 		}
 	}
 
-	log.InfoContext(ctx, "Cloning git repo", "repo", t.srcGitRemote, "cache", t.syncOpts.CacheDir)
+	log.InfoContext(ctx, "Cloning git repo", "repo", t.srcGitRemote)
 	if err := t.cloneRemote(); err != nil { // if cache DNE, objs are cloned to intermediate repo
 		return ocispec.Descriptor{}, fmt.Errorf("cloning git remote %s to %s: %w", t.srcGitRemote, t.cmdHelper.Dir(), err)
 	}
@@ -186,7 +174,12 @@ func (t *ToOCI) cloneRemote() error {
 		return fmt.Errorf("no source git remote specified, unable to clone")
 	}
 
-	return t.cmdHelper.CloneWithShared(t.srcGitRemote, t.syncOpts.CacheDir)
+	cachePath := ""
+	if t.syncOpts.Cache != nil {
+		cachePath = t.syncOpts.Cache.CachePath()
+	}
+
+	return t.cmdHelper.CloneWithShared(t.srcGitRemote, cachePath)
 }
 
 // updateBaseConfig updates the commit manifest's config. It should be called after
@@ -243,8 +236,9 @@ func (t *ToOCI) updateBaseConfig(ctx context.Context) error {
 
 // sortRefsByLayer organizes the refs in the current config by layer,
 // returning a map of layer digests to a slice of commits contained in that layer.
-func (t *ToOCI) sortRefsByLayer() map[digest.Digest][]Commit {
-	layerResolver := make(map[digest.Digest][]Commit) // layer digest : []commits
+func (t *ToOCI) sortRefsByLayer() map[digest.Digest][]oci.Commit {
+
+	layerResolver := make(map[digest.Digest][]oci.Commit) // layer digest : []commits
 	for _, info := range t.base.config.Refs.Heads {
 		layerResolver[info.Layer] = append(layerResolver[info.Layer], info.Commit)
 	}
@@ -257,7 +251,7 @@ func (t *ToOCI) sortRefsByLayer() map[digest.Digest][]Commit {
 
 // resolveLayer returns the oldest layer in the current manifest containing a commit. Should be called
 // after layer updates.
-func (t *ToOCI) resolveLayer(layerResolver map[digest.Digest][]Commit, targetCommit Commit) (digest.Digest, error) {
+func (t *ToOCI) resolveLayer(layerResolver map[digest.Digest][]oci.Commit, targetCommit oci.Commit) (digest.Digest, error) {
 	for i, layer := range t.base.manifest.Layers {
 		if i == len(t.base.manifest.Layers)-1 { // we have reached the final layer, so it must be here.
 			return layer.Digest, nil
@@ -282,7 +276,8 @@ func (t *ToOCI) resolveLayer(layerResolver map[digest.Digest][]Commit, targetCom
 // addBundleToManifest prepares the shared filestore with the new bundle layer
 // as well as adds it to the manifest layers.
 func (t *ToOCI) addBundleToManifest(ctx context.Context, newBundlePath string) (ocispec.Descriptor, error) {
-	newBundleDesc, err := t.ociHelper.FStore.Add(ctx, filepath.Base(newBundlePath), MediaTypeBundleLayer, newBundlePath)
+
+	newBundleDesc, err := t.ociHelper.FStore.Add(ctx, filepath.Base(newBundlePath), oci.MediaTypeBundleLayer, newBundlePath)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("adding bundle to filestore: %w", err)
 	}
@@ -313,7 +308,7 @@ func (t *ToOCI) sendBaseSync(ctx context.Context, newBundleDesc ocispec.Descript
 		return ocispec.Descriptor{}, fmt.Errorf("encoding base manifest config")
 	}
 	log.DebugContext(ctx, "Pushing base config")
-	configDesc, err := oras.PushBytes(ctx, t.ociHelper.Target, MediaTypeSyncConfig, configBytes)
+	configDesc, err := oras.PushBytes(ctx, t.ociHelper.Target, oci.MediaTypeSyncConfig, configBytes)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("pushing base config to repo: %w", err)
 	}
@@ -322,10 +317,10 @@ func (t *ToOCI) sendBaseSync(ctx context.Context, newBundleDesc ocispec.Descript
 	manOpts := oras.PackManifestOptions{
 		Layers:              t.base.manifest.Layers, // if a new bundle was made, it was already added to the manifest
 		ConfigDescriptor:    &configDesc,
-		ManifestAnnotations: map[string]string{ocispec.AnnotationCreated: "1970-01-01T00:00:00Z", AnnotationDTVersion: t.syncOpts.DTVersion}, // POSIX epoch
+		ManifestAnnotations: map[string]string{ocispec.AnnotationCreated: "1970-01-01T00:00:00Z", oci.AnnotationDTVersion: t.syncOpts.UserAgent}, // POSIX epoch
 	}
 
-	manDesc, err := oras.PackManifest(ctx, t.ociHelper.Target, oras.PackManifestVersion1_1, ArtifactTypeSyncManifest, manOpts)
+	manDesc, err := oras.PackManifest(ctx, t.ociHelper.Target, oras.PackManifestVersion1_1, oci.ArtifactTypeSyncManifest, manOpts)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("packing and pushing base manifest: %w", err)
 	}
@@ -392,15 +387,15 @@ EmptyBundleCheck:
 // localCommitsRefs returns the local references and the commits they reference
 // split into two slices, with indicies matching the pairs. If argRevList is empty
 // all references will be returned.
-func (t *ToOCI) localCommitsRefs(argRevList ...string) ([]Commit, []string, error) {
+func (t *ToOCI) localCommitsRefs(argRevList ...string) ([]oci.Commit, []string, error) {
 	commitStr, fullRefs, err := t.cmdHelper.LocalCommitsRefs(argRevList...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	commits := make([]Commit, 0, len(commitStr))
+	commits := make([]oci.Commit, 0, len(commitStr))
 	for _, commit := range commitStr {
-		commits = append(commits, Commit(commit))
+		commits = append(commits, oci.Commit(commit))
 	}
 
 	return commits, fullRefs, nil
@@ -409,15 +404,15 @@ func (t *ToOCI) localCommitsRefs(argRevList ...string) ([]Commit, []string, erro
 // remoteCommitsRefs returns the remote references and the commits they reference
 // split into two slices, with indicies matching the pairs. If argRevList is empty
 // all references will be returned.
-func (t *ToOCI) remoteCommitsRefs(argRevList ...string) ([]Commit, []string, error) {
+func (t *ToOCI) remoteCommitsRefs(argRevList ...string) ([]oci.Commit, []string, error) {
 	commitStr, fullRefs, err := t.cmdHelper.RemoteCommitsRefs(t.srcGitRemote, argRevList...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	commits := make([]Commit, 0, len(commitStr))
+	commits := make([]oci.Commit, 0, len(commitStr))
 	for _, commit := range commitStr {
-		commits = append(commits, Commit(commit))
+		commits = append(commits, oci.Commit(commit))
 	}
 
 	return commits, fullRefs, nil

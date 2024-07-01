@@ -1,4 +1,4 @@
-package git
+package oci
 
 import (
 	"github.com/opencontainers/go-digest"
