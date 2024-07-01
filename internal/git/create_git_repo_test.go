@@ -1,6 +1,7 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -28,7 +29,7 @@ type subCmd struct {
 
 // createTestRepo creates a specially crafted git repository used for testing toOCI and fromOCI.
 // see ./testdata/testing.md for a visual representation of this "script".
-func createTestRepo(ch *cmd.Helper) error {
+func createTestRepo(ctx context.Context, ch *cmd.Helper) error {
 	dir := ch.Dir()
 
 	cmdList := []subCmd{
@@ -109,12 +110,12 @@ func createTestRepo(ch *cmd.Helper) error {
 		{"commit", []string{"commit for v1.2.0"}},
 	}
 
-	return runCmdList(ch, cmdList)
+	return runCmdList(ctx, ch, cmdList)
 }
 
 // updateTestRepo updates a specially crafted git repository made with createTestRepo used for testing toOCI and fromOCI.
 // see ./testdata/testing.md for a visual representation of this "script".
-func updateTestRepo(ch *cmd.Helper) error {
+func updateTestRepo(ctx context.Context, ch *cmd.Helper) error {
 	cmdList := []subCmd{
 		// update head of Feature2
 		{"checkout", []string{"Feature2"}},
@@ -127,14 +128,14 @@ func updateTestRepo(ch *cmd.Helper) error {
 		{"update-ref", []string{"refs/tags/v1.2.0", "HEAD"}},
 	}
 
-	return runCmdList(ch, cmdList)
+	return runCmdList(ctx, ch, cmdList)
 }
 
 // createLFSRepo creates a git repository used for git LFS testing.
 //
 // It installs git-lfs to a bare repository during initialization. After adding
 // an lfs file on main, two branches are created with their own lfs files.
-func createLFSRepo(ch *cmd.Helper) error {
+func createLFSRepo(ctx context.Context, ch *cmd.Helper) error {
 	dir := ch.Dir()
 	cmdList := []subCmd{
 		// initialize repo
@@ -166,18 +167,18 @@ func createLFSRepo(ch *cmd.Helper) error {
 		{"commit", []string{"commit for feature2 branch"}},
 	}
 
-	return runCmdList(ch, cmdList)
+	return runCmdList(ctx, ch, cmdList)
 }
 
 // runAction runs a specific git command, git lfs command, or helper function.
-func runAction(ch *cmd.Helper, action subCmd) error {
+func runAction(ctx context.Context, ch *cmd.Helper, action subCmd) error {
 	switch action.cmd {
 	case "init":
-		if err := ch.Init(action.args...); err != nil {
+		if err := ch.Init(ctx, action.args...); err != nil {
 			return err
 		}
 	case "config":
-		if err := ch.Config(action.args[0], action.args[1]); err != nil {
+		if err := ch.Config(ctx, action.args[0], action.args[1]); err != nil {
 			return err
 		}
 	case "modifyFile":
@@ -185,43 +186,43 @@ func runAction(ch *cmd.Helper, action subCmd) error {
 			return err
 		}
 	case "add":
-		if err := stage(ch, "--all"); err != nil {
+		if err := stage(ctx, ch, "--all"); err != nil {
 			return err
 		}
 	case "commit":
-		if err := commit(ch, action.args[0]); err != nil {
+		if err := commit(ctx, ch, action.args[0]); err != nil {
 			return err
 		}
 	case "tag":
-		if err := tag(ch, action.args[0], action.args[1]); err != nil {
+		if err := tag(ctx, ch, action.args[0], action.args[1]); err != nil {
 			return err
 		}
 	case "checkout":
-		if err := checkout(ch, action.args[0]); err != nil {
+		if err := checkout(ctx, ch, action.args[0]); err != nil {
 			return err
 		}
 	case "merge":
-		if err := merge(ch, action.args[0]); err != nil {
+		if err := merge(ctx, ch, action.args[0]); err != nil {
 			return err
 		}
 	case "createBranch":
-		if err := createBranch(ch, action.args[0], action.args[1]); err != nil {
+		if err := createBranch(ctx, ch, action.args[0], action.args[1]); err != nil {
 			return err
 		}
 	case "update-ref":
-		if err := ch.UpdateRef(action.args[0], action.args[1]); err != nil {
+		if err := ch.UpdateRef(ctx, action.args[0], action.args[1]); err != nil {
 			return err
 		}
 	case "addAttributes":
-		if err := addAttributes(ch); err != nil {
+		if err := addAttributes(ctx, ch); err != nil {
 			return err
 		}
 	case "install":
-		if err := install(ch); err != nil {
+		if err := install(ctx, ch); err != nil {
 			return err
 		}
 	case "track":
-		if err := track(ch, action.args[0]); err != nil {
+		if err := track(ctx, ch, action.args[0]); err != nil {
 			return err
 		}
 	default:
@@ -232,9 +233,9 @@ func runAction(ch *cmd.Helper, action subCmd) error {
 }
 
 // runCmdList runs a list of commands, which is essentially a "script".
-func runCmdList(ch *cmd.Helper, list []subCmd) error {
+func runCmdList(ctx context.Context, ch *cmd.Helper, list []subCmd) error {
 	for i, action := range list {
-		if err := runAction(ch, action); err != nil {
+		if err := runAction(ctx, ch, action); err != nil {
 			return fmt.Errorf("action at cmdList[%d], cmd = %s: %w", i, action, err)
 		}
 	}
@@ -258,8 +259,8 @@ func modifyFile(path, text string) error {
 }
 
 // createBranch makes a new branch off of the commit idenfified by fromRef, using the provided newBranch name.
-func createBranch(ch *cmd.Helper, fromRef, newBranch string) error {
-	out, err := ch.ShowRefs(fromRef)
+func createBranch(ctx context.Context, ch *cmd.Helper, fromRef, newBranch string) error {
+	out, err := ch.ShowRefs(ctx, fromRef)
 	if err != nil {
 		return fmt.Errorf("getting commit from %s to create branch %s: %w", fromRef, newBranch, err)
 	}
@@ -267,7 +268,7 @@ func createBranch(ch *cmd.Helper, fromRef, newBranch string) error {
 	split := strings.Split(out[0], " ")
 	commit := split[0]
 
-	err = branch(ch, newBranch, commit)
+	err = branch(ctx, ch, newBranch, commit)
 	if err != nil {
 		return fmt.Errorf("creating branch %s: %w", newBranch, err)
 	}
@@ -278,49 +279,49 @@ func createBranch(ch *cmd.Helper, fromRef, newBranch string) error {
 // gitListHeads calls `git bundle list-heads <bundlePath>`
 //
 // i.e. returns a list of all tag and head references in the bundle.
-func listHeads(ch *cmd.Helper, bundlePath string) ([]string, error) {
-	return ch.Git.Run("bundle", "list-heads", bundlePath)
+func listHeads(ctx context.Context, ch *cmd.Helper, bundlePath string) ([]string, error) {
+	return ch.Git.Run(ctx, "bundle", "list-heads", bundlePath)
 }
 
-func branch(ch *cmd.Helper, name, commit string) error {
-	_, err := ch.Git.Run("branch", name, commit)
+func branch(ctx context.Context, ch *cmd.Helper, name, commit string) error {
+	_, err := ch.Git.Run(ctx, "branch", name, commit)
 	return err
 }
 
-func checkout(ch *cmd.Helper, branch string) error {
-	_, err := ch.Git.Run("checkout", branch)
+func checkout(ctx context.Context, ch *cmd.Helper, branch string) error {
+	_, err := ch.Git.Run(ctx, "checkout", branch)
 	return err
 }
 
-func commit(ch *cmd.Helper, message string) error {
-	_, err := ch.Git.Run("commit", "-m", message)
+func commit(ctx context.Context, ch *cmd.Helper, message string) error {
+	_, err := ch.Git.Run(ctx, "commit", "-m", message)
 	return err
 }
 
-func stage(ch *cmd.Helper, args ...string) error {
-	_, err := ch.Git.Run("add", args...)
+func stage(ctx context.Context, ch *cmd.Helper, args ...string) error {
+	_, err := ch.Git.Run(ctx, "add", args...)
 	return err
 }
 
-func tag(ch *cmd.Helper, name, commit string) error {
-	_, err := ch.Git.Run("tag", name, commit)
+func tag(ctx context.Context, ch *cmd.Helper, name, commit string) error {
+	_, err := ch.Git.Run(ctx, "tag", name, commit)
 	return err
 }
 
-func merge(ch *cmd.Helper, mergeTarget string) error {
-	_, err := ch.Git.Run("merge", mergeTarget, "-m", "merging")
+func merge(ctx context.Context, ch *cmd.Helper, mergeTarget string) error {
+	_, err := ch.Git.Run(ctx, "merge", mergeTarget, "-m", "merging")
 	return err
 }
 
 // RevList calls `git rev-list <argRevList>...`
-func revList(ch *cmd.Helper, args ...string) ([]string, error) {
-	return ch.Git.Run("rev-list", args...)
+func revList(ctx context.Context, ch *cmd.Helper, args ...string) ([]string, error) {
+	return ch.Git.Run(ctx, "rev-list", args...)
 }
 
 // VerifyPack calls `git verify-pack *.idx -s` for all *.idx files in packDir,
 // returning the sum of objects in the packfiles.
-func verifyPack(ch *cmd.Helper, idxPath string) (int, error) {
-	out, err := ch.Git.Run("verify-pack", idxPath, "-s")
+func verifyPack(ctx context.Context, ch *cmd.Helper, idxPath string) (int, error) {
+	out, err := ch.Git.Run(ctx, "verify-pack", idxPath, "-s")
 	if err != nil {
 		return -1, err
 	}
@@ -335,21 +336,21 @@ func verifyPack(ch *cmd.Helper, idxPath string) (int, error) {
 }
 
 // install calls `git lfs install --local`.
-func install(ch *cmd.Helper) error {
-	_, err := ch.LFS.Run("install", "--local")
+func install(ctx context.Context, ch *cmd.Helper) error {
+	_, err := ch.LFS.Run(ctx, "install", "--local")
 	return err
 }
 
 // track calls `git lfs track <pattern>`.
-func track(ch *cmd.Helper, pattern string) error {
-	_, err := ch.LFS.Run("track", fmt.Sprintf(`"%s"`, pattern))
+func track(ctx context.Context, ch *cmd.Helper, pattern string) error {
+	_, err := ch.LFS.Run(ctx, "track", fmt.Sprintf(`"%s"`, pattern))
 	return err
 }
 
 // addAttributes calls `git add .gitattribues`
 //
 // Used for supporting git-lfs tracked files.
-func addAttributes(ch *cmd.Helper) error {
-	_, err := ch.Git.Run("add", ".gitattributes")
+func addAttributes(ctx context.Context, ch *cmd.Helper) error {
+	_, err := ch.Git.Run(ctx, "add", ".gitattributes")
 	return err
 }

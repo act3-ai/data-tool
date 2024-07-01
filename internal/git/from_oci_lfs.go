@@ -23,7 +23,7 @@ import (
 func (f *FromOCI) runLFS(ctx context.Context, refList []string, commitManifest ocispec.Descriptor, remoteLFSFiles []string) error {
 	log := logger.FromContext(ctx)
 
-	if err := f.cmdHelper.ConfigureLFS(); err != nil {
+	if err := f.cmdHelper.ConfigureLFS(ctx); err != nil {
 		return fmt.Errorf("configuring LFS: %w", err)
 	}
 
@@ -45,7 +45,7 @@ func (f *FromOCI) runLFS(ctx context.Context, refList []string, commitManifest o
 	}
 
 	log.InfoContext(ctx, "Pushing to git remote")
-	if err := f.pushLFSRemote(f.dstGitRemote, refList...); err != nil {
+	if err := f.pushLFSRemote(ctx, f.dstGitRemote, refList...); err != nil {
 		return fmt.Errorf("pushing to remote: %w", err)
 	}
 
@@ -54,18 +54,18 @@ func (f *FromOCI) runLFS(ctx context.Context, refList []string, commitManifest o
 }
 
 // pushLFSRemote pushes all LFS files to the remote, followed by a standard git push.
-func (f *FromOCI) pushLFSRemote(gitRemote string, refList ...string) error {
+func (f *FromOCI) pushLFSRemote(ctx context.Context, gitRemote string, refList ...string) error {
 	if len(refList) == 0 {
 		refList = []string{"--all"}
 	}
 
 	// push LFS files
-	if err := f.cmdHelper.LFS.Push(gitRemote, refList...); err != nil {
+	if err := f.cmdHelper.LFS.Push(ctx, gitRemote, refList...); err != nil {
 		return fmt.Errorf("pushing git lfs files to remote: %w", err)
 	}
 
 	// regular git push
-	if err := f.pushRemote(gitRemote, refList, f.cmdHelper.Force); err != nil {
+	if err := f.pushRemote(ctx, gitRemote, refList, f.cmdHelper.Force); err != nil {
 		return fmt.Errorf("pushing commits and refs to remote: %w", err)
 	}
 
@@ -86,7 +86,7 @@ func (f *FromOCI) updateLFSFromOCI(ctx context.Context, lfsManDesc ocispec.Descr
 		} else {
 			// log.InfoContext(ctx, "cached LFS files from OCI", "oids", cachedOIDs)
 			log.InfoContext(ctx, "Linking cache lfs files to intermediate repository")
-			if err := f.cmdHelper.Config("--add", "lfs.storage", filepath.Join(f.syncOpts.Cache.CachePath(), "lfs")); err != nil {
+			if err := f.cmdHelper.Config(ctx, "--add", "lfs.storage", filepath.Join(f.syncOpts.Cache.CachePath(), "lfs")); err != nil {
 				return fmt.Errorf("setting lfs.storage config to cache: %w", err) // TODO: recover?
 			}
 			break

@@ -34,7 +34,7 @@ func NewCache(ctx context.Context, cachePath, fstorePath string, fstore *file.St
 		return nil, fmt.Errorf("creating command helper: %w", err)
 	}
 
-	err = ch.InitializeRepo()
+	err = ch.InitializeRepo(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("initializing shared object repository: %w", err)
 	}

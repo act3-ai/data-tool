@@ -110,11 +110,12 @@ func CheckGitLFSVersion(ctx context.Context, altExec string) (string, error) {
 
 // getGitLFSVersion shells out and parses the version of git lfs being used. Returns major, minor, patch.
 func getGitLFSVersion(ctx context.Context, altExec string) (string, error) {
-	log := logger.V(logger.FromContext(ctx), 2)
+	lfsgc := &gitLFSCmd{
+		dir:           "",
+		altGitLFSExec: altExec,
+	}
 
-	lfsgc := newGitLFSCmd(log, "", altExec)
-
-	v, err := lfsgc.Version()
+	v, err := lfsgc.Version(ctx)
 	if err != nil {
 		return "", fmt.Errorf("resolving git lfs version: %w", err)
 	}

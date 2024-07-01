@@ -1,59 +1,49 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"os/exec"
 	"strings"
+
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 // LFS provides access to git-lfs commands.
 type LFS interface {
-	Version() (string, error)
-	Track(pattern string) error
-	Fetch(gitRemote string, argRevList ...string) error
-	Push(gitRemote string, argRevList ...string) error
-	LSFiles(args ...string) ([]string, error)
-	Run(subCmd string, args ...string) ([]string, error)
+	Version(ctx context.Context) (string, error)
+	Track(ctx context.Context, pattern string) error
+	Fetch(ctx context.Context, gitRemote string, argRevList ...string) error
+	Push(ctx context.Context, gitRemote string, argRevList ...string) error
+	LSFiles(ctx context.Context, args ...string) ([]string, error)
+	Run(ctx context.Context, subCmd string, args ...string) ([]string, error)
 }
 
 // gitLFSCmd contains a logger and directory of execution for a git lfs command.
 // gitLFSCmd implements LFS.
 type gitLFSCmd struct {
-	logger *slog.Logger
-	dir    string
+	dir string
 
 	altGitLFSExec string // optional
 }
 
-// newGitLFSCmd returns a gitLFSCmd using the provided logger and directory of execution.
-func newGitLFSCmd(log *slog.Logger, dir, altGitLFSExec string) *gitLFSCmd {
-	return &gitLFSCmd{
-		logger:        log,
-		dir:           dir,
-		altGitLFSExec: altGitLFSExec,
-	}
-}
-
-func (lfs *gitLFSCmd) log(args []string, out []byte) {
-	lfs.logger.Info("Executed git-lfs Command", "command", args, "output", string(out))
-}
-
 // Run executes a git lfs command, returning the parsed output.
-func (lfs *gitLFSCmd) Run(subCmd string, args ...string) ([]string, error) {
+func (lfs *gitLFSCmd) Run(ctx context.Context, subCmd string, args ...string) ([]string, error) {
+	log := logger.FromContext(ctx)
 	var cmd *exec.Cmd
 	switch {
 	case lfs.altGitLFSExec != "":
-		cmd = exec.Command(lfs.altGitLFSExec)
+		cmd = exec.CommandContext(ctx, lfs.altGitLFSExec)
 	default:
-		cmd = exec.Command("git-lfs")
+		cmd = exec.CommandContext(ctx, "git-lfs")
 	}
 	cmd.Args = append(cmd.Args, subCmd)
 	cmd.Args = append(cmd.Args, args...)
 	cmd.Dir = lfs.dir
 
 	out, err := cmd.Output()
+	log.InfoContext(ctx, "Ran git-lfs Command", "command", args, "output", string(out))
 	parsedOut := parseGitOutput(out)
 	if err != nil {
 		exitError := &exec.ExitError{}
@@ -66,7 +56,7 @@ func (lfs *gitLFSCmd) Run(subCmd string, args ...string) ([]string, error) {
 		// if git-lfs is not installed it won't be an exit error
 		execErr := &exec.Error{}
 		if errors.As(err, &execErr) {
-			lfs.log(cmd.Args, []byte(execErr.Error())) // log the exec error
+			log.ErrorContext(ctx, "exec error", "cmd", cmd.Args, "err", execErr.Error())
 			if strings.Contains(string(execErr.Error()), "executable file not found in $PATH") {
 				return parsedOut, errors.Join(err, ErrLFSCmdNotFound)
 			}
@@ -74,7 +64,6 @@ func (lfs *gitLFSCmd) Run(subCmd string, args ...string) ([]string, error) {
 		return parsedOut, fmt.Errorf("git-lfs %s produced an error: %w", cmd.Args, err)
 	}
 
-	lfs.log(cmd.Args, out) // log the raw output
 	return parsedOut, nil
 }
 
@@ -82,18 +71,18 @@ func (lfs *gitLFSCmd) Run(subCmd string, args ...string) ([]string, error) {
 //
 // i.e. downloads git lfs objects at the provided refs. Requires a
 // remote to be provided if a default is not set (same default as git fetch).
-func (lfs *gitLFSCmd) Fetch(gitRemote string, argRevList ...string) error {
+func (lfs *gitLFSCmd) Fetch(ctx context.Context, gitRemote string, argRevList ...string) error {
 	args := []string{gitRemote}
 	args = append(args, argRevList...)
-	_, err := lfs.Run("fetch", args...)
+	_, err := lfs.Run(ctx, "fetch", args...)
 	return err
 }
 
 // Push calls `git lfs push <gitRemote> <args>...`.
-func (lfs *gitLFSCmd) Push(gitRemote string, args ...string) error {
+func (lfs *gitLFSCmd) Push(ctx context.Context, gitRemote string, args ...string) error {
 	a := []string{gitRemote}
 	a = append(a, args...)
-	_, err := lfs.Run("push", a...)
+	_, err := lfs.Run(ctx, "push", a...)
 	return err
 }
 
@@ -101,19 +90,19 @@ func (lfs *gitLFSCmd) Push(gitRemote string, args ...string) error {
 //
 // i.e. lists paths of git lfs files found in the tree at a provided ref.
 // If two refs are given, a list of files modified between the two are shown.
-func (lfs *gitLFSCmd) LSFiles(args ...string) ([]string, error) {
-	return lfs.Run("ls-files", args...)
+func (lfs *gitLFSCmd) LSFiles(ctx context.Context, args ...string) ([]string, error) {
+	return lfs.Run(ctx, "ls-files", args...)
 }
 
 // Track calls `git lfs track <pattern>`.
-func (lfs *gitLFSCmd) Track(pattern string) error {
-	_, err := lfs.Run("track", fmt.Sprintf(`"%s"`, pattern))
+func (lfs *gitLFSCmd) Track(ctx context.Context, pattern string) error {
+	_, err := lfs.Run(ctx, "track", fmt.Sprintf(`"%s"`, pattern))
 	return err
 }
 
 // Version calls `git lfs version`.
-func (lfs *gitLFSCmd) Version() (string, error) {
-	out, err := lfs.Run("version")
+func (lfs *gitLFSCmd) Version(ctx context.Context) (string, error) {
+	out, err := lfs.Run(ctx, "version")
 	if err != nil {
 		return "", err
 	}

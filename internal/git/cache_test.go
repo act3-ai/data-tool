@@ -36,7 +36,7 @@ func Test_GitCache(t *testing.T) {
 	// run LFS tests
 	for _, tt := range lfsTests {
 		// prepare ground-truth
-		gitOids, lfsOids := reachableOIDs(t, tt.t.args.argRevList, lfsSrcHandler.cmdHelper)
+		gitOids, lfsOids := reachableOIDs(t, ctx, tt.t.args.argRevList, lfsSrcHandler.cmdHelper)
 
 		// run and validate ToOCI
 		t.Run(tt.t.name+":ToOCILFS-Cache", ToOCITestFn(ctx, t, lfsSrc, target, toOCICacheDir, srcServer.URL, gitOids, lfsOids, tt))
@@ -153,16 +153,16 @@ func FromOCITestFn(ctx context.Context, t *testing.T, src oras.GraphTarget, dst 
 
 // reachableOIDs determines git and git-lfs objects reachable from a set of git references within the source repository.
 // The results are used for validation.
-func reachableOIDs(t *testing.T, argRevList []string, lfsSrcCmdHelper *cmd.Helper) ([]string, []string) {
+func reachableOIDs(t *testing.T, ctx context.Context, argRevList []string, lfsSrcCmdHelper *cmd.Helper) ([]string, []string) { //nolint
 	t.Helper()
 	args := []string{"--objects"} // --objects is crucial, as this will tell us all objects that are fetched to the cache; else its just commits
 	args = append(args, argRevList...)
-	reachableGitOids, err := revList(lfsSrcCmdHelper, args...)
+	reachableGitOids, err := revList(ctx, lfsSrcCmdHelper, args...)
 	if err != nil {
 		t.Errorf("resolving reachable git objects: %v", err)
 	}
 
-	reachableLFSOids, err := lfsSrcCmdHelper.ListReachableLFSFiles(argRevList...)
+	reachableLFSOids, err := lfsSrcCmdHelper.ListReachableLFSFiles(ctx, argRevList...)
 	if err != nil {
 		t.Errorf("resolving reachable lfs files: %v", err)
 	}
@@ -218,7 +218,7 @@ func validateFromOCICache(ctx context.Context, cachePath string, expectedObjs, e
 	}
 	var objTotal int
 	for _, packIdx := range allPackIdxs {
-		packObjs, err := verifyPack(ch, filepath.Join(packPath, packIdx))
+		packObjs, err := verifyPack(ctx, ch, filepath.Join(packPath, packIdx))
 		if err != nil {
 			return fmt.Errorf("validating packfile '%s': %w", packIdx, err)
 		}

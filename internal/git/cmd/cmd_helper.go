@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 )
 
@@ -24,20 +23,24 @@ type Helper struct {
 // It validates the compatibility of git and git-lfs. Displays a warning if git-lfs
 // is not installed.
 func NewHelper(ctx context.Context, gitDir string, opts *Options) (*Helper, error) {
-	log := logger.FromContext(ctx)
-
 	ch := &Helper{
 		Options: *opts,
 		dir:     gitDir,
 	}
-	ch.Git = newGitCmd(log, gitDir, opts.AltGitExec)
+	ch.Git = &gitCmd{
+		dir:        gitDir,
+		altGitExec: opts.AltGitExec,
+	}
 
 	if opts.LFSOptions == nil { // prevent panic if no LFS opts are specified
 		ch.LFSOptions = &LFSOptions{
 			WithLFS: true, // default behavior
 		}
 	}
-	ch.LFS = newGitLFSCmd(log, gitDir, ch.AltLFSExec)
+	ch.LFS = &gitLFSCmd{
+		dir:           gitDir,
+		altGitLFSExec: ch.AltLFSExec,
+	}
 
 	return ch, nil
 }
@@ -76,8 +79,8 @@ func (c *Helper) Dir() string {
 
 // InitializeRepo initializes the temporary directory as an empty bare git repository. This repository
 // functions as an intermediate repo of which changes are collected/applied and then handled accordingly.
-func (c *Helper) InitializeRepo() error {
-	if err := c.Init("--bare"); err != nil {
+func (c *Helper) InitializeRepo(ctx context.Context) error {
+	if err := c.Init(ctx, "--bare"); err != nil {
 		return fmt.Errorf("creating bare repository: %w", err)
 	}
 
@@ -87,8 +90,8 @@ func (c *Helper) InitializeRepo() error {
 // LocalCommitsRefs returns the local references and the commits they reference
 // split into two slices, with indicies matching the pairs. If argRevList is empty
 // all references will be returned.
-func (c *Helper) LocalCommitsRefs(argRevList ...string) ([]string, []string, error) {
-	commitsRefs, err := c.ShowRefs(argRevList...)
+func (c *Helper) LocalCommitsRefs(ctx context.Context, argRevList ...string) ([]string, []string, error) {
+	commitsRefs, err := c.ShowRefs(ctx, argRevList...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("resolving local commits and references: %w", err)
 	}
@@ -100,11 +103,11 @@ func (c *Helper) LocalCommitsRefs(argRevList ...string) ([]string, []string, err
 // RemoteCommitsRefs returns the remote references and the commits they reference
 // split into two slices, with indicies matching the pairs. If argRevList is empty
 // all references will be returned.
-func (c *Helper) RemoteCommitsRefs(remote string, argRevList ...string) ([]string, []string, error) {
+func (c *Helper) RemoteCommitsRefs(ctx context.Context, remote string, argRevList ...string) ([]string, []string, error) {
 	args := make([]string, 0, len(argRevList)+2)
 	args = append(args, "--tags", "--heads", "--refs", remote)
 	args = append(args, argRevList...)
-	refsCommits, err := c.LSRemote(args...)
+	refsCommits, err := c.LSRemote(ctx, args...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("retrieving remote commits and references: %w", err)
 	}

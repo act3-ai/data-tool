@@ -82,7 +82,7 @@ func Test_ToFromOCILFS(t *testing.T) { //nolint
 	for _, tt := range lfsTests {
 
 		// build a map of expectations which corresponds to argRevList
-		reachableLFSFiles, err := lfsSrcHandler.cmdHelper.ListReachableLFSFiles(tt.t.args.argRevList...)
+		reachableLFSFiles, err := lfsSrcHandler.cmdHelper.ListReachableLFSFiles(ctx, tt.t.args.argRevList...)
 		if err != nil {
 			t.Errorf("resolving reachable lfs files: %v", err)
 		}
@@ -203,7 +203,7 @@ func setupLFSServerHandlers(t *testing.T, ctx context.Context) (lfsSrc string, l
 	}
 
 	// populate source repository
-	if err := createLFSRepo(lfsSrcHandler.cmdHelper); err != nil {
+	if err := createLFSRepo(ctx, lfsSrcHandler.cmdHelper); err != nil {
 		t.Fatalf("setting up lfs testing repo: %v", err)
 	}
 	// end source setup
@@ -222,10 +222,10 @@ func setupLFSServerHandlers(t *testing.T, ctx context.Context) (lfsSrc string, l
 	}
 
 	// prepare the destination repository, but don't populate it with anything
-	if err := lfsDstHandler.cmdHelper.InitializeRepo(); err != nil {
+	if err := lfsDstHandler.cmdHelper.InitializeRepo(ctx); err != nil {
 		t.Errorf("initializing destination repository: %v", err)
 	}
-	if err := lfsDstHandler.cmdHelper.ConfigureLFS(); err != nil {
+	if err := lfsDstHandler.cmdHelper.ConfigureLFS(ctx); err != nil {
 		t.Errorf("prepping lfs repo for handling lfs files: %v", err)
 	}
 	// end destination setup
@@ -485,7 +485,7 @@ func validateLFSRebuild(ctx context.Context, lfsDstHandler *FromOCI, expectedOID
 	var rebuildErrs []error
 
 	// fetch all lfs files, as these should be pushed to the server but not exist in the destination as this is the purpose of lfs.
-	err := lfsDstHandler.cmdHelper.LFS.Fetch(lfsDstHandler.syncOpts.IntermediateDir, "--all")
+	err := lfsDstHandler.cmdHelper.LFS.Fetch(ctx, lfsDstHandler.syncOpts.IntermediateDir, "--all")
 	if err != nil {
 		return fmt.Errorf("fetching all lfs files: %w", err)
 	}

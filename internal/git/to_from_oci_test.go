@@ -210,7 +210,7 @@ var updateTests = []test{
 
 func Test_ToFromOCI(t *testing.T) { //nolint
 	ctx := context.Background()
-	log := tlog.Logger(t, -2)
+	log := tlog.Logger(t, 0)
 	ctx = logger.NewContext(ctx, log)
 
 	gitVersion, err := cmd.CheckGitVersion(ctx, "")
@@ -226,7 +226,7 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 	if err != nil {
 		t.Fatalf("creating source repo command helper: %v", err)
 	}
-	if err := createTestRepo(testRepoCH); err != nil {
+	if err := createTestRepo(ctx, testRepoCH); err != nil {
 		t.Fatalf("creating test repository: %v", err)
 	}
 
@@ -236,7 +236,7 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 	if err != nil {
 		t.Fatalf("creating destination repo command helper: %v", err)
 	}
-	err = destRepoCH.Init()
+	err = destRepoCH.Init(ctx)
 	if err != nil {
 		t.Fatalf("setting up git rebuild dir: %v", err)
 	}
@@ -378,7 +378,7 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 
 	// Use Cases - that require an update to an existing reference
 	t.Log("Updating up testing git repository")
-	if err := updateTestRepo(testRepoCH); err != nil {
+	if err := updateTestRepo(ctx, testRepoCH); err != nil {
 		t.Fatalf("updating test repository: %v", err)
 	}
 
@@ -654,7 +654,7 @@ func prepSyncValidation(ctx context.Context, ch *cmd.Helper, target *memory.Stor
 			}
 
 			// get and organize the bundle's references
-			bundleRefs, err := listHeads(ch, targetBundlePath)
+			bundleRefs, err := listHeads(ctx, ch, targetBundlePath)
 			if err != nil {
 				return config, allBundleTags, allBundleHeads, fmt.Errorf("listing references in fetched bundle: %w", err)
 			}

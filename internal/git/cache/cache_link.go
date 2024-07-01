@@ -22,9 +22,9 @@ import (
 // ObjectCacher proivdes methods for adding git or git-lfs objects to a cache.
 type ObjectCacher interface {
 	CachePath() string
-	UpdateFromGit(gitRemote string, argRevList ...string) error
+	UpdateFromGit(ctx context.Context, gitRemote string, argRevList ...string) error
 	UpdateFromOCI(ctx context.Context, src content.ReadOnlyGraphStorage, manDesc ocispec.Descriptor) error
-	UpdateLFSFromGit(gitRemote string, argRevList ...string) error
+	UpdateLFSFromGit(ctx context.Context, gitRemote string, argRevList ...string) error
 	UpdateLFSFromOCI(ctx context.Context, src content.ReadOnlyGraphStorage, lfsManDesc ocispec.Descriptor) ([]ocispec.Descriptor, error)
 }
 
@@ -38,11 +38,11 @@ type Link struct {
 
 // UpdateFromGit updates the cache with objects from a remote git repository that
 // are reachable from argRevList, or all objects if argRevList is empty.
-func (c *Link) UpdateFromGit(gitRemote string, argRevList ...string) error {
+func (c *Link) UpdateFromGit(ctx context.Context, gitRemote string, argRevList ...string) error {
 	args := make([]string, 0, len(argRevList)+1)
 	args = append(args, gitRemote)
 	args = append(args, argRevList...)
-	if err := c.CmdHelper.Git.Fetch(args...); err != nil {
+	if err := c.CmdHelper.Git.Fetch(ctx, args...); err != nil {
 		return fmt.Errorf("fetching from remote: %w", err)
 	}
 	return nil
@@ -107,7 +107,7 @@ func (c *Link) UpdateFromOCI(ctx context.Context, src content.ReadOnlyGraphStora
 		// add bundle as a remote
 		// TODO: we don't have unique bundle names, so this is not concurrency safe
 		shortname := strings.TrimSuffix(bundleName, ".bundle")
-		err := c.CmdHelper.RemoteAdd(shortname, bundlePath)
+		err := c.CmdHelper.RemoteAdd(ctx, shortname, bundlePath)
 		if err != nil {
 			return fmt.Errorf("adding bundle '%s' as remote: %w", bundlePath, err)
 		}
@@ -121,7 +121,7 @@ func (c *Link) UpdateFromOCI(ctx context.Context, src content.ReadOnlyGraphStora
 	} else {
 		log.InfoContext(ctx, "fetching from bundles")
 	}
-	if err := c.CmdHelper.Git.Fetch(args...); err != nil {
+	if err := c.CmdHelper.Git.Fetch(ctx, args...); err != nil {
 		return fmt.Errorf("fetching from bundles: %w", err)
 	}
 
@@ -129,7 +129,7 @@ func (c *Link) UpdateFromOCI(ctx context.Context, src content.ReadOnlyGraphStora
 	// TODO: is this necessary?
 	log.InfoContext(ctx, "removing bundles from remotes")
 	for _, shortname := range shortnames {
-		err := c.CmdHelper.RemoteRemove(shortname)
+		err := c.CmdHelper.RemoteRemove(ctx, shortname)
 		if err != nil {
 			return fmt.Errorf("removing remote bundle: %w", err)
 		}
@@ -140,14 +140,14 @@ func (c *Link) UpdateFromOCI(ctx context.Context, src content.ReadOnlyGraphStora
 
 // UpdateLFSFromGit updates the cache with LFS objects from a remote git repository that
 // are reachable from argRevList, or all objects if argRevList is empty.
-func (c *Link) UpdateLFSFromGit(gitRemote string, commits ...string) error {
-	if err := c.CmdHelper.ConfigureLFS(); err != nil {
+func (c *Link) UpdateLFSFromGit(ctx context.Context, gitRemote string, commits ...string) error {
+	if err := c.CmdHelper.ConfigureLFS(ctx); err != nil {
 		return fmt.Errorf("configuring LFS: %w", err)
 	}
 
 	args := []string{"--all"}
 	args = append(args, commits...)
-	err := c.CmdHelper.LFS.Fetch(gitRemote, args...)
+	err := c.CmdHelper.LFS.Fetch(ctx, gitRemote, args...)
 	if err != nil {
 		return fmt.Errorf("fetching remote repository lfs files to cache: %w", err)
 	}
@@ -239,7 +239,7 @@ func (c *Link) resolveUncachedBundles(ctx context.Context, layers []ocispec.Desc
 		if layerNumResolver[refInfo.Layer] < layerCutoff {
 			// fullTagRef := filepath.Join(cmd.TagRefPrefix, tag)
 			// refCommits, err := c.CmdHelper.ShowRefs(fullTagRef) // returned slice should be of length 1
-			err := c.CmdHelper.Git.CatFile("-e", string(refInfo.Commit))
+			err := c.CmdHelper.Git.CatFile(ctx, "-e", string(refInfo.Commit))
 			if err != nil {
 				// oid DNE
 				layerCutoff = layerNumResolver[refInfo.Layer]
@@ -252,7 +252,7 @@ func (c *Link) resolveUncachedBundles(ctx context.Context, layers []ocispec.Desc
 		if layerNumResolver[refInfo.Layer] < layerCutoff {
 			// fullHeadRef := filepath.Join(cmd.HeadRefPrefix, head)
 			// refCommits, err := c.CmdHelper.ShowRefs(fullHeadRef) // returned slice should be of length 1
-			err := c.CmdHelper.Git.CatFile("-e", string(refInfo.Commit))
+			err := c.CmdHelper.Git.CatFile(ctx, "-e", string(refInfo.Commit))
 			if err != nil {
 				// oid DNE
 				layerCutoff = layerNumResolver[refInfo.Layer]

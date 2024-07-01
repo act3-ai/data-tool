@@ -81,7 +81,7 @@ func (t *ToOCI) Run(ctx context.Context) (ocispec.Descriptor, error) {
 	// sometimes we want to update everything
 	if len(t.argRevList) < 1 {
 		log.InfoContext(ctx, "no specified list of references, resolving all remote references")
-		_, fullRefs, err := t.remoteCommitsRefs()
+		_, fullRefs, err := t.remoteCommitsRefs(ctx)
 		if err != nil {
 			return ocispec.Descriptor{}, fmt.Errorf("resolving all remote references: %w", err)
 		}
@@ -104,19 +104,19 @@ func (t *ToOCI) Run(ctx context.Context) (ocispec.Descriptor, error) {
 	// try to cache, and recover if it fails
 	if t.syncOpts.Cache != nil {
 		log.DebugContext(ctx, "Utilizing git cache", "cacheDir", t.syncOpts.Cache.CachePath())
-		if err := t.syncOpts.Cache.UpdateFromGit(t.srcGitRemote, t.argRevList...); err != nil {
+		if err := t.syncOpts.Cache.UpdateFromGit(ctx, t.srcGitRemote, t.argRevList...); err != nil {
 			log.DebugContext(ctx, "Cache failed to update git objects", "error", err)
 			u.Infof("Failed to update cache with git objects, continuing without caching...")
 		}
 	}
 
 	log.InfoContext(ctx, "Cloning git repo", "repo", t.srcGitRemote)
-	if err := t.cloneRemote(); err != nil { // if cache DNE, objs are cloned to intermediate repo
+	if err := t.cloneRemote(ctx); err != nil { // if cache DNE, objs are cloned to intermediate repo
 		return ocispec.Descriptor{}, fmt.Errorf("cloning git remote %s to %s: %w", t.srcGitRemote, t.cmdHelper.Dir(), err)
 	}
 
 	log.InfoContext(ctx, "Bundling changes")
-	newBundlePath, err := t.bundleChanges(t.argRevList...)
+	newBundlePath, err := t.bundleChanges(ctx, t.argRevList...)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("bundling changes: %w", err)
 	}
@@ -169,7 +169,7 @@ func (t *ToOCI) Run(ctx context.Context) (ocispec.Descriptor, error) {
 
 // cloneRemote clones a remote source git repository to the intermediate directory. The clone
 // always attempts to reference the cache. A non-existent cache is not fatal.
-func (t *ToOCI) cloneRemote() error {
+func (t *ToOCI) cloneRemote(ctx context.Context) error {
 	if t.srcGitRemote == "" {
 		return fmt.Errorf("no source git remote specified, unable to clone")
 	}
@@ -179,7 +179,7 @@ func (t *ToOCI) cloneRemote() error {
 		cachePath = t.syncOpts.Cache.CachePath()
 	}
 
-	return t.cmdHelper.CloneWithShared(t.srcGitRemote, cachePath)
+	return t.cmdHelper.CloneWithShared(ctx, t.srcGitRemote, cachePath)
 }
 
 // updateBaseConfig updates the commit manifest's config. It should be called after
@@ -190,7 +190,7 @@ func (t *ToOCI) updateBaseConfig(ctx context.Context) error {
 	layerResolver := t.sortRefsByLayer()
 
 	log.InfoContext(ctx, "Resolving new references and commits")
-	newCommits, fullRefs, err := t.localCommitsRefs(t.argRevList...) // fullRefs[i] corresponds to newCommits[i]
+	newCommits, fullRefs, err := t.localCommitsRefs(ctx, t.argRevList...) // fullRefs[i] corresponds to newCommits[i]
 	if err != nil {
 		return fmt.Errorf("resolving references and new commits: %w", err)
 	}
@@ -204,7 +204,7 @@ func (t *ToOCI) updateBaseConfig(ctx context.Context) error {
 		case strings.HasPrefix(fullRef, cmd.TagRefPrefix):
 			refInfo := t.base.config.Refs.Tags[trimmedRef]
 			if newCommit != refInfo.Commit {
-				oldestLayer, err := t.resolveLayer(layerResolver, newCommit)
+				oldestLayer, err := t.resolveLayer(ctx, layerResolver, newCommit)
 				if err != nil {
 					return fmt.Errorf("resolving layer containing commit '%s': %w", newCommit, err)
 				}
@@ -216,7 +216,7 @@ func (t *ToOCI) updateBaseConfig(ctx context.Context) error {
 		case strings.HasPrefix(fullRef, cmd.HeadRefPrefix):
 			refInfo := t.base.config.Refs.Heads[trimmedRef]
 			if newCommit != refInfo.Commit {
-				oldestLayer, err := t.resolveLayer(layerResolver, newCommit)
+				oldestLayer, err := t.resolveLayer(ctx, layerResolver, newCommit)
 				if err != nil {
 					return fmt.Errorf("resolving layer containing commit '%s': %w", newCommit, err)
 				}
@@ -251,13 +251,13 @@ func (t *ToOCI) sortRefsByLayer() map[digest.Digest][]oci.Commit {
 
 // resolveLayer returns the oldest layer in the current manifest containing a commit. Should be called
 // after layer updates.
-func (t *ToOCI) resolveLayer(layerResolver map[digest.Digest][]oci.Commit, targetCommit oci.Commit) (digest.Digest, error) {
+func (t *ToOCI) resolveLayer(ctx context.Context, layerResolver map[digest.Digest][]oci.Commit, targetCommit oci.Commit) (digest.Digest, error) {
 	for i, layer := range t.base.manifest.Layers {
 		if i == len(t.base.manifest.Layers)-1 { // we have reached the final layer, so it must be here.
 			return layer.Digest, nil
 		}
 		for _, commit := range layerResolver[layer.Digest] {
-			err := t.cmdHelper.MergeBase("--is-ancestor", string(targetCommit), string(commit)) // is the targetCommit an ancestor of commit?
+			err := t.cmdHelper.MergeBase(ctx, "--is-ancestor", string(targetCommit), string(commit)) // is the targetCommit an ancestor of commit?
 			switch {
 			case errors.Is(err, cmd.ErrNotAncestor):
 				continue
@@ -337,7 +337,8 @@ func (t *ToOCI) sendBaseSync(ctx context.Context, newBundleDesc ocispec.Descript
 // bundleChanges creates a bundle of changes from the prior sync to the commits referenced by argRevList, returning
 // the path of the bundle. An empty bundle path alongside a nil error indicates that a bundle of objects is not needed
 // but reference updates should still occur.
-func (t *ToOCI) bundleChanges(argRevList ...string) (string, error) {
+func (t *ToOCI) bundleChanges(ctx context.Context, argRevList ...string) (string, error) {
+
 	// make new bundle rev-list
 	excludeCommits := make([]string, 0, len(t.base.config.Refs.Tags)+len(t.base.config.Refs.Heads)+len(argRevList))
 	for _, refInfo := range t.base.config.Refs.Tags {
@@ -349,13 +350,13 @@ func (t *ToOCI) bundleChanges(argRevList ...string) (string, error) {
 	revList := append(excludeCommits, argRevList...) //nolint
 	newBundlePath := filepath.Join(t.ociHelper.FStorePath, "changes"+fmt.Sprintf("%d", len(t.base.manifest.Layers)+1)+".bundle")
 
-	err := t.cmdHelper.BundleCreate(newBundlePath, revList)
+	err := t.cmdHelper.BundleCreate(ctx, newBundlePath, revList)
 EmptyBundleCheck:
 	switch {
 	case errors.Is(err, cmd.ErrEmptyBundle):
 		newBundlePath = "" // a "" bundle path indicates we're only updating refs
 
-		newCommits, newRefs, err := t.localCommitsRefs(argRevList...)
+		newCommits, newRefs, err := t.localCommitsRefs(ctx, argRevList...)
 		if err != nil {
 			return "", fmt.Errorf("resolving references and new commits: %w", err)
 		}
@@ -387,8 +388,8 @@ EmptyBundleCheck:
 // localCommitsRefs returns the local references and the commits they reference
 // split into two slices, with indicies matching the pairs. If argRevList is empty
 // all references will be returned.
-func (t *ToOCI) localCommitsRefs(argRevList ...string) ([]oci.Commit, []string, error) {
-	commitStr, fullRefs, err := t.cmdHelper.LocalCommitsRefs(argRevList...)
+func (t *ToOCI) localCommitsRefs(ctx context.Context, argRevList ...string) ([]oci.Commit, []string, error) {
+	commitStr, fullRefs, err := t.cmdHelper.LocalCommitsRefs(ctx, argRevList...)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -404,8 +405,8 @@ func (t *ToOCI) localCommitsRefs(argRevList ...string) ([]oci.Commit, []string, 
 // remoteCommitsRefs returns the remote references and the commits they reference
 // split into two slices, with indicies matching the pairs. If argRevList is empty
 // all references will be returned.
-func (t *ToOCI) remoteCommitsRefs(argRevList ...string) ([]oci.Commit, []string, error) {
-	commitStr, fullRefs, err := t.cmdHelper.RemoteCommitsRefs(t.srcGitRemote, argRevList...)
+func (t *ToOCI) remoteCommitsRefs(ctx context.Context, argRevList ...string) ([]oci.Commit, []string, error) {
+	commitStr, fullRefs, err := t.cmdHelper.RemoteCommitsRefs(ctx, t.srcGitRemote, argRevList...)
 	if err != nil {
 		return nil, nil, err
 	}

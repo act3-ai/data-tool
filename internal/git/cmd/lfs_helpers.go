@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -51,9 +52,9 @@ func CreateFakeLFSFiles(gitDir string, oids map[string]int64) error {
 // a slice of lfs OIDs.
 //
 // TODO: This is a very expensive operation.
-func (c *Helper) ListReachableLFSFiles(argRevList ...string) ([]string, error) {
+func (c *Helper) ListReachableLFSFiles(ctx context.Context, argRevList ...string) ([]string, error) {
 	// none are reachable in an empty repo
-	r, err := c.ShowRefs()
+	r, err := c.ShowRefs(ctx)
 	if err != nil || len(r) < 1 { // either try to recover from error, or the repo is actually empty
 		return []string{}, nil
 	}
@@ -63,7 +64,7 @@ func (c *Helper) ListReachableLFSFiles(argRevList ...string) ([]string, error) {
 
 	// must do one at a time, see `man git-lfs-ls-files`
 	for _, ref := range argRevList {
-		newFiles, err := c.LSFiles(ref, "--long", "--deleted")
+		newFiles, err := c.LSFiles(ctx, ref, "--long", "--deleted")
 		if err != nil {
 			return nil, fmt.Errorf("retrieving new git lfs tracked files for ref %s: %w", ref, err)
 		}
@@ -82,9 +83,9 @@ func (c *Helper) ListReachableLFSFiles(argRevList ...string) ([]string, error) {
 }
 
 // ConfigureLFS configures the git repository lfs options.
-func (c *Helper) ConfigureLFS() error {
+func (c *Helper) ConfigureLFS(ctx context.Context) error {
 	if c.ServerURL != "" {
-		if err := c.Config("lfs.url", c.ServerURL); err != nil {
+		if err := c.Config(ctx, "lfs.url", c.ServerURL); err != nil {
 			return fmt.Errorf("setting lfs.url to %s in git config: %w", c.ServerURL, err)
 		}
 	}

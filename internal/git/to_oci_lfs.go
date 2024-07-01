@@ -24,7 +24,7 @@ import (
 func (t *ToOCI) runLFS(ctx context.Context, oldCommitManDesc, newCommitManDesc ocispec.Descriptor) (ocispec.Descriptor, error) {
 	log := logger.FromContext(ctx)
 
-	reachableLFSObjs, err := t.cmdHelper.ListReachableLFSFiles(t.argRevList...)
+	reachableLFSObjs, err := t.cmdHelper.ListReachableLFSFiles(ctx, t.argRevList...)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("resolving status of LFS files: %w", err)
 	}
@@ -38,7 +38,7 @@ func (t *ToOCI) runLFS(ctx context.Context, oldCommitManDesc, newCommitManDesc o
 		return ocispec.Descriptor{}, err
 	}
 
-	if err := t.prepRepoForLFS(); err != nil {
+	if err := t.prepRepoForLFS(ctx); err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("prepping tempoarary intermediate git repository for handling lfs: %w", err)
 	}
 
@@ -67,7 +67,7 @@ func (t *ToOCI) fetchLFSFilesGit(ctx context.Context, gitRemote string, argRevLi
 
 	switch {
 	case t.syncOpts.Cache != nil:
-		commits, _, err := t.localCommitsRefs(argRevList...)
+		commits, _, err := t.localCommitsRefs(ctx, argRevList...)
 		if err != nil {
 			return fmt.Errorf("resolving argRevList to commits: %w", err)
 		}
@@ -78,12 +78,12 @@ func (t *ToOCI) fetchLFSFilesGit(ctx context.Context, gitRemote string, argRevLi
 			commitsAsStr = append(commitsAsStr, string(commit))
 		}
 
-		if err := t.syncOpts.Cache.UpdateLFSFromGit(gitRemote, commitsAsStr...); err != nil {
+		if err := t.syncOpts.Cache.UpdateLFSFromGit(ctx, gitRemote, commitsAsStr...); err != nil {
 			log.DebugContext(ctx, "Cache failed to update git-lfs objects", "error", err)
 			u.Infof("Failed to update cache with git-lfs objects, continuing without caching...")
 		} else {
 			log.InfoContext(ctx, "Linking cache lfs files to intermediate repository")
-			if err := t.cmdHelper.Config("--add", "lfs.storage", filepath.Join(t.syncOpts.Cache.CachePath(), "lfs")); err != nil {
+			if err := t.cmdHelper.Config(ctx, "--add", "lfs.storage", filepath.Join(t.syncOpts.Cache.CachePath(), "lfs")); err != nil {
 				return fmt.Errorf("setting lfs.storage config to cache: %w", err) // TODO: recover?
 			}
 			break
@@ -99,7 +99,7 @@ func (t *ToOCI) fetchLFSFilesGit(ctx context.Context, gitRemote string, argRevLi
 
 		args := []string{"--all"}
 		args = append(args, argRevList...)
-		err := t.cmdHelper.LFS.Fetch(gitRemote, args...)
+		err := t.cmdHelper.LFS.Fetch(ctx, gitRemote, args...)
 		if err != nil {
 			return err
 		}
@@ -197,10 +197,10 @@ func (t *ToOCI) getExistingLFSFiles() map[string]int64 {
 }
 
 // prepRepoForLFS prepares the intermediate git repository for pushing LFS files.
-func (t *ToOCI) prepRepoForLFS() error {
+func (t *ToOCI) prepRepoForLFS(ctx context.Context) error {
 	// apply optional lfs server url override
 	if t.cmdHelper.ServerURL != "" {
-		if err := t.cmdHelper.Config("lfs.url", t.cmdHelper.ServerURL); err != nil {
+		if err := t.cmdHelper.Config(ctx, "lfs.url", t.cmdHelper.ServerURL); err != nil {
 			return fmt.Errorf("setting up git config with LFS server URL for base lfs repo: %w", err)
 		}
 	}
