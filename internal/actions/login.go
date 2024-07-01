@@ -96,8 +96,6 @@ func (action *Login) Run(ctx context.Context, registry string, out io.Writer) er
 			return err
 		}
 	} else {
-		// TODO this validates that the login was successful with registry.Ping().
-		// For the python HACK we actually do not want this.
 		err = credentials.Login(ctx, store, reg, cred)
 		if err != nil {
 			return fmt.Errorf("logging in: %w", err)

@@ -71,8 +71,6 @@ Use part command to add part level labels.
 	return cmd
 }
 
-// TODO the below functions should take a FlagSet instead of a command
-
 // PartSelectorFlags adds flags for part selectors.
 func PartSelectorFlags(flags *pflag.FlagSet, action *bottle.PartSelectorOptions) {
 	flags.BoolVar(&action.Empty, "empty", false, "retrieve empty bottle, only containing metadata")

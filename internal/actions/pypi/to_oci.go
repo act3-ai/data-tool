@@ -66,10 +66,6 @@ const (
 	MediaTypePythonDistribution         = "application/vnd.act3-ace.python.distribution.v1+json"
 )
 
-// TODO we should extract the meta data and add it to the config file
-// For sdist (.tar.gz) PKG-INFO and bdist (.whl) *.dist-info/METADATA fields see
-// See https://packaging.python.org/en/latest/specifications/core-metadata/#core-metadata
-
 // ToOCI represents the pypi to-oci action.
 type ToOCI struct {
 	*Action
@@ -375,7 +371,7 @@ func processRequirement(ctx context.Context, reqs []python.Requirement, opts opt
 	}
 
 	log.InfoContext(ctx, "Writing image index")
-	// TODO oras v2.4.0 is planning on having a oras.PackIndex()
+	// TODO oras v2.6.0 is planning on having a oras.PackIndex()
 	// see https://github.com/oras-project/oras-go/issues/576
 	d, err := oras.TagBytes(ctx, target, ocispec.MediaTypeImageIndex, indexData, project)
 	if err != nil {
