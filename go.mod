@@ -23,7 +23,7 @@ require (
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.5
 	go.etcd.io/bbolt v1.3.10
-	golang.org/x/exp v0.0.0-20240613232115-7f521ea00fb8
+	golang.org/x/exp v0.0.0-20240707233637-46b078467d37
 	golang.org/x/net v0.26.0
 	golang.org/x/sync v0.7.0
 	golang.org/x/term v0.21.0
@@ -59,7 +59,7 @@ require (
 	github.com/x448/float16 v0.8.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.24.0 // indirect
-	golang.org/x/mod v0.18.0 // indirect
+	golang.org/x/mod v0.19.0 // indirect
 )
 
 require (
