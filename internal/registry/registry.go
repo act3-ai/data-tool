@@ -115,7 +115,7 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 // if a nil TLS is passed, return a client with a logging transport wrapped in a retry transport.
 // if a TLS config exists, search for TLS certs and append to client.
 func newHTTPClientWithOps(cfg *v1alpha1.TLS, hostName, customCertPath string) (*http.Client, error) {
-	transport := http.DefaultTransport
+	var transport = http.DefaultTransport //nolint
 
 	var certLocation string
 	if customCertPath == "" {
@@ -128,17 +128,17 @@ func newHTTPClientWithOps(cfg *v1alpha1.TLS, hostName, customCertPath string) (*
 		certLocation = customCertPath
 	}
 
-	if certLocation != "" {
-		ssl, err := fetchCertsFromLocation(certLocation)
-		if err != nil {
-			return nil, err
-		}
-		if cfg != nil {
-			ssl.InsecureSkipVerify = cfg.InsecureSkipVerify
-		}
-		transport = &http.Transport{
-			TLSClientConfig: ssl,
-		}
+	ssl, err := fetchCertsFromLocation(certLocation)
+	if err != nil {
+		return nil, err
+	}
+	if cfg != nil {
+		ssl.InsecureSkipVerify = cfg.InsecureSkipVerify
+	}
+
+	transport = &http.Transport{
+		Proxy:           http.ProxyFromEnvironment,
+		TLSClientConfig: ssl,
 	}
 
 	// log requests to the logger (if verbosity is high enough)
@@ -185,29 +185,40 @@ func fetchCertsFromLocation(certDir string) (*tls.Config, error) {
 
 	tlscfg := &tls.Config{}
 
-	// Load client cert
-	cert, err := tls.LoadX509KeyPair(certFilePath, keyFilePath)
+	// add system level certs
+	caCertPool, err := x509.SystemCertPool()
 	if err != nil {
-		if !errors.Is(err, fs.ErrNotExist) {
-			return nil, fmt.Errorf("error reading the certificate and key files: %w", err)
-		}
-	}
-	tlscfg.Certificates = []tls.Certificate{cert}
-
-	// Load CA cert
-	caCert, err := os.ReadFile(caFilePath)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return tlscfg, nil
-		}
-		return nil, fmt.Errorf("error reading the caFile: %w", err)
+		return nil, fmt.Errorf("fetching system certs: %w", err)
 	}
 
-	// Only trust this CA for this host
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
+	if certDir != "" {
+
+		// Load client cert
+		cert, err := tls.LoadX509KeyPair(certFilePath, keyFilePath)
+		if err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				return nil, fmt.Errorf("error reading the certificate and key files: %w", err)
+			}
+		}
+		tlscfg.Certificates = []tls.Certificate{cert}
+
+		// Load CA cert
+		caCert, err := os.ReadFile(caFilePath)
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				return tlscfg, nil
+			}
+			return nil, fmt.Errorf("error reading the caFile: %w", err)
+		}
+
+		// caCertPool := x509.NewCertPool()
+		// Only trust this CA for this host
+		caCertPool.AppendCertsFromPEM(caCert)
+
+	}
 
 	tlscfg.RootCAs = caCertPool
+
 	return tlscfg, nil
 }
 
