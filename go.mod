@@ -37,7 +37,7 @@ require (
 // testing only dependencies
 require (
 	github.com/fortytw2/leaktest v1.3.0
-	github.com/google/go-containerregistry v0.19.2
+	github.com/google/go-containerregistry v0.20.0
 	github.com/stretchr/testify v1.9.0
 )
 
