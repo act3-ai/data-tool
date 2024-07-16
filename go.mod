@@ -7,7 +7,7 @@ require (
 	git.act3-ace.com/ace/data/telemetry v0.20.1
 	git.act3-ace.com/ace/go-common v0.0.0-20240319120227-e77a013aa92d
 	github.com/Masterminds/sprig/v3 v3.2.3
-	github.com/adrg/xdg v0.4.0
+	github.com/adrg/xdg v0.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.17.0
 	github.com/go-chi/chi/v5 v5.1.0
