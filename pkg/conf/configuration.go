@@ -67,6 +67,9 @@ func New(credOpts ...Option) *Configuration {
 func (cfg *Configuration) loadConfig(ctx context.Context) error {
 	log := logger.V(logger.FromContext(ctx), 1)
 
+	// create the registry cache
+	cfg.registryCache = regcache.NewRegistryCache()
+
 	log.InfoContext(ctx, "Loading configuration", "configFiles", cfg.ConfigFiles)
 	cfg.config = &v1alpha1.Configuration{}
 	err := config.Load(logger.FromContext(ctx), cfg.GetConfigScheme(), cfg.config, cfg.ConfigFiles)
@@ -81,9 +84,6 @@ func (cfg *Configuration) loadConfig(ctx context.Context) error {
 			return fmt.Errorf("config override function failed: %w", err)
 		}
 	}
-
-	// create the registry cache
-	cfg.registryCache = regcache.NewRegistryCache()
 
 	log.InfoContext(ctx, "Using configuration", "config", cfg.config)
 	return nil
