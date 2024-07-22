@@ -484,7 +484,7 @@ touch scatter.tmpl
 Use your editor of choice to copy and paste the following contents into the `scatter.tmpl` file:
 
 ```go
-{{- $annotation := index .Annotations "org.opencontainers.image.ref.name" -}}
+{{- $annotation := index .Annotations "vnd.act3-ace.manifest.source" -}}
 localhost:5000/{{ $annotation }}
 ```
 
