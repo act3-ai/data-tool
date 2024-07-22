@@ -141,7 +141,7 @@ When a bottle is committed, the bottle and its parts are automatically compresse
 
 ### Push
 
-When all relevant metadata have been added to a bottle and the last commit is made, it is ready to be pushed.
+When all relevant metadata have been added to a bottle and the last commit is made, it is ready to be pushed. Note that, unlike git, pushing a bottle will automatically commit all changes.
 
 The syntax is:
 
@@ -157,9 +157,21 @@ Example of an OCI_REF:
 <registry>/<repository>/<name>{:<tag>|@<digest>}
 ```
 
-When a bottled is pushed, the OCI image of the data is sent to the registry (or registries) designated by the bottle creator. If a telemetry server is configured, event data (when the bottle was pushed and who pushed the bottle) are automatically tracked. The bottle will subsequently be discoverable by others who have access to the telemetry server. The telemetry server only stores metadata about the bottle. The bottle itself is stored in the OCI registry, which also handles access control to the data.
+When a bottled is pushed, the OCI image of the data is sent to the registry (or registries) designated by the bottle creator. 
 
-A bottle can be pushed to any number of registries.
+#### Push with Telemetry
+
+If one or more telemetry servers are configured, event data (when and who pushed the bottle) as well as bottle metadata are automatically tracked. The bottle will subsequently be discoverable by others who have access to the telemetry server(s), often using metrics or labels (see [Labels and Selectors](https://telemetry.lion.act3-ace.ai/www/about.html#labels-and-selectors)). The telemetry server only stores metadata about the bottle. The bottle itself is stored in the OCI registry, which also handles access control to the data. For more information on telemetry visit the [Telemetry Write-up](https://git.act3-ace.com/ace/data/telemetry/-/blob/main/docs/writeup.md?ref_type=heads).
+
+See the [Configuration Guide](../../get-started/configuration-guide.md) to configure one or more telemetry servers.
+
+Example:
+
+```sh
+ACE_DT_TELEMETRY_URL=https://telemetry.lion.act3-ace.ai ace-dt bottle push OCI_REF
+```
+
+The ACT3 [telemetry server](https://telemetry.lion.act3-ace.ai) offers a graphical interface where you can discover bottles created by others.
 
 ## Other Concerns
 
