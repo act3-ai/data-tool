@@ -157,7 +157,7 @@ Example of an OCI_REF:
 <registry>/<repository>/<name>{:<tag>|@<digest>}
 ```
 
-When a bottled is pushed, the OCI image of the data is sent to the registry (or registries) designated by the bottle creator. 
+When a bottled is pushed, the OCI image of the data is sent to the registry (or registries) designated by the bottle creator.
 
 #### Push with Telemetry
 
