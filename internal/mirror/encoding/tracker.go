@@ -315,7 +315,9 @@ func (mt *TaggableTracker) addTaggable(ctx context.Context, desc ocispec.Descrip
 				mt.missingTaggables[desc.Digest] = append(mt.missingTaggables[desc.Digest], taggable)
 			}
 		} else {
-			exists, err := mt.target.Exists(ctx, desc)
+			d := desc
+			d.MediaType = "application/octet-stream"
+			exists, err := mt.target.Exists(ctx, d)
 			if err != nil {
 				return fmt.Errorf("checking existence of blob: %w", err)
 			}

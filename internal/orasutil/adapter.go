@@ -48,6 +48,7 @@ type existenceCachedTarget struct {
 
 func (s *existenceCachedTarget) Exists(ctx context.Context, desc ocispec.Descriptor) (bool, error) {
 	d := descriptor.FromOCI(desc)
+
 	if v, ok := s.exists.Load(d); ok {
 		return v.(bool), nil
 	}
@@ -64,6 +65,7 @@ func (s *existenceCachedTarget) Exists(ctx context.Context, desc ocispec.Descrip
 
 func (s *existenceCachedTarget) Push(ctx context.Context, desc ocispec.Descriptor, r io.Reader) error {
 	d := descriptor.FromOCI(desc)
+
 	if v, ok := s.exists.Load(d); ok {
 		if v.(bool) {
 			return errdef.ErrAlreadyExists
@@ -82,6 +84,7 @@ func (s *existenceCachedTarget) Push(ctx context.Context, desc ocispec.Descripto
 
 func (s *existenceCachedTarget) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
 	d := descriptor.FromOCI(desc)
+
 	if v, ok := s.exists.Load(d); ok {
 		if !v.(bool) {
 			return nil, errdef.ErrNotFound
