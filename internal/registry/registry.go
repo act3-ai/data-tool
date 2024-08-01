@@ -8,11 +8,13 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
+	"time"
 
 	"github.com/adrg/xdg"
 	"oras.land/oras-go/v2/registry"
@@ -115,7 +117,20 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 // if a nil TLS is passed, return a client with a logging transport wrapped in a retry transport.
 // if a TLS config exists, search for TLS certs and append to client.
 func newHTTPClientWithOps(cfg *v1alpha1.TLS, hostName, customCertPath string) (*http.Client, error) {
-	var transport = http.DefaultTransport //nolint
+	nd := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	// defaultTransport is a new instance of the default transport
+	var defaultTransport = &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           nd.DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
 
 	var certLocation string
 	if customCertPath == "" {
@@ -136,21 +151,18 @@ func newHTTPClientWithOps(cfg *v1alpha1.TLS, hostName, customCertPath string) (*
 		ssl.InsecureSkipVerify = cfg.InsecureSkipVerify
 	}
 
-	transport = &http.Transport{
-		Proxy:           http.ProxyFromEnvironment,
-		TLSClientConfig: ssl,
-	}
+	defaultTransport.TLSClientConfig = ssl
 
 	// log requests to the logger (if verbosity is high enough)
-	transport = &httplogger.LoggingTransport{
-		Base: transport,
+	lt := &httplogger.LoggingTransport{
+		Base: defaultTransport,
 	}
 
 	// we still want retry
-	transport = retry.NewTransport(transport)
+	rt := retry.NewTransport(lt)
 
 	return &http.Client{
-		Transport: transport,
+		Transport: rt,
 	}, nil
 }
 
