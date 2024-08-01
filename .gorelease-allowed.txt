@@ -1,0 +1,8 @@
+# git.act3-ace.com/ace/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1
+## incompatible changes
+SampleConfig: value changed from "# ACE Data Tool Configuration\napiVersion: config.dt.act3-ace.io/v1a... to "# ACE Data Tool Configuration\napiVersion: config.dt.act3-ace.io/v1a...
+
+# summary
+v1.12.1 is not a valid semantic version for this release.
+There are incompatible changes.
+
