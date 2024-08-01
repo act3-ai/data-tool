@@ -10,11 +10,10 @@ import (
 	"strconv"
 	"strings"
 	"text/tabwriter"
-
-	security "gitlab.com/act3-ai/asce/data/tool/internal/security"
 )
 
-func printJSON(out io.Writer, results []*ArtifactScanResults) error {
+// PrintJSON prints out the ArtifactDetails in JSON format to the io.Writer defined.
+func PrintJSON(out io.Writer, results []*ArtifactDetails) error {
 	for _, r := range results {
 		marshalledData, err := json.MarshalIndent(*r, "", "    ")
 		if err != nil {
@@ -28,7 +27,8 @@ func printJSON(out io.Writer, results []*ArtifactScanResults) error {
 	return nil
 }
 
-func printMarkdown(out io.Writer, results []*ArtifactScanResults) error {
+// PrintMarkdown prints out the ArtifactDetails in markdown format to the io.Writer defined. Includes mermaid and platform coverage charts.
+func PrintMarkdown(out io.Writer, results []*ArtifactDetails) error {
 	platformMap := analyzePlatforms(results)
 	// sort artifacts by critical count
 	newResults := sortArtifacts(results, 10)
@@ -38,10 +38,10 @@ func printMarkdown(out io.Writer, results []*ArtifactScanResults) error {
 	rows := make([]string, len(newResults))
 
 	for i, res := range newResults {
-		xaxis[i] = res.ShortenedName
-		criticalCount[i] = res.CriticalVulnCount
+		xaxis[i] = res.shortenedName
+		criticalCount[i] = res.CalculatedResults.CriticalVulnCount
 		platformStringList := strings.Join(res.Platforms, ", ")
-		tablefmt := "|" + strings.Join([]string{res.Reference, strconv.Itoa(res.CriticalVulnCount), strconv.Itoa(res.HighVulnCount), strconv.Itoa(res.MediumVulnCount), platformStringList, strconv.FormatBool(res.OciCompliance), strconv.FormatBool(res.HasSBOM), strconv.FormatBool(res.IsSigned)}, "|") + "|"
+		tablefmt := "|" + strings.Join([]string{res.OriginatingReference, strconv.Itoa(res.CalculatedResults.CriticalVulnCount), strconv.Itoa(res.CalculatedResults.HighVulnCount), strconv.Itoa(res.CalculatedResults.MediumVulnCount), platformStringList, strconv.FormatBool(res.IsOCICompliant), strconv.FormatBool(res.SBOMDigest != ""), strconv.FormatBool(res.SignatureDigest != "")}, "|") + "|"
 		rows[i] = tablefmt
 	}
 
@@ -93,26 +93,14 @@ func printMarkdown(out io.Writer, results []*ArtifactScanResults) error {
 	return nil
 }
 
-func formatAxis(intSlice []int) string {
-	// Create a slice to hold the string representations of the integers
-	strSlice := make([]string, len(intSlice))
-
-	// Convert each integer to a string
-	for i, v := range intSlice {
-		strSlice[i] = strconv.Itoa(v)
-	}
-
-	// Join the string representations with commas
-	return "[" + strings.Join(strSlice, ", ") + "]"
-}
-
-func printCSV(out io.Writer, results []*ArtifactScanResults) error {
+// PrintCSV prints out the ArtifactDetails in CSV format to the io.Writer defined.
+func PrintCSV(out io.Writer, results []*ArtifactDetails) error {
 	table := make([][]string, len(results)+1)
 	header := []string{"reference", "critical", "high", "medium"}
 	w := csv.NewWriter(out)
 	table[0] = header
 	for i, res := range results {
-		table[i+1] = []string{res.Reference, strconv.Itoa(res.CriticalVulnCount), strconv.Itoa(res.HighVulnCount), strconv.Itoa(res.MediumVulnCount)}
+		table[i+1] = []string{res.OriginatingReference, strconv.Itoa(res.CalculatedResults.CriticalVulnCount), strconv.Itoa(res.CalculatedResults.HighVulnCount), strconv.Itoa(res.CalculatedResults.MediumVulnCount)}
 	}
 	if err := w.WriteAll(table); err != nil {
 		return fmt.Errorf("writing csv table: %w", err)
@@ -120,13 +108,14 @@ func printCSV(out io.Writer, results []*ArtifactScanResults) error {
 	return nil
 }
 
-func printTable(out io.Writer, results []*ArtifactScanResults) error {
+// PrintTable prints out the ArtifactDetails in a printed table format to the io.Writer defined.
+func PrintTable(out io.Writer, results []*ArtifactDetails) error {
 	table := make([][]string, len(results)+1)
 	tableHeader := []string{"reference", "critical", "high", "medium"}
 	table[0] = tableHeader
 	for i, res := range results {
 		// platformStringList := strings.Join(res.Platforms, ",") // list does not look good in table
-		table[i+1] = []string{res.Reference, strconv.Itoa(res.CriticalVulnCount), strconv.Itoa(res.HighVulnCount), strconv.Itoa(res.MediumVulnCount)}
+		table[i+1] = []string{res.OriginatingReference, strconv.Itoa(res.CalculatedResults.CriticalVulnCount), strconv.Itoa(res.CalculatedResults.HighVulnCount), strconv.Itoa(res.CalculatedResults.MediumVulnCount)}
 	}
 	w := tabwriter.NewWriter(out, 1, 1, 1, ' ', 0)
 
@@ -142,19 +131,22 @@ func printTable(out io.Writer, results []*ArtifactScanResults) error {
 	return nil
 }
 
-func formatReference(detail security.ArtifactDetails) string {
-	var reference string
-	if detail.OriginatingReference != "" {
-		reference = detail.OriginatingReference
-	} else {
-		reference = detail.Source.Name
+func formatAxis(intSlice []int) string {
+	// Create a slice to hold the string representations of the integers
+	strSlice := make([]string, len(intSlice))
+
+	// Convert each integer to a string
+	for i, v := range intSlice {
+		strSlice[i] = strconv.Itoa(v)
 	}
-	return reference
+
+	// Join the string representations with commas
+	return "[" + strings.Join(strSlice, ", ") + "]"
 }
 
-func sortArtifacts(results []*ArtifactScanResults, filterTopCount int) []*ArtifactScanResults {
+func sortArtifacts(results []*ArtifactDetails, filterTopCount int) []*ArtifactDetails {
 	sort.SliceStable(results, func(i, j int) bool {
-		return results[i].CriticalVulnCount > results[j].CriticalVulnCount
+		return results[i].CalculatedResults.CriticalVulnCount > results[j].CalculatedResults.CriticalVulnCount
 	})
 	if filterTopCount > len(results) {
 		return results
@@ -162,28 +154,28 @@ func sortArtifacts(results []*ArtifactScanResults, filterTopCount int) []*Artifa
 	return results[:filterTopCount]
 }
 
-func formatArtifactNames(artifacts []*ArtifactScanResults) []*ArtifactScanResults {
+func formatArtifactNames(artifacts []*ArtifactDetails) []*ArtifactDetails {
 	// the mapper is just to check for duplicate names
-	mapper := make(map[string]ArtifactScanResults, len(artifacts))
+	mapper := make(map[string]ArtifactDetails, len(artifacts))
 
 	for _, artifact := range artifacts {
-		image := path.Base(artifact.Reference)
+		image := path.Base(artifact.OriginatingReference)
 		// we want to evaluate if the artifact name already exists in the mapper, if it does, we want to make them both unique
 		value, ok := mapper[image]
 		if ok {
-			ref1, ref2 := dilineateArtifactNames(value.Reference, artifact.Reference)
+			ref1, ref2 := dilineateArtifactNames(value.OriginatingReference, artifact.OriginatingReference)
 			mapper[ref1] = mapper[image]
 			art := mapper[ref1]
 			// assign the shortened names to the images
-			art.ShortenedName = ref1
-			artifact.ShortenedName = ref2
+			art.shortenedName = ref1
+			artifact.shortenedName = ref2
 			// we want to rename both to include more information
 			delete(mapper, image)
 			mapper[ref2] = *artifact
 		} else {
 			mapper[image] = *artifact
 			// assign the shortened name to the new artifact
-			artifact.ShortenedName = image
+			artifact.shortenedName = image
 		}
 
 	}
@@ -202,7 +194,7 @@ func dilineateArtifactNames(image1, image2 string) (string, string) {
 	return path.Join(newString1, repo1), path.Join(newString2, repo2)
 }
 
-func analyzePlatforms(results []*ArtifactScanResults) map[string]int {
+func analyzePlatforms(results []*ArtifactDetails) map[string]int {
 	platformMap := make(map[string]int)
 	for _, res := range results {
 		for _, platform := range res.Platforms {
