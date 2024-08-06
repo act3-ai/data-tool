@@ -95,6 +95,7 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) err
 			// record the bytes and number of blobs that were actually copied.
 			c.options.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 				// copied bytes and blobs
+				numBytes.Add(desc.Size)
 				wt.Add(desc)
 				return nil
 			}
