@@ -33,25 +33,44 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 	if err != nil {
 		return fmt.Errorf("reading gather list file: %w", err)
 	}
+	fmt.Println(records)
 	// create a map for easy retrieval
 	images := make(map[string]string, len(records)-1)
 	// iterate through records, skip the first line, load the data into the map.
-	for i := 1; i <= len(records); i++ {
+	for i := 1; i <= len(records)-1; i++ {
 		// name, images
 		record := records[i]
-		images[record[0]] = images[record[1]]
+		fmt.Println("!!! ", record[1])
+		images[record[0]] = record[1]
 	}
 	var counter int
 	// create a tracker map, imageName:slice of existing images.
 	// iterate the counter for serialize command to create the new file.
+	var trackerFile *os.File
 	trackerMap := map[string][]string{}
-	// TODO: trackerfile name is assumed. add option to overwrite with a flag.
-	trackerFile, err := os.Open(action.TrackerFile)
+	//trackerFile, err := os.OpenFile(filepath.Join(syncDir, action.TrackerFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	_, err = os.Stat(filepath.Join(syncDir, action.TrackerFile))
 	if err != nil {
-		return fmt.Errorf("opening record-keeping file: %w", err)
+		tf, err := os.Create(filepath.Join(syncDir, action.TrackerFile))
+		if err != nil {
+			return fmt.Errorf("writing the record-keeping file: %w", err)
+		}
+		trackerFile = tf
+		tw := csv.NewWriter(trackerFile)
+		tw.Write([]string{"sync_name, image, digest"})
+	} else {
+		trackerFile, err = os.Open(filepath.Join(syncDir, action.TrackerFile))
+		if err != nil {
+			return fmt.Errorf("opening record-keeping file: %w", err)
+		}
 	}
+
 	// trackerFile is also a csv with the format SYNC_NAME, IMAGE, DIGEST. We are reading now but will need to write to it at the end of each serialize operation.
+	// trackerRecords := [][]string{}
 	tr := csv.NewReader(trackerFile)
+	tr.FieldsPerRecord = -1
+	tr.Comment = '#'
+	tr.TrimLeadingSpace = true
 	trackerRecords, err := tr.ReadAll()
 	if err != nil {
 		return fmt.Errorf("reading the record-keeping file: %w", err)
@@ -61,7 +80,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 	// }
 	defer trackerFile.Close()
 	// iterate through records, skip the first line, load the data into the map.
-	for i := 1; i <= len(trackerRecords); i++ {
+	for i := 1; i <= len(trackerRecords)-1; i++ {
 		record := records[i]
 		// record[0] | record[1] | record[2]
 		// name     | images[]  |  digest
@@ -87,6 +106,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 		// trackerMap[name[1]] = syncNumber
 	}
 	for imgName, image := range images {
+		fmt.Println(imgName, image)
 		// create the image target
 		repo, err := action.Config.Repository(ctx, image)
 		if err != nil {
@@ -106,20 +126,23 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 		newSyncNumber := counter + 1
 		// convert to string
 		fileName := strings.Join([]string{strconv.Itoa(newSyncNumber), imgName}, "-")
-		fileName = filepath.Join(syncDir, "data", fileName)
+		fileName = filepath.Join(syncDir, strings.Join([]string{fileName, "tar"}, "."))
+		fmt.Println("SERIALIZING!!!")
 		if err := mirror.Serialize(ctx, fileName, "", action.DataTool.Version(), opts); err != nil {
 			return err
 		}
 		// iterate the counter if serialize is successful
 		counter++
 		// get the reference digest
-		digest, err := repo.Reference.Digest()
+		desc, err := repo.Resolve(ctx, image)
 		if err != nil {
-			return fmt.Errorf("getting repository digest: %w", err)
+			return fmt.Errorf("getting repository descriptor: %w", err)
 		}
 		// add it to the tracker file
 		tw := csv.NewWriter(trackerFile)
-		tw.Write([]string{fileName, image, digest.String()})
+		if err = tw.Write([]string{fileName, image, desc.Digest.String()}); err != nil {
+			return fmt.Errorf("writing to record keeping file: %w", err)
+		}
 	}
 
 	return nil
