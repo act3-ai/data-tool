@@ -32,8 +32,11 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 		if err != nil {
 			return fmt.Errorf("walking filepath: %w", err)
 		}
-		if filepath.Ext(path) == "csv" {
+		if filepath.Ext(path) == ".csv" {
 			// ignore trackerfile and sync file
+			return nil
+		}
+		if info.IsDir() {
 			return nil
 		}
 		// parse the file to get the image tag.
@@ -42,7 +45,7 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 			return fmt.Errorf("unexpected file name %s. Batch Deserialize expects tar files with an int-name format, e.g., 0-image1, 1-image2, etc", info.Name())
 		}
 		// create the destination target
-		repo, err := action.Config.Repository(ctx, strings.Join([]string{syncDir, splitName[1]}, ":"))
+		repo, err := action.Config.Repository(ctx, strings.Join([]string{destination, splitName[1]}, ":"))
 		if err != nil {
 			return err
 		}
@@ -50,7 +53,7 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 		opts := mirror.DeserializeOptions{
 			DestTarget:          repo,
 			DestTargetReference: repo.Reference,
-			SourceFile:          "",
+			SourceFile:          path,
 			BufferSize:          0,
 			DryRun:              false,
 			RootUI:              rootUI,
@@ -68,10 +71,11 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 		return err
 	}
 	// write out to successful_syncs.txt the tar file name and the date/timestamp.
-	file, err := os.Open(filepath.Join(syncDir, action.SuccessfulSyncFile))
+	file, err := os.OpenFile(filepath.Join(syncDir, action.SuccessfulSyncFile), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		return fmt.Errorf("opening successful sync file")
+		return fmt.Errorf("opening successful sync file: %w", err)
 	}
+	defer file.Close()
 	w := csv.NewWriter(file)
 	if err := w.WriteAll(successfulSyncs); err != nil {
 		return fmt.Errorf("writing to successful syncs file: %w", err)

@@ -27,7 +27,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 		return fmt.Errorf("opening gather list file: %w", err)
 	}
 	defer f.Close()
-	// we need to open the file for reading and get the previous digests that were synced
+	// we need to read the file and get the previous images that were synced
 	r := csv.NewReader(f)
 	records, err := r.ReadAll()
 	if err != nil {
@@ -52,6 +52,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 	}
 	defer trackerFile.Close()
 
+	// create the writer, but we want to read the contents into memory first before writing
 	tw := csv.NewWriter(trackerFile)
 	defer tw.Flush()
 
@@ -74,7 +75,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 
 	// iterate through records, skip the first line, load the data into the map.
 	for i := 1; i <= len(trackerRecords)-1; i++ {
-		record := records[i]
+		record := trackerRecords[i]
 		// record[0] | record[1] | record[2]
 		// name     | images[]  |  digest
 		// we want to split the tar file name so that we get the name and the int
@@ -87,7 +88,8 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 		if err != nil {
 			return fmt.Errorf("splitting on record name %s: %w", record[0], err)
 		}
-		_, ok := trackerMap[name[1]]
+		imgName := strings.Split(name[1], ".")[0]
+		_, ok := trackerMap[imgName]
 		if ok {
 			// we need to assert that the new sync number is greater than the existing and then replace
 			if syncNumber < counter {
@@ -95,7 +97,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 			}
 		}
 		counter = syncNumber
-		trackerMap[name[1]] = append(trackerMap[name[1]], record[1])
+		trackerMap[imgName] = append(trackerMap[imgName], record[1])
 	}
 	for imgName, image := range images {
 		// create the image target
