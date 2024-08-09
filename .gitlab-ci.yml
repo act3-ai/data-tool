@@ -27,6 +27,8 @@ golang unit test:
     KUBERNETES_CPU_LIMIT: 16
     KUBERNETES_MEMORY_REQUEST: 8Gi
     KUBERNETES_MEMORY_LIMIT: 64Gi
+    GOMAXPROCS: 16
+    GOMEMLIMIT: 68719476736 # 64*(2^30)
   before_script:
     - apt update
     - apt install -y git-lfs
