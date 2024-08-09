@@ -168,6 +168,8 @@ build with ko:
     KUBERNETES_CPU_LIMIT: 8
     KUBERNETES_MEMORY_REQUEST: 8Gi
     KUBERNETES_MEMORY_LIMIT: 16Gi
+    GOMAXPROCS: 8
+    GOMEMLIMIT: 17179869184 # 16*(2^30)
 
 ############################################################
 # Release jobs
