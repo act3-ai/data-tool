@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"git.act3-ace.com/ace/data/tool/internal/mirror"
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 type BatchSerialize struct {
@@ -18,8 +19,7 @@ type BatchSerialize struct {
 }
 
 func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir string) error {
-	// log := logger.FromContext(ctx)
-	// cfg := action.Config.Get(ctx)
+	log := logger.FromContext(ctx)
 	// navigate to syncDir and
 	// if trackerFile exists, open it.
 	f, err := os.Open(gatherList)
@@ -119,7 +119,9 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 		newSyncNumber := counter + 1
 		// convert to string
 		fileName := strings.Join([]string{strconv.Itoa(newSyncNumber), imgName}, "-")
+		// TODO: add compression when merged in.
 		fileName = filepath.Join(syncDir, strings.Join([]string{fileName, "tar"}, "."))
+		log.InfoContext(ctx, "serializing artifact to file:", "artifact name", imgName, "file", fileName)
 		if err := mirror.Serialize(ctx, fileName, "", action.DataTool.Version(), opts); err != nil {
 			return err
 		}
