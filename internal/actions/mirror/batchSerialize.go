@@ -13,11 +13,13 @@ import (
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
+// BatchSerialize represents the mirror batch-serialize action.
 type BatchSerialize struct {
 	*Action
 	TrackerFile string
 }
 
+// Run runs the mirror batch-serialize action.
 func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir string) error {
 	log := logger.FromContext(ctx)
 	// navigate to syncDir and

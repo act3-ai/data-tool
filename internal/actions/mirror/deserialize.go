@@ -8,7 +8,7 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 )
 
-// Deserialize represents the mirror serialize action.
+// Deserialize represents the mirror deserialize action.
 type Deserialize struct {
 	*Action
 

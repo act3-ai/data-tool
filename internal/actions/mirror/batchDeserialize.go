@@ -15,11 +15,13 @@ import (
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
+// BatchDeserialize represents the mirror batch-deserialize action.
 type BatchDeserialize struct {
 	*Action
 	SuccessfulSyncFile string
 }
 
+// Run runs the mirror batch-deserialize action.
 func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination string) error {
 	rootUI := ui.FromContextOrNoop(ctx)
 	log := logger.FromContext(ctx)
@@ -82,7 +84,7 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 		successfulSyncs = append(successfulSyncs, []string{info.Name(), time.Now().String()})
 		return nil
 	}); err != nil {
-		return err
+		return fmt.Errorf("during batch-deserialize operation: %w", err)
 	}
 	// write out to successful_syncs.txt the tar file name and the date/timestamp.
 	w := csv.NewWriter(file)
