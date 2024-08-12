@@ -33,4 +33,5 @@ Description
 * [ace-dt mirror gather](ace-dt_mirror_gather.md)	 - Efficiently copies images listed in SOURCES-FILE to the IMAGE
 * [ace-dt mirror scatter](ace-dt_mirror_scatter.md)	 - A command that scatters images to destination registries defined in the MAPPER
 * [ace-dt mirror serialize](ace-dt_mirror_serialize.md)	 - Serialize image data from IMAGE to DEST assuming that all blobs in the EXISTING-IMAGE(s) do not need to be sent.
-
+* [ace-dt mirror batch-serialize](ace-dt_mirror_batch-serialize.md) - Serialize multiple mirror artifacts from BATCH-LIST to the SYNC-REPOSITORY, while avoiding serializing blobs that have already been serialized.
+* [ace-dt mirror batch-deserialize](ace-dt_mirror_batch-deserialize.md) - Deserialize multiple tar files within SYNC-REPOSITORY to DESTINATION, while avoiding pushing blobs that already exist.
