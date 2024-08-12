@@ -123,7 +123,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 		fileName := strings.Join([]string{strconv.Itoa(newSyncNumber), imgName}, "-")
 		// TODO: add compression when merged in.
 		fileName = filepath.Join(syncDir, strings.Join([]string{fileName, "tar"}, "."))
-		log.InfoContext(ctx, "serializing artifact to file:", "artifact name", imgName, "file", fileName)
+		log.InfoContext(ctx, "serializing artifact to file:", "artifactName", imgName, "file", fileName)
 		if err := mirror.Serialize(ctx, fileName, "", action.DataTool.Version(), opts); err != nil {
 			return err
 		}
