@@ -17,6 +17,7 @@ import (
 	"time"
 
 	"github.com/adrg/xdg"
+	"golang.org/x/net/proxy"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
@@ -152,6 +153,19 @@ func newHTTPClientWithOps(cfg *v1alpha1.TLS, hostName, customCertPath string) (*
 	}
 
 	defaultTransport.TLSClientConfig = ssl
+
+	// use a custom env variable for SOCKS5 proxy
+	// TODO what happens if SOCKS5_PROXY and HTTP_PROXY/HTTPS_PROXY are set?
+	socks5Proxy := os.Getenv("SOCKS5_PROXY")
+	if socks5Proxy != "" {
+		dialer, err := proxy.SOCKS5("tcp", socks5Proxy, nil, proxy.Direct)
+		if err != nil {
+			return nil, fmt.Errorf("creating a SOCKS5 dialer: %w", err)
+		}
+		defaultTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialer.Dial(network, addr)
+		}
+	}
 
 	// log requests to the logger (if verbosity is high enough)
 	lt := &httplogger.LoggingTransport{
