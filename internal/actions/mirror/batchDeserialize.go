@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/csv"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,55 +42,48 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 	if err != nil {
 		return fmt.Errorf("reading the directory: %w", err)
 	}
-	for _, entry := range entries{
-		entry.
-	}
-	if err := filepath.Walk(syncDir, func(path string, info fs.FileInfo, err error) error {
-		if err != nil {
-			return fmt.Errorf("walking filepath: %w", err)
-		}
-		if filepath.Ext(path) == ".csv" {
+	for _, entry := range entries {
+		switch {
+		case filepath.Ext(entry.Name()) == ".csv":
 			// ignore trackerfile and sync file
-			return nil
-		}
-		if info.IsDir() {
-			return nil
-		}
-		if isSynced(info.Name(), existingSyncs) {
-			log.InfoContext(ctx, "File has previously been synced. Skipping...", "filename", info.Name())
+			continue
+		case entry.IsDir():
+			continue
+
+		case isSynced(entry.Name(), existingSyncs):
+			log.InfoContext(ctx, "File has previously been synced. Skipping...", "filename", entry.Name())
 			// file has previously been synced so we don't want to push those blobs again.
-			return nil
+			continue
+
+		default:
+			// parse the file to get the image tag.
+			splitName := strings.Split(entry.Name(), "-")
+			if len(splitName) != 2 {
+				return fmt.Errorf("unexpected file name %s. Batch Deserialize expects tar files with an int-name format, e.g., 0-image1, 1-image2, etc", entry.Name())
+			}
+			// create the destination target
+			repo, err := action.Config.Repository(ctx, strings.Join([]string{destination, strings.Split(splitName[1], ".")[0]}, ":"))
+			if err != nil {
+				return err
+			}
+			// build the deserialize options
+			opts := mirror.DeserializeOptions{
+				DestTarget:          repo,
+				DestTargetReference: repo.Reference,
+				SourceFile:          filepath.Join(syncDir, entry.Name()),
+				BufferSize:          0,
+				DryRun:              false,
+				RootUI:              rootUI,
+				Strict:              false,
+				Log:                 log,
+			}
+			// deserialize each tar file to the destination directory and tag with the image name.
+			// e.g., registry.example.com/foo:image1, registry.example.com/foo:image2, etc...
+			if err := mirror.Deserialize(ctx, opts); err != nil {
+				return err
+			}
+			successfulSyncs = append(successfulSyncs, []string{entry.Name(), time.Now().String()})
 		}
-		// parse the file to get the image tag.
-		splitName := strings.Split(info.Name(), "-")
-		if len(splitName) != 2 {
-			return fmt.Errorf("unexpected file name %s. Batch Deserialize expects tar files with an int-name format, e.g., 0-image1, 1-image2, etc", info.Name())
-		}
-		// create the destination target
-		repo, err := action.Config.Repository(ctx, strings.Join([]string{destination, strings.Split(splitName[1], ".")[0]}, ":"))
-		if err != nil {
-			return err
-		}
-		// build the deserialize options
-		opts := mirror.DeserializeOptions{
-			DestTarget:          repo,
-			DestTargetReference: repo.Reference,
-			SourceFile:          path,
-			BufferSize:          0,
-			DryRun:              false,
-			RootUI:              rootUI,
-			Strict:              false,
-			Log:                 log,
-		}
-		// deserialize each tar file to the destination directory and tag with the image name.
-		// e.g., registry.example.com/foo:image1, registry.example.com/foo:image2, etc...
-		if err := mirror.Deserialize(ctx, opts); err != nil {
-			return err
-		}
-		successfulSyncs = append(successfulSyncs, []string{info.Name(), time.Now().String()})
-		return nil
-	}); err != nil {
-		return fmt.Errorf("during batch-deserialize operation: %w", err)
 	}
 	// write out to successful_syncs.txt the tar file name and the date/timestamp.
 	w := csv.NewWriter(file)
