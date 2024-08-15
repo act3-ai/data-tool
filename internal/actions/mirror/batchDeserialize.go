@@ -39,6 +39,13 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 	}
 	// all of the tar files live in syncDir/data directory.
 	// get all of the files within syncDir/data, ignore the trackerfile.
+	entries, err := os.ReadDir(syncDir)
+	if err != nil {
+		return fmt.Errorf("reading the directory: %w", err)
+	}
+	for _, entry := range entries{
+		entry.
+	}
 	if err := filepath.Walk(syncDir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("walking filepath: %w", err)

@@ -15,11 +15,11 @@ func newBatchDeserializeCmd(tool *actions.Action) *cobra.Command {
 	uiOptions := ui.Options{}
 
 	cmd := &cobra.Command{
-		Use:   "batch-deserialize SYNC-REPOSITORY DESTINATION",
-		Short: "A command that deserializes all of the blobs in tar files located in the SYNC-REPOSITORY to the DESTINATION.",
-		Long: `SYNC-REPOSITORY is the repository holding the tar files to be deserialized. All tar files will be deserialized to DESTINATION.
+		Use:   "batch-deserialize SYNC-DIRECTORY DESTINATION",
+		Short: "A command that deserializes all of the blobs in tar files located in the SYNC-DIRECTORY to the DESTINATION.",
+		Long: `SYNC-DIRECTORY is the repository holding the tar files to be deserialized. All tar files will be deserialized to DESTINATION.
 DESTINATION is a remote repository WITHOUT a tag. Tags will be automatically generated based off of the image name within the tar file name.
-For example, given a file "SYNC-REPOSITORY/0-image1.tar", the blobs will be deserilaized to DESTINATION and tagged as "image1".
+For example, given a file "SYNC-DIRECTORY/0-image1.tar", the blobs will be deserilaized to DESTINATION and tagged as "image1".
 `,
 		Example: `ace-dt mirror batch-deserialize sync/data/ registry.example.com/image`,
 		Args:    cobra.MinimumNArgs(2),
@@ -31,7 +31,7 @@ For example, given a file "SYNC-REPOSITORY/0-image1.tar", the blobs will be dese
 		},
 	}
 	ui.AddOptionsFlags(cmd.Flags(), &uiOptions)
-	cmd.Flags().StringVar(&action.SuccessfulSyncFile, "sync-filename", "successful-syncs.csv", "used to override the default sync-file name.")
+	cmd.Flags().StringVar(&action.SuccessfulSyncFile, "sync-filename", "successfulSyncs.csv", "used to override the default sync-file name.")
 
 	return cmd
 }
