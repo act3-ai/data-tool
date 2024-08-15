@@ -32,9 +32,13 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 	}
 	defer file.Close()
 	r := csv.NewReader(file)
-	existingSyncs, err := r.ReadAll()
+	syncs, err := r.ReadAll()
 	if err != nil {
 		return fmt.Errorf("reading successful sync file: %w", err)
+	}
+	existingSyncs := map[string]string{}
+	for _, syncedFile := range syncs {
+		existingSyncs[syncedFile[0]] = existingSyncs[syncedFile[1]] // map of filename: sync date/time
 	}
 	// all of the tar files live in syncDir/data directory.
 	// get all of the files within syncDir/data, ignore the trackerfile.
@@ -93,11 +97,9 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 	return nil
 }
 
-func isSynced(filename string, existingSyncs [][]string) bool {
-	for _, line := range existingSyncs {
-		if filename == line[0] {
-			return true
-		}
+func isSynced(filename string, existingSyncs map[string]string) bool {
+	if _, ok := existingSyncs[filename]; ok {
+		return true
 	}
 	return false
 }
