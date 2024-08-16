@@ -38,7 +38,7 @@ func newBatchSerializeCmd(tool *actions.Action) *cobra.Command {
 		},
 	}
 	ui.AddOptionsFlags(cmd.Flags(), &uiOptions)
-	cmd.Flags().StringVar(&action.TrackerFile, "tracker-filename", "record_keeping.csv", "used to override the default tracker-file name. Tracker file exists or will be created in the SYNC-DIRECTORY/data/ directory.")
+	cmd.Flags().StringVar(&action.TrackerFile, "tracker-filename", "recordKeeping.csv", "used to override the default tracker-file name. Tracker file exists or will be created in the SYNC-DIRECTORY/data/ directory.")
 
 	return cmd
 }

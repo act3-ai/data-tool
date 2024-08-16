@@ -504,6 +504,161 @@ For example, given an existing `archive.tar` file that was tagged as `sync-1` an
 - `localhost:5000/docker.io/curlimages/curl:7.73.0`
 - `localhost:5000/docker.io/konstin2/maturin@sha256:a203e1071d73c6452715eb819701cb49ca18e0dcd82fe13928de2724c4f2861f`
 
+## The Mirror Batch Commands
+
+The mirror batch commands (`ace-dt mirror batch-serialize` and `ace-dt mirror batch-deserialize`) were created to address the need to transfer as little data as possible over an air gap by eliminating duplicative blob copies. These commands sequentially exist after the `mirror gather` command and before the `mirror scatter` command.
+
+The purpose of these commands is to serialize (remote artifact to tar on low side) and deserialize (tar to remote repository on high side) multiple gather artifacts, keeping track of those which have already been serialized and/or deserialized. Keeping track of the artifacts that have already been processed allows the command to skip the copying of manifests and blobs that have already been moved across the air gap.
+
+To efficiently track the status of artifacts, files are created in the SYNC-DIRECTORY during `ace-dt mirror batch-serialize` and `ace-dt mirror batch-deserialize`. The user should not need to edit these files unless they need to repeat a serialization or deserialization of a specific image, in which case they can delete that entry from the applicable file. The two files that are created are:
+
+- `SYNC-DIRECTORY/recordKeeping.csv`: The `recordKeeping.csv` file is generated during batch-serialize. It keeps track of the images that were serialized and the filename where they exist.
+- `SYNC-DIRECTORY/successfulSyncs.csv`: The `successfulSyncs.csv` file is generated during batch-deserialize. It keeps track of the files that were deserialized along with the date they were pushed to the remote repository.
+
+### Batch-Serialize
+
+The `ace-dt mirror batch-serialize` command serializes multiple artifacts to separate files within the SYNC-DIRECTORY. In a typical user workflow, multiple artifacts may need to get transferred over an air gap on a semi-regular basis. The gather artifact that has been compiled may contain many of the same images as an artifact that was serialized at an earlier time. To account for this, `ace-dt` consults the `recordKeeping.csv` file and adds the previously serialized images to the [EXISTING-IMAGES...] slice when it eventually runs the `serialize` action.
+
+The `batch-serialize` command requires 2 arguments: the `BATCH-LIST` and the `SYNC-DIRECTORY`. The `BATCH-LIST` is a user-generated `.csv` file that includes the name of the artifact and the image location. For example, if a user wanted to serialize 3 artifacts named `tools`, `ops`, and `cicd`, they might have a `BATCH-LIST` named `batch.csv` that looks like this:
+
+```csv
+name, image
+tools, reg.example.com/dev-tools:v3.0.6
+ops, reg.example.com/ops:v0.2.5
+cicd, reg.example.com/cicd:v8.1
+```
+
+To serialize these images into a directory `sync/data`, the appropriate syntax would be:
+
+Syntax:
+
+```sh
+ace-dt mirror batch-serialize batch.csv sync/data 
+```
+
+The command will fetch each of the artifacts in `batch.csv` and serialize them each into a numbered and named tar file within the `sync/data` directory. After execution, the `sync/data` directory will look like:
+
+```txt
+sync/
+|_ data/
+   |_ recordKeeping.csv
+   |_ 1-tools.tar
+   |_ 2-ops.tar
+   |_ 3-cicd.tar
+```
+
+Opening the `sync/data/recordKeeping.csv` file will reveal the following information:
+
+```csv
+sync_name, image, digest
+1-tools.tar, reg.example.com/dev-tools:v3.0.6, sha256:0e3a39687...
+2-ops.tar, reg.example.com/ops:v0.2.5, sha256:9a339f60e...
+3-cicd.tar, reg.example.com/cicd:v8.1, sha256:62c5eb3a4...
+```
+
+After a period of time, the ops directory needs to be updated because one of the images has an urgent update. The end user can update the image and gather into a new artifact `reg.example.com/ops:v0.2.6` and can add (or update the old entry) that to their `batch.csv` file:
+
+```csv
+name, image
+tools, reg.example.com/dev-tools:v3.0.6
+ops, reg.example.com/ops:v0.2.6
+cicd, reg.example.com/cicd:v8.1
+```
+
+Running the same batch command again will create a new file for the new ops version while optimizing the amount of data being serialized:
+
+```sh
+ace-dt mirror batch-serialize batch.csv sync/data 
+```
+
+```txt
+sync/
+|_ data/
+   |_ recordKeeping.csv
+   |_ 1-tools.tar
+   |_ 2-ops.tar
+   |_ 3-cicd.tar
+   |_ 4-ops.tar
+```
+
+During the command execution, ace-dt will pull the `recordKeeping.csv` file if it exists and collect all of the previously serialized `ops` artifacts and pass them into the `serialize` action as the [EXISTING-IMAGES...] argument. Doing this creates a much smaller serialized file for the new version of `ops` that only contains the diffs of the current artifact and the previously-serialized artifacts. It is essentially running the equivalent command:
+
+```sh
+ace-dt mirror serialize reg.example.com/ops:v0.2.6 sync/data/4-ops.tar reg.example.com/ops:v0.2.5
+```
+
+For example, given an artifact `reg.example.com/ops:v0.2.5` containing manifests:
+
+```sh
+sha256:318fb637823f...
+sha256:94ffabc893ee...
+```
+
+and the updated artifact `reg.example.com/ops:v0.2.6` containing manifests:
+
+```sh
+sha256:0dc2e6c0f9de...
+sha256:94ffabc893ee...
+```
+
+Only the manifest `sha256:0dc2e6c0f9de...` and its unique blobs would be serialized to the file `4-ops.tar`.
+
+After the `ace-dt mirror batch-serialize` command is complete and the files are generated, the end-user moves the images across the air gap (for example, via `rsync` to a head node). From there, the user can run `ace-dt mirror batch-deserialize` and then `ace-dt mirror scatter` to distribute the images to their final locations.
+
+### Batch-Deserialize
+
+The `ace-dt mirror batch-deserialize` command will deserialize all new files in the `SYNC-DIRECTORY` to the `DESTINATION` (a remote repository). It generates or consults (if existing) the `SYNC-DIRECTORY/successfulSyncs.csv` file to ensure that the same file is not deserialized multiple times. After successful execution, it appends the deserialized filename and timestamp to the `SYNC-DIRECTORY/successfulSyncs.csv` file.
+
+For example, given a `sync/data` directory:
+
+```txt
+sync/
+|_ data/
+   |_ recordKeeping.csv
+   |_ 1-tools.tar
+   |_ 2-ops.tar
+   |_ 3-cicd.tar
+```
+
+If the user wanted to deserialize the files contained in `sync/data` to the remote image `registry.example.com/sync`, the syntax would be:
+
+Syntax:
+
+```sh
+ace-dt mirror batch-deserialize sync/data registry.example.com/sync
+```
+
+Upon execution, the command will deserialize each of those files to `registry.example.com/sync` and tag them as their respective image name:
+
+- The file `1-tools.tar` would be deserialized to location `registry.example.com/sync:tools`.
+- The file `2-ops.tar` would be deserialized to location `registry.example.com/sync:ops`.
+- The file `3-cicd.tar` would be deserialized to location `registry.example.com/sync:cicd`.
+
+A `SYNC-DIRECTORY/successfulSyncs.csv` file will be created (if it does not exist) or appended to (if it does exist):
+
+```csv
+1-tools.tar,2024-08-15 16:03:34.875740174 -0400 EDT m=+0.096890310
+2-ops.tar,2024-08-15 16:03:34.958255535 -0400 EDT m=+0.179405761
+3-cicd.tar,2024-08-15 16:03:35.589223735 -0400 EDT m=+0.088605142
+```
+
+Like in the `batch-serialize` example, if the file `4-ops.tar` were later created and existed during a subsequent execution of the `batch-deserialize` command, it would be pushed to `registry.example.com/sync:ops` (assuming the user passes the same destination image repository). The command would consult the `successfulSyncs.csv` file and see that the first 3 tar files have already been pushed, so it would only deserialize the `4-ops.tar` file. The `SYNC-DIRECTORY/successfulSyncs.csv` file would then look like:
+
+```csv
+1-tools.tar,2024-08-15 16:03:34.875740174 -0400 EDT m=+0.096890310
+2-ops.tar,2024-08-15 16:03:34.958255535 -0400 EDT m=+0.179405761
+3-cicd.tar,2024-08-15 16:03:35.589223735 -0400 EDT m=+0.088605142
+4-ops.tar,2024-08-22 10:19:55.779132898 -0400 EDT m=+0.127524968
+```
+
+After the `batch-deserialize` command has completed, the user can then scatter the artifacts to their final destinations:
+
+- `ace-dt mirror scatter registry.example.com/sync:tools nest=reg.high.example.com`
+- `ace-dt mirror scatter registry.example.com/sync:ops nest=reg.high.example.com`
+- `ace-dt mirror scatter registry.example.com/sync:cicd nest=reg.high.example.com`
+
+See [Mirror Scatter](#scatter) documentation for more information.
+
 ## See Also
 
 - [Mirror Tutorial](../tutorials/mirror.md)
