@@ -100,7 +100,9 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 	// write out to successful_syncs.txt the tar file name and the date/timestamp.
 	w := csv.NewWriter(file)
 	if len(existingSyncs) == 0 {
-		w.Write([]string{"filename", "artifact", "timestamp"})
+		if err := w.Write([]string{"filename", "artifact", "timestamp"}); err != nil {
+			return fmt.Errorf("writing successful sync file header: %w", err)
+		}
 	}
 	if err := w.WriteAll(successfulSyncs); err != nil {
 		return fmt.Errorf("writing to successful syncs file: %w", err)

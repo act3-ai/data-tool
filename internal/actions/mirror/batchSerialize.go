@@ -122,7 +122,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 		// was this image previously serialized?
 		existingFile, ok := trackerMap[imgName][image]
 		if ok {
-			log.Info("Artifact exists in sync directory", "filename", existingFile)
+			log.InfoContext(ctx, "Artifact exists in sync directory", "fileName", existingFile)
 			continue
 		}
 		// get the existing images list
@@ -170,7 +170,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 
 func generateExistingImagesList(images map[string]string) []string {
 	existingImages := make([]string, len(images))
-	for image, _ := range images {
+	for image := range images {
 		existingImages = append(existingImages, image)
 	}
 	return existingImages
