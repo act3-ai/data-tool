@@ -3,7 +3,9 @@ package mirror
 import (
 	"context"
 	"encoding/csv"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -31,22 +33,34 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 	defer f.Close()
 	// we need to read the file and get the previous images that were synced
 	r := csv.NewReader(f)
-	records, err := r.ReadAll()
-	if err != nil {
-		return fmt.Errorf("reading gather list file: %w", err)
-	}
+	r.FieldsPerRecord = -1
+	r.Comment = '#'
+	r.TrimLeadingSpace = true
 	// create a map for easy retrieval
-	images := make(map[string]string, len(records)-1)
+	images := map[string]string{}
+	var entries int
 	// iterate through records, skip the first line, load the data into the map.
-	for i := 1; i <= len(records)-1; i++ {
-		// name, images
-		record := records[i]
-		images[record[0]] = record[1]
+	for {
+		record, err := r.Read()
+		if errors.Is(io.EOF, err) {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("reading gather list file: %w", err)
+		}
+		if entries != 0 {
+			// skip the first line with the headers
+			// name, images
+			images[record[0]] = record[1]
+		}
+		entries++
 	}
+
 	var counter int
 	// create a tracker map, imageName:slice of existing images.
 	// iterate the counter for serialize command to create the new file.
-	trackerMap := map[string][]string{}
+
+	trackerMap := make(map[string]map[string]string)
 
 	trackerFile, err := os.OpenFile(filepath.Join(syncDir, action.TrackerFile), os.O_APPEND|os.O_CREATE|os.O_RDWR, 0666)
 	if err != nil {
@@ -69,7 +83,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 	}
 
 	if len(trackerRecords) == 0 {
-		err := tw.Write([]string{"sync_name, image, digest"})
+		err := tw.Write([]string{"sync_name", "artifact", "digest"})
 		if err != nil {
 			return fmt.Errorf("writing csv header: %w", err)
 		}
@@ -79,7 +93,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 	for i := 1; i <= len(trackerRecords)-1; i++ {
 		record := trackerRecords[i]
 		// record[0] | record[1] | record[2]
-		// name     | images[]  |  digest
+		// name     | image      |  digest
 		// we want to split the tar file name so that we get the name and the int
 		// expected tar file name examples: 0-name1.tar, 1-name2.tar, etc...
 		name := strings.Split(record[0], "-")
@@ -97,11 +111,22 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 			if syncNumber < counter {
 				continue
 			}
+		} else {
+			trackerMap[imgName] = make(map[string]string)
 		}
 		counter = syncNumber
-		trackerMap[imgName] = append(trackerMap[imgName], record[1])
+		trackerMap[imgName][record[1]] = record[0]
+
 	}
 	for imgName, image := range images {
+		// was this image previously serialized?
+		existingFile, ok := trackerMap[imgName][image]
+		if ok {
+			log.Info("Artifact exists in sync directory", "filename", existingFile)
+			continue
+		}
+		// get the existing images list
+		existingImages := generateExistingImagesList(trackerMap[imgName])
 		// create the image target
 		repo, err := action.Config.Repository(ctx, image)
 		if err != nil {
@@ -111,7 +136,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 		opts := mirror.SerializeOptions{
 			BufferOpts:          mirror.BlockBufOptions{}, // I think this should be empty, this feature shouldn't be used with a tape drive right?
 			ExistingCheckpoints: nil,
-			ExistingImages:      trackerMap[imgName],
+			ExistingImages:      existingImages,
 			Recursive:           action.Recursive,
 			RepoFunc:            action.Config.Repository,
 			SourceRepo:          repo,
@@ -120,7 +145,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 		// new image name
 		newSyncNumber := counter + 1
 		// convert to string
-		fileName := strings.Join([]string{strconv.Itoa(newSyncNumber), imgName}, "-")
+		fileName := fmt.Sprintf("%06d-%s", newSyncNumber, imgName)
 		// TODO: add compression when merged in.
 		fileName = filepath.Join(syncDir, strings.Join([]string{fileName, "tar"}, "."))
 		log.InfoContext(ctx, "serializing artifact to file:", "artifactName", imgName, "file", fileName)
@@ -141,4 +166,12 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 	}
 
 	return nil
+}
+
+func generateExistingImagesList(images map[string]string) []string {
+	existingImages := make([]string, len(images))
+	for image, _ := range images {
+		existingImages = append(existingImages, image)
+	}
+	return existingImages
 }

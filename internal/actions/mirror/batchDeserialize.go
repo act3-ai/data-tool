@@ -3,7 +3,9 @@ package mirror
 import (
 	"context"
 	"encoding/csv"
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -32,14 +34,19 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 	}
 	defer file.Close()
 	r := csv.NewReader(file)
-	syncs, err := r.ReadAll()
-	if err != nil {
-		return fmt.Errorf("reading successful sync file: %w", err)
-	}
+
 	existingSyncs := map[string]string{}
-	for _, syncedFile := range syncs {
-		existingSyncs[syncedFile[0]] = existingSyncs[syncedFile[1]] // map of filename: sync date/time
+	for {
+		syncedFile, err := r.Read()
+		if errors.Is(io.EOF, err) {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("reading successful sync file: %w", err)
+		}
+		existingSyncs[syncedFile[0]] = "" // we really only need to store the filename for fast retrieval.
 	}
+
 	// all of the tar files live in syncDir/data directory.
 	// get all of the files within syncDir/data, ignore the trackerfile.
 	entries, err := os.ReadDir(syncDir)
@@ -66,7 +73,8 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 				return fmt.Errorf("unexpected file name %s. Batch Deserialize expects tar files with an int-name format, e.g., 0-image1, 1-image2, etc", entry.Name())
 			}
 			// create the destination target
-			repo, err := action.Config.Repository(ctx, strings.Join([]string{destination, strings.Split(splitName[1], ".")[0]}, ":"))
+			destinationWithReference := fmt.Sprintf("%s:%s", destination, strings.Split(splitName[1], ".")[0])
+			repo, err := action.Config.Repository(ctx, destinationWithReference)
 			if err != nil {
 				return err
 			}
@@ -86,11 +94,14 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 			if err := mirror.Deserialize(ctx, opts); err != nil {
 				return err
 			}
-			successfulSyncs = append(successfulSyncs, []string{entry.Name(), time.Now().String()})
+			successfulSyncs = append(successfulSyncs, []string{entry.Name(), destinationWithReference, time.Now().String()})
 		}
 	}
 	// write out to successful_syncs.txt the tar file name and the date/timestamp.
 	w := csv.NewWriter(file)
+	if len(existingSyncs) == 0 {
+		w.Write([]string{"filename", "artifact", "timestamp"})
+	}
 	if err := w.WriteAll(successfulSyncs); err != nil {
 		return fmt.Errorf("writing to successful syncs file: %w", err)
 	}

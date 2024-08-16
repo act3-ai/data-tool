@@ -519,16 +519,16 @@ To efficiently track the status of artifacts, files are created in the SYNC-DIRE
 
 The `ace-dt mirror batch-serialize` command serializes multiple artifacts to separate files within the SYNC-DIRECTORY. In a typical user workflow, multiple artifacts may need to get transferred over an air gap on a semi-regular basis. The gather artifact that has been compiled may contain many of the same images as an artifact that was serialized at an earlier time. To account for this, `ace-dt` consults the `recordKeeping.csv` file and adds the previously serialized images to the [EXISTING-IMAGES...] slice when it eventually runs the `serialize` action.
 
-The `batch-serialize` command requires 2 arguments: the `BATCH-LIST` and the `SYNC-DIRECTORY`. The `BATCH-LIST` is a user-generated `.csv` file that includes the name of the artifact and the image location. For example, if a user wanted to serialize 3 artifacts named `tools`, `ops`, and `cicd`, they might have a `BATCH-LIST` named `batch.csv` that looks like this:
+The `batch-serialize` command requires 2 arguments: the `BATCH-LIST` and the `SYNC-DIRECTORY`. The `BATCH-LIST` is a user-generated `.csv` file that includes the name of the artifact and the remote location. For example, if a user wanted to serialize 3 artifacts named `tools`, `ops`, and `cicd`, they might have a `BATCH-LIST` named `batch.csv` that looks like this:
 
 ```csv
-name, image
-tools, reg.example.com/dev-tools:v3.0.6
-ops, reg.example.com/ops:v0.2.5
-cicd, reg.example.com/cicd:v8.1
+name, artifact
+tools,reg.example.com/dev-tools:v3.0.6
+ops,reg.example.com/ops:v0.2.5
+cicd,reg.example.com/cicd:v8.1
 ```
 
-To serialize these images into a directory `sync/data`, the appropriate syntax would be:
+To serialize these artifacts into a directory `sync/data`, the appropriate syntax would be:
 
 Syntax:
 
@@ -542,24 +542,24 @@ The command will fetch each of the artifacts in `batch.csv` and serialize them e
 sync/
 |_ data/
    |_ recordKeeping.csv
-   |_ 1-tools.tar
-   |_ 2-ops.tar
-   |_ 3-cicd.tar
+   |_ 000001-tools.tar
+   |_ 000002-ops.tar
+   |_ 000003-cicd.tar
 ```
 
 Opening the `sync/data/recordKeeping.csv` file will reveal the following information:
 
 ```csv
-sync_name, image, digest
-1-tools.tar, reg.example.com/dev-tools:v3.0.6, sha256:0e3a39687...
-2-ops.tar, reg.example.com/ops:v0.2.5, sha256:9a339f60e...
-3-cicd.tar, reg.example.com/cicd:v8.1, sha256:62c5eb3a4...
+sync_name, artifact, digest
+000001-tools.tar, reg.example.com/dev-tools:v3.0.6, sha256:0e3a39687...
+000002-ops.tar, reg.example.com/ops:v0.2.5, sha256:9a339f60e...
+000003-cicd.tar, reg.example.com/cicd:v8.1, sha256:62c5eb3a4...
 ```
 
-After a period of time, the ops directory needs to be updated because one of the images has an urgent update. The end user can update the image and gather into a new artifact `reg.example.com/ops:v0.2.6` and can add (or update the old entry) that to their `batch.csv` file:
+After a period of time, the ops artifact needs to be updated because one of the images has an urgent update. The end user can update the image and gather into a new artifact `reg.example.com/ops:v0.2.6` and can add (or update the old entry) that to their `batch.csv` file:
 
 ```csv
-name, image
+name, artifact
 tools, reg.example.com/dev-tools:v3.0.6
 ops, reg.example.com/ops:v0.2.6
 cicd, reg.example.com/cicd:v8.1
@@ -575,10 +575,10 @@ ace-dt mirror batch-serialize batch.csv sync/data
 sync/
 |_ data/
    |_ recordKeeping.csv
-   |_ 1-tools.tar
-   |_ 2-ops.tar
-   |_ 3-cicd.tar
-   |_ 4-ops.tar
+   |_ 000001-tools.tar
+   |_ 000002-ops.tar
+   |_ 000003-cicd.tar
+   |_ 000004-ops.tar
 ```
 
 During the command execution, ace-dt will pull the `recordKeeping.csv` file if it exists and collect all of the previously serialized `ops` artifacts and pass them into the `serialize` action as the [EXISTING-IMAGES...] argument. Doing this creates a much smaller serialized file for the new version of `ops` that only contains the diffs of the current artifact and the previously-serialized artifacts. It is essentially running the equivalent command:
@@ -601,7 +601,7 @@ sha256:0dc2e6c0f9de...
 sha256:94ffabc893ee...
 ```
 
-Only the manifest `sha256:0dc2e6c0f9de...` and its unique blobs would be serialized to the file `4-ops.tar`.
+Only the manifest `sha256:0dc2e6c0f9de...` and its unique blobs would be serialized to the file `000004-ops.tar`.
 
 After the `ace-dt mirror batch-serialize` command is complete and the files are generated, the end-user moves the images across the air gap (for example, via `rsync` to a head node). From there, the user can run `ace-dt mirror batch-deserialize` and then `ace-dt mirror scatter` to distribute the images to their final locations.
 
@@ -615,9 +615,9 @@ For example, given a `sync/data` directory:
 sync/
 |_ data/
    |_ recordKeeping.csv
-   |_ 1-tools.tar
-   |_ 2-ops.tar
-   |_ 3-cicd.tar
+   |_ 000001-tools.tar
+   |_ 000002-ops.tar
+   |_ 000003-cicd.tar
 ```
 
 If the user wanted to deserialize the files contained in `sync/data` to the remote image `registry.example.com/sync`, the syntax would be:
@@ -630,25 +630,27 @@ ace-dt mirror batch-deserialize sync/data registry.example.com/sync
 
 Upon execution, the command will deserialize each of those files to `registry.example.com/sync` and tag them as their respective image name:
 
-- The file `1-tools.tar` would be deserialized to location `registry.example.com/sync:tools`.
-- The file `2-ops.tar` would be deserialized to location `registry.example.com/sync:ops`.
-- The file `3-cicd.tar` would be deserialized to location `registry.example.com/sync:cicd`.
+- The file `000001-tools.tar` would be deserialized to location `registry.example.com/sync:tools`.
+- The file `000002-ops.tar` would be deserialized to location `registry.example.com/sync:ops`.
+- The file `000003-cicd.tar` would be deserialized to location `registry.example.com/sync:cicd`.
 
 A `SYNC-DIRECTORY/successfulSyncs.csv` file will be created (if it does not exist) or appended to (if it does exist):
 
 ```csv
-1-tools.tar,2024-08-15 16:03:34.875740174 -0400 EDT m=+0.096890310
-2-ops.tar,2024-08-15 16:03:34.958255535 -0400 EDT m=+0.179405761
-3-cicd.tar,2024-08-15 16:03:35.589223735 -0400 EDT m=+0.088605142
+filename,artifact,timestamp
+000001-tools.tar,2024-08-15 16:03:34.875740174 -0400 EDT m=+0.096890310
+000002-ops.tar,2024-08-15 16:03:34.958255535 -0400 EDT m=+0.179405761
+000003-cicd.tar,2024-08-15 16:03:35.589223735 -0400 EDT m=+0.088605142
 ```
 
-Like in the `batch-serialize` example, if the file `4-ops.tar` were later created and existed during a subsequent execution of the `batch-deserialize` command, it would be pushed to `registry.example.com/sync:ops` (assuming the user passes the same destination image repository). The command would consult the `successfulSyncs.csv` file and see that the first 3 tar files have already been pushed, so it would only deserialize the `4-ops.tar` file. The `SYNC-DIRECTORY/successfulSyncs.csv` file would then look like:
+Like in the `batch-serialize` example, if the file `000004-ops.tar` were later created and existed during a subsequent execution of the `batch-deserialize` command, it would be pushed to `registry.example.com/sync:ops` (assuming the user passes the same destination image repository). The command would consult the `successfulSyncs.csv` file and see that the first 3 tar files have already been pushed, so it would only deserialize the `000004-ops.tar` file. The `SYNC-DIRECTORY/successfulSyncs.csv` file would then look like:
 
 ```csv
-1-tools.tar,2024-08-15 16:03:34.875740174 -0400 EDT m=+0.096890310
-2-ops.tar,2024-08-15 16:03:34.958255535 -0400 EDT m=+0.179405761
-3-cicd.tar,2024-08-15 16:03:35.589223735 -0400 EDT m=+0.088605142
-4-ops.tar,2024-08-22 10:19:55.779132898 -0400 EDT m=+0.127524968
+filename,artifact,timestamp
+000001-tools.tar,2024-08-15 16:03:34.875740174 -0400 EDT m=+0.096890310
+000002-ops.tar,2024-08-15 16:03:34.958255535 -0400 EDT m=+0.179405761
+000003-cicd.tar,2024-08-15 16:03:35.589223735 -0400 EDT m=+0.088605142
+000004-ops.tar,2024-08-22 10:19:55.779132898 -0400 EDT m=+0.127524968
 ```
 
 After the `batch-deserialize` command has completed, the user can then scatter the artifacts to their final destinations:
