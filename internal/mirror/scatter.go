@@ -44,7 +44,6 @@ func Scatter(ctx context.Context, opts ScatterOptions) error { //nolint:gocognit
 		return fmt.Errorf("error creating the mapper: %w", err)
 	}
 
-	//desc, err := opts.Src.Resolve(ctx, opts.SrcReference.ReferenceOrDefault())
 	desc, data, err := oras.FetchBytes(ctx, opts.Src, opts.SrcReference.ReferenceOrDefault(), oras.DefaultFetchBytesOptions)
 	if err != nil {
 		return fmt.Errorf("fetching index: %w", err)
@@ -77,7 +76,7 @@ func Scatter(ctx context.Context, opts ScatterOptions) error { //nolint:gocognit
 	if err = json.Unmarshal(data, &idx); err != nil {
 		return fmt.Errorf("unmarshalling index: %w", err)
 	}
-	totalSize := idx.Annotations["vnd.act3-ace.data.layer.size.total"]
+	totalSize := idx.Annotations[encoding.AnnotationLayerSizeDeduplicated]
 	s, err := strconv.Atoi(totalSize)
 	if err != nil {
 		return fmt.Errorf("getting artifact size from annotations: %w", err)
@@ -103,7 +102,6 @@ func Scatter(ctx context.Context, opts ScatterOptions) error { //nolint:gocognit
 			if err != nil {
 				return err
 			}
-
 			var destCount int
 			for _, destRef := range destinations {
 				destCount++
@@ -122,8 +120,8 @@ func Scatter(ctx context.Context, opts ScatterOptions) error { //nolint:gocognit
 				}
 
 				c.options.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-					progress.Update(d.Size, 0)
 					wt.Add(desc)
+					progress.Update(int64(int(desc.Size)/len(destinations)), 0)
 					return nil
 				}
 

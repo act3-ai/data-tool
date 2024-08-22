@@ -13,6 +13,7 @@ import (
 	"log/slog"
 	"os"
 	"path"
+	"strconv"
 
 	"github.com/klauspost/compress/zstd"
 	"github.com/opencontainers/go-digest"
@@ -122,6 +123,9 @@ func Deserialize(ctx context.Context, opts DeserializeOptions) error { //nolint:
 	task := opts.RootUI.SubTask("Deserializing")
 	defer task.Complete()
 
+	progress := opts.RootUI.SubTaskWithProgress("Writing archive to destination registry")
+	defer progress.Complete()
+
 	// consume the tar data
 	for {
 		hdr, err := tr.Next()
@@ -170,6 +174,14 @@ func Deserialize(ctx context.Context, opts DeserializeOptions) error { //nolint:
 				return err
 			}
 
+			// initialize the progress UI
+			ddSize := catalog.Annotations[encoding.AnnotationLayerSizeDeduplicated]
+			totalDeduplicatedSize, err := strconv.Atoi(ddSize)
+			if err != nil {
+				return fmt.Errorf("getting the total deduplicated size: %w", err)
+			}
+			progress.Update(0, int64(totalDeduplicatedSize))
+
 			// filter on ocispec.AnnotationRefName
 			var desc *ocispec.Descriptor
 			for i, d := range catalog.Manifests {
@@ -217,7 +229,8 @@ func Deserialize(ctx context.Context, opts DeserializeOptions) error { //nolint:
 				// stay in blobs stage forever
 				// TODO verify that the ordering is depth-first.  Meaning that we always see the necessary manifests before the blobs for the manifest.
 			}
-
+			// update the progress with the blob size that was deserialized
+			progress.Update(hdr.Size, 0)
 		default:
 			if opts.Strict {
 				return fmt.Errorf("unexpected file %q", hdr.Name)
@@ -273,7 +286,7 @@ func consumeIndexJSON(r io.Reader) (*ocispec.Index, error) {
 	if err := json.Unmarshal(raw, index); err != nil {
 		return nil, err
 	}
-
+	fmt.Println(index.Annotations)
 	return index, nil
 }
 

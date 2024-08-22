@@ -130,6 +130,23 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 	// This is similar to calling .Tag() on a CAS
 	desc.Annotations[ocispec.AnnotationRefName] = opts.SourceReference
 
+	// get the deduplicated size from the annotations of the gather manifest and use it in the progress UI.
+	var gatherIdxManifest ocispec.Index
+	gatherManifestBytes, err := content.FetchAll(ctx, opts.SourceRepo, desc)
+	if err != nil {
+		return fmt.Errorf("fetching the gather manifest: %w", err)
+	}
+	if err := json.Unmarshal(gatherManifestBytes, &gatherIdxManifest); err != nil {
+		return fmt.Errorf("unmarshalling index manifest bytes: %w", err)
+	}
+
+	ddb := gatherIdxManifest.Annotations[encoding.AnnotationLayerSizeDeduplicated]
+	deduplicatedBytes, err := strconv.Atoi(ddb)
+	if err != nil {
+		return fmt.Errorf("getting deduplicated bytes from the manifest annotations: %w", err)
+	}
+	progress.Update(desc.Size, int64(deduplicatedBytes))
+
 	// Add caching
 	// fsBlobCache := cache.NewFilesystemCache(cfg.CachePath)
 	// idx = cache.ImageIndex(idx, fsBlobCache)
@@ -153,8 +170,9 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 		MediaType: ocispec.MediaTypeImageIndex,
 		Manifests: []ocispec.Descriptor{desc},
 		Annotations: map[string]string{
-			encoding.AnnotationGatherVersion:        dataToolVersion,
-			encoding.AnnotationSerializationVersion: fmt.Sprint(serializationVersion),
+			encoding.AnnotationGatherVersion:         dataToolVersion,
+			encoding.AnnotationSerializationVersion:  fmt.Sprint(serializationVersion),
+			encoding.AnnotationLayerSizeDeduplicated: ddb,
 		},
 	}
 	if err := serializer.SaveIndex(index); err != nil {
@@ -336,7 +354,6 @@ func writeBlob(ctx context.Context,
 	defer task.Complete()
 
 	// update the total write size
-	progress.Update(0, desc.Size)
 	defer progress.Update(desc.Size, 0)
 	task.Infof("Writing blob (%s) %s", print.Bytes(desc.Size), print.ShortDigest(desc.Digest))
 
