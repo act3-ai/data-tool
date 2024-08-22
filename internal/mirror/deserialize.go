@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -13,6 +14,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/klauspost/compress/zstd"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
@@ -52,13 +54,46 @@ func Deserialize(ctx context.Context, opts DeserializeOptions) error { //nolint:
 	}
 	defer src.Close()
 
-	var sr io.Reader = src
+	// Read the first few bytes to determine if it's compressed
+	head := make([]byte, 10)
+	var sr io.Reader
+
 	if opts.BufferSize != 0 {
 		sr = bufio.NewReaderSize(src, opts.BufferSize)
+	} else {
+		// we create a large buffer size
+		sr = bufio.NewReaderSize(src, 64*1024) // 64 KB buffer
 	}
 	cw := new(ioutil.WriterCounter)
-	tr := tar.NewReader(io.TeeReader(sr, cw))
 
+	// Read the initial bytes into the buffer
+	n, err := io.ReadFull(sr, head)
+	if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
+		return fmt.Errorf("failed to read header: %w", err)
+	}
+
+	// Create a multi-reader to read from the buffer and the file
+	r := io.MultiReader(bytes.NewReader(head[:n]), sr)
+
+	switch {
+	case isGzip(head):
+		gr, err := gzip.NewReader(r)
+		if err != nil {
+			return fmt.Errorf("creating gzip reader: %w", err)
+		}
+		sr = gr
+	case isZstd(head):
+		zr, err := zstd.NewReader(r)
+		if err != nil {
+			return fmt.Errorf("creating zstd reader: %w", err)
+		}
+		sr = zr
+	default:
+		// assume regular tar file
+		sr = r
+	}
+
+	tr := tar.NewReader(io.TeeReader(sr, cw))
 	storage := opts.DestTarget
 
 	// add to the remote existence cache (optimization)
@@ -302,4 +337,14 @@ func consumeBlob(ctx context.Context,
 	// Figure out which manifests are free to be sent to the registry (when all their dependents (manifests and blobs) are present)
 
 	return tracker.AddBlob(ctx, h)
+}
+
+func isGzip(head []byte) bool {
+	// Gzip magic numbers: 1F 8B
+	return len(head) > 1 && head[0] == 0x1F && head[1] == 0x8B
+}
+
+func isZstd(head []byte) bool {
+	// Zstd magic numbers: 28 B5 2F FD
+	return len(head) > 3 && head[0] == 0x28 && head[1] == 0xB5 && head[2] == 0x2F && head[3] == 0xFD
 }

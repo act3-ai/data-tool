@@ -12,6 +12,7 @@ type Serialize struct {
 
 	Checkpoint          string                    // path to save the checkpoint file
 	ExistingCheckpoints []mirror.ResumeFromLedger // a slice of existing checkpoint files in the case of multiple failures
+	Compression         string                    // compression type (zstd and gzip supported)
 }
 
 // Run runs the mirror serialize action.
@@ -34,6 +35,7 @@ func (action *Serialize) Run(ctx context.Context, ref string, destFile string, e
 		RepoFunc:            action.Config.Repository,
 		SourceRepo:          repo,
 		SourceReference:     repo.Reference.ReferenceOrDefault(),
+		Compression:         action.Compression,
 	}
 
 	return mirror.Serialize(ctx, destFile, action.Checkpoint, action.DataTool.Version(), opts)

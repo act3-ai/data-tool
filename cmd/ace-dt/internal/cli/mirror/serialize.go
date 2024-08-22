@@ -65,6 +65,7 @@ If serialize fails for any reason, provide the --resume-from-checkpoint flag wit
 	cmd.Flags().StringVar(&action.Checkpoint, "checkpoint", "", "Save checkpoint file to file.  Can be provided to --resume-from and --resume-from-checkpoint to continue an incomplete serialize operation from where it left off.")
 	cmd.Flags().StringSliceVar(&existingCheckpoints, "existing-from-checkpoint", []string{}, "List of checkpoint files and their offsets. e.g, checkpoint.txt:12345, checkpoint2.txt:23456")
 
+	cmd.Flags().StringVar(&action.Compression, "compression", "", "Supports zstd and gzip compression methods. (Default behavior is no compression.)")
 	flag.AddMemoryBufferFlags(cmd.Flags(), &mbufOpts)
 	ui.AddOptionsFlags(cmd.Flags(), &uiOptions)
 

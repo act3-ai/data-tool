@@ -78,6 +78,7 @@ ace-dt mirror archive sources.list file.tar sync-3 --cache ./test
 	cmd.Flags().BoolVar(&action.IndexFallback, "index-fallback", false, "Tells ace-dt to add indexes in annotations for registries that do not support nested indexes (i.e., not OCI 1.1 compliant).  This makes the references to the sub-indexes not real references therefore a garbage collection process might incorrectly delete the sub-indexes.  Therefore, this should only be used when necessary (e.g., when targeting Artifactory).")
 	cmd.Flags().StringToStringVarP(&action.ExtraAnnotations, "annotations", "a", map[string]string{}, "Define any additional annotations to add to the index of the gather repository.")
 	cmd.Flags().StringSliceVarP(&action.Platforms, "platforms", "p", []string{}, "Only gather images that match the specified platform(s). Warning: This will modify the manifest digest/reference.")
+	cmd.Flags().StringVar(&action.Compression, "compression", "", "Supports zstd and gzip compression methods. (Default behavior is no compression.)")
 	flag.AddMemoryBufferFlags(cmd.Flags(), &mbufOpts)
 	ui.AddOptionsFlags(cmd.Flags(), &uiOptions)
 

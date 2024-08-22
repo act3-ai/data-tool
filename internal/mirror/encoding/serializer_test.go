@@ -33,7 +33,8 @@ func TestSerializerWriteOCILayout(t *testing.T) {
 	// setup the destination
 	var dest io.WriteCloser = file
 	t.Logf("Creating serializer with destination %s", destFile)
-	s := NewOCILayoutSerializer(dest)
+	s, err := NewOCILayoutSerializer(dest, "")
+	rne(err)
 	defer s.Close()
 
 	err = s.SaveOCILayout()
@@ -75,7 +76,8 @@ func TestSerializerWriteBlobLayer(t *testing.T) {
 
 	// setup the destination
 	t.Logf("Creating serializer with destination %s", destFile)
-	s := NewOCILayoutSerializer(file)
+	s, err := NewOCILayoutSerializer(file, "")
+	rne(err)
 	// defer s.Close()
 
 	cas := memory.New()
@@ -133,7 +135,8 @@ func TestSerializerWriteIndex(t *testing.T) {
 	// setup the destination
 	var dest io.WriteCloser = file
 	t.Logf("Creating serializer with destination %s", destFile)
-	s := NewOCILayoutSerializer(dest)
+	s, err := NewOCILayoutSerializer(dest, "")
+	rne(err)
 	// defer s.Close()
 	rne(s.SaveIndex(ocispec.Index{}))
 	rne(s.Close())
@@ -177,7 +180,8 @@ func TestSerializerWithLedger(t *testing.T) {
 	// setup the destination
 	var dest io.WriteCloser = file
 	t.Logf("Creating serializer with destination %s", destFile)
-	s := NewOCILayoutSerializerWithLedger(dest, ledger)
+	s, err := NewOCILayoutSerializerWithLedger(dest, ledger, "")
+	rne(err)
 
 	cas := memory.New()
 
@@ -215,4 +219,146 @@ func TestSerializerWithLedger(t *testing.T) {
 		}
 	}
 	rne(file.Close())
+}
+
+func TestSerializerWithLedgerAndGzipCompression(t *testing.T) {
+	ctx := context.Background()
+
+	rne := require.New(t).NoError
+
+	// create destFile
+	tmp := t.TempDir()
+	destFile := filepath.Join(tmp, "test.tar.gz")
+	// open the destination file/tape carefully to append only
+	file, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	rne(err)
+	// set up the ledger
+	l := filepath.Join(tmp, "ledger")
+	ledger, err := os.OpenFile(l, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	rne(err)
+
+	// setup the destination
+	var dest io.WriteCloser = file
+	t.Logf("Creating serializer with destination %s", destFile)
+	s, err := NewOCILayoutSerializerWithLedger(dest, ledger, "gzip")
+	rne(err)
+
+	cas := memory.New()
+
+	// a blob to the CAS
+	data := []byte("some data for a blob")
+	blob := content.NewDescriptorFromBytes(ocispec.MediaTypeImageLayerGzip, data)
+	rne(cas.Push(ctx, blob, bytes.NewReader(data)))
+
+	// write the layer
+	err = s.SaveBlob(ctx, cas, blob)
+	rne(err)
+
+	// close the files being written to
+	rne(s.Close())
+	rne(dest.Close())
+	rne(ledger.Close())
+
+	// verify that there is a blobs directory
+	// verify that the layer exists in the tar file
+	// "blobs", "blobs/sha256", "blobs/sha256/digest"
+	file, err = os.Open(l)
+	defer file.Close() //nolint
+	rne(err)
+
+	decoder := json.NewDecoder(file)
+	for {
+		desc := ocispec.Descriptor{}
+		err := decoder.Decode(&desc)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		rne(err)
+		if desc.Digest != blob.Digest {
+			rne(fmt.Errorf("unexpected digest received: %s. Expected: %s", desc.Digest, blob.Digest))
+		}
+	}
+	rne(file.Close())
+
+	// verify that dest file is gzip formatted
+	file, err = os.Open(destFile)
+	rne(err)
+	buf := make([]byte, 10)
+	_, err = file.Read(buf)
+	rne(err)
+	// these are special header bytes that gzip sets to identify the file as gzip compressed.
+	if len(buf) <= 1 || buf[0] != 0x1F && buf[1] != 0x8B {
+		rne(fmt.Errorf("destfile is not gzip formatted: %x", buf))
+	}
+}
+
+func TestSerializerWithLedgerAndZstdCompression(t *testing.T) {
+	ctx := context.Background()
+
+	rne := require.New(t).NoError
+
+	// create destFile
+	tmp := t.TempDir()
+	destFile := filepath.Join(tmp, "test.tar.zst")
+	// open the destination file/tape carefully to append only
+	file, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	rne(err)
+	// set up the ledger
+	l := filepath.Join(tmp, "ledger")
+	ledger, err := os.OpenFile(l, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	rne(err)
+
+	// setup the destination
+	var dest io.WriteCloser = file
+	t.Logf("Creating serializer with destination %s", destFile)
+	s, err := NewOCILayoutSerializerWithLedger(dest, ledger, "zstd")
+	rne(err)
+
+	cas := memory.New()
+
+	// a blob to the CAS
+	data := []byte("some data for a blob")
+	blob := content.NewDescriptorFromBytes(ocispec.MediaTypeImageLayerGzip, data)
+	rne(cas.Push(ctx, blob, bytes.NewReader(data)))
+
+	// write the layer
+	err = s.SaveBlob(ctx, cas, blob)
+	rne(err)
+
+	// close the files being written to
+	rne(s.Close())
+	rne(dest.Close())
+	rne(ledger.Close())
+
+	// verify that there is a blobs directory
+	// verify that the layer exists in the tar file
+	// "blobs", "blobs/sha256", "blobs/sha256/digest"
+	file, err = os.Open(l)
+	defer file.Close() //nolint
+	rne(err)
+
+	decoder := json.NewDecoder(file)
+	for {
+		desc := ocispec.Descriptor{}
+		err := decoder.Decode(&desc)
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		rne(err)
+		if desc.Digest != blob.Digest {
+			rne(fmt.Errorf("unexpected digest received: %s. Expected: %s", desc.Digest, blob.Digest))
+		}
+	}
+	rne(file.Close())
+
+	// verify that dest file is gzip formatted
+	file, err = os.Open(destFile)
+	rne(err)
+	buf := make([]byte, 10)
+	_, err = file.Read(buf)
+	rne(err)
+	// these are special header bytes that zstd sets to identify the file as gzip compressed.
+	if len(buf) <= 3 || buf[0] != 0x28 && buf[1] != 0xB5 && buf[2] != 0x2F && buf[3] != 0xFD {
+		rne(fmt.Errorf("destfile is not zstd formatted: %x", buf))
+	}
 }

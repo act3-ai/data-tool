@@ -52,6 +52,7 @@ type SerializeOptions struct {
 	RepoFunc            func(context.Context, string) (*remote.Repository, error)
 	SourceRepo          oras.ReadOnlyGraphTarget
 	SourceReference     string
+	Compression         string
 }
 
 // Serialize takes the artifact created in a gather operation and serializes it to tar.
@@ -96,10 +97,17 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 			return fmt.Errorf("create checkpoint ledger file: %w", err)
 		}
 		defer ledger.Close()
-		serializer = encoding.NewOCILayoutSerializerWithLedger(dest, ledger)
+		serializer, err = encoding.NewOCILayoutSerializerWithLedger(dest, ledger, opts.Compression)
+		if err != nil {
+			return fmt.Errorf("creating serializer: %w", err)
+		}
 	} else {
-		serializer = encoding.NewOCILayoutSerializer(dest)
+		serializer, err = encoding.NewOCILayoutSerializer(dest, opts.Compression)
+		if err != nil {
+			return fmt.Errorf("creating serializer: %w", err)
+		}
 	}
+
 	defer serializer.Close() // this is closed at the end of the function and the error is checked.
 
 	if err := processExisting(ctx, rootUI, opts.ExistingImages, serializer.SkipBlob, opts.RepoFunc); err != nil {

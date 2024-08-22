@@ -34,6 +34,9 @@ type Archive struct {
 
 	// Platforms defines the platform(s) for the images to be gathered. (Default behavior is to gather all available platforms.)
 	Platforms []string
+
+	// Compression defines the compression type (zstd and gzip supported)
+	Compression string
 }
 
 // Run executes the actual archive operation.
@@ -78,6 +81,7 @@ func (action *Archive) Run(ctx context.Context, sourceFile, destFile, reference 
 		RepoFunc:            action.Config.Repository,
 		SourceRepo:          store,
 		SourceReference:     reference,
+		Compression:         action.Compression,
 	}
 	// serialize it
 	return mirror.Serialize(ctx, destFile, action.Checkpoint, action.DataTool.Version(), options)
