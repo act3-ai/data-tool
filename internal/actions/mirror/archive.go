@@ -37,10 +37,13 @@ type Archive struct {
 
 	// Compression defines the compression type (zstd and gzip supported)
 	Compression string
+	// Reference is an optional reference to tag the image in disk storage. If not set, "latest" will be used.
+	Reference string
 }
 
 // Run executes the actual archive operation.
-func (action *Archive) Run(ctx context.Context, sourceFile, destFile, reference string, existingImages []string, n, bs, hwm int) error {
+func (action *Archive) Run(ctx context.Context, sourceFile, destFile string, existingImages []string, n, bs, hwm int) error {
+
 	log := logger.FromContext(ctx)
 	cfg := action.Config.Get(ctx)
 
@@ -62,7 +65,7 @@ func (action *Archive) Run(ctx context.Context, sourceFile, destFile, reference 
 		Dest:           destFile,
 		Annotations:    action.ExtraAnnotations,
 		IndexFallback:  action.IndexFallback,
-		DestReference:  registry.Reference{Reference: reference},
+		DestReference:  registry.Reference{Reference: action.Reference},
 		Recursive:      action.Recursive,
 		RepoFunc:       action.Config.Repository,
 	}
@@ -80,8 +83,8 @@ func (action *Archive) Run(ctx context.Context, sourceFile, destFile, reference 
 		Recursive:           action.Recursive,
 		RepoFunc:            action.Config.Repository,
 		SourceRepo:          store,
-		SourceReference:     reference,
 		Compression:         action.Compression,
+		SourceReference:     action.Reference,
 	}
 	// serialize it
 	return mirror.Serialize(ctx, destFile, action.Checkpoint, action.DataTool.Version(), options)

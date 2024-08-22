@@ -23,7 +23,7 @@ func newSerializeCmd(tool *actions.Action) *cobra.Command {
 	}
 	var existingCheckpoints []string
 
-	cmd := &cobra.Command{
+	cmd := &cobra.Command{ //nolint:dupl
 		Use:   "serialize IMAGE DEST [EXISTING-IMAGE...]",
 		Short: "Serialize image data from IMAGE to DEST assuming that all blobs in the EXISTING-IMAGE(s) do not need to be sent.",
 		Long: `IMAGE is a reference to an OCI image index to use as the source.  All the images in the image index will be sent to DEST.

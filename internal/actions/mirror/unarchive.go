@@ -30,10 +30,13 @@ type Unarchive struct {
 
 	// Scatter images filtered by labels in annotations
 	Selectors []string
+
+	// Reference is an optional reference to tag the image in disk storage. If not set, "latest" will be used.
+	Reference string
 }
 
 // Run runs the mirror unarchive action.
-func (action *Unarchive) Run(ctx context.Context, sourceFile, mappingSpec, reference string) error {
+func (action *Unarchive) Run(ctx context.Context, sourceFile, mappingSpec string) error {
 	log := logger.FromContext(ctx)
 	cfg := action.Config.Get(ctx)
 
@@ -49,7 +52,7 @@ func (action *Unarchive) Run(ctx context.Context, sourceFile, mappingSpec, refer
 	deserializeOptions := mirror.DeserializeOptions{
 		DestTarget: store,
 		DestTargetReference: registry.Reference{
-			Reference: reference,
+			Reference: action.Reference,
 		},
 		SourceFile: sourceFile,
 		BufferSize: action.BufferSize,
@@ -70,7 +73,7 @@ func (action *Unarchive) Run(ctx context.Context, sourceFile, mappingSpec, refer
 		Src:        store,
 		SrcString:  cfg.CachePath,
 		SrcReference: registry.Reference{
-			Reference: reference,
+			Reference: action.Reference,
 		},
 		MappingSpec:    mappingSpec,
 		Selectors:      action.Selectors,
