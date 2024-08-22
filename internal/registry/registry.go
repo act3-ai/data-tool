@@ -160,14 +160,14 @@ func newHTTPClientWithOps(cfg *v1alpha1.TLS, hostName, customCertPath string) (*
 	socks5User := os.Getenv("SOCKS5_USER")
 	socks5Pass := os.Getenv("SOCKS5_PASS")
 	if socks5Proxy != "" {
-		var auth *proxy.Auth
+		var proxyAuth *proxy.Auth
 		if socks5User != "" && socks5Pass != "" {
-			auth = &proxy.Auth{
+			proxyAuth = &proxy.Auth{
 				User:     socks5User,
 				Password: socks5Pass,
 			}
 		}
-		dialer, err := proxy.SOCKS5("tcp", socks5Proxy, auth, proxy.Direct)
+		dialer, err := proxy.SOCKS5("tcp", socks5Proxy, proxyAuth, proxy.Direct)
 		if err != nil {
 			return nil, fmt.Errorf("creating a SOCKS5 dialer: %w", err)
 		}
