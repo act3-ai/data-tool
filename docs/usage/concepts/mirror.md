@@ -512,12 +512,12 @@ The purpose of these commands is to serialize (remote artifact to tar on low sid
 
 To efficiently track the status of artifacts, files are created in the SYNC-DIRECTORY during `ace-dt mirror batch-serialize` and `ace-dt mirror batch-deserialize`. The user should not need to edit these files unless they need to repeat a serialization or deserialization of a specific image, in which case they can delete that entry from the applicable file. The two files that are created are:
 
-- `SYNC-DIRECTORY/recordKeeping.csv`: The `recordKeeping.csv` file is generated during batch-serialize. It keeps track of the images that were serialized and the filename where they exist.
-- `SYNC-DIRECTORY/successfulSyncs.csv`: The `successfulSyncs.csv` file is generated during batch-deserialize. It keeps track of the files that were deserialized along with the date they were pushed to the remote repository.
+- `SYNC-DIRECTORY/record-keeping.csv`: The `record-keeping.csv` file is generated during batch-serialize. It keeps track of the images that were serialized and the filename where they exist.
+- `SYNC-DIRECTORY/successful_syncs.csv`: The `successful_syncs.csv` file is generated during batch-deserialize. It keeps track of the files that were deserialized along with the date they were pushed to the remote repository.
 
 ### Batch-Serialize
 
-The `ace-dt mirror batch-serialize` command serializes multiple artifacts to separate files within the SYNC-DIRECTORY. In a typical user workflow, multiple artifacts may need to get transferred over an air gap on a semi-regular basis. The gather artifact that has been compiled may contain many of the same images as an artifact that was serialized at an earlier time. To account for this, `ace-dt` consults the `recordKeeping.csv` file and adds the previously serialized images to the [EXISTING-IMAGES...] slice when it eventually runs the `serialize` action.
+The `ace-dt mirror batch-serialize` command serializes multiple artifacts to separate files within the SYNC-DIRECTORY. In a typical user workflow, multiple artifacts may need to get transferred over an air gap on a semi-regular basis. The gather artifact that has been compiled may contain many of the same images as an artifact that was serialized at an earlier time. To account for this, `ace-dt` consults the `record-keeping.csv` file and adds the previously serialized images to the [EXISTING-IMAGES...] slice when it eventually runs the `serialize` action.
 
 The `batch-serialize` command requires 2 arguments: the `BATCH-LIST` and the `SYNC-DIRECTORY`. The `BATCH-LIST` is a user-generated `.csv` file that includes the name of the artifact and the remote location. For example, if a user wanted to serialize 3 artifacts named `tools`, `ops`, and `cicd`, they might have a `BATCH-LIST` named `batch.csv` that looks like this:
 
@@ -541,13 +541,13 @@ The command will fetch each of the artifacts in `batch.csv` and serialize them e
 ```txt
 sync/
 |_ data/
-   |_ recordKeeping.csv
+   |_ record-keeping.csv
    |_ 000001-tools.tar
    |_ 000002-ops.tar
    |_ 000003-cicd.tar
 ```
 
-Opening the `sync/data/recordKeeping.csv` file will reveal the following information:
+Opening the `sync/data/record-keeping.csv` file will reveal the following information:
 
 ```csv
 sync_name, artifact, digest
@@ -574,14 +574,14 @@ ace-dt mirror batch-serialize batch.csv sync/data
 ```txt
 sync/
 |_ data/
-   |_ recordKeeping.csv
+   |_ record-keeping.csv
    |_ 000001-tools.tar
    |_ 000002-ops.tar
    |_ 000003-cicd.tar
    |_ 000004-ops.tar
 ```
 
-During the command execution, ace-dt will pull the `recordKeeping.csv` file if it exists and collect all of the previously serialized `ops` artifacts and pass them into the `serialize` action as the [EXISTING-IMAGES...] argument. Doing this creates a much smaller serialized file for the new version of `ops` that only contains the diffs of the current artifact and the previously-serialized artifacts. It is essentially running the equivalent command:
+During the command execution, ace-dt will pull the `record-keeping.csv` file if it exists and collect all of the previously serialized `ops` artifacts and pass them into the `serialize` action as the [EXISTING-IMAGES...] argument. Doing this creates a much smaller serialized file for the new version of `ops` that only contains the diffs of the current artifact and the previously-serialized artifacts. It is essentially running the equivalent command:
 
 ```sh
 ace-dt mirror serialize reg.example.com/ops:v0.2.6 sync/data/4-ops.tar reg.example.com/ops:v0.2.5
@@ -607,14 +607,14 @@ After the `ace-dt mirror batch-serialize` command is complete and the files are 
 
 ### Batch-Deserialize
 
-The `ace-dt mirror batch-deserialize` command will deserialize all new files in the `SYNC-DIRECTORY` to the `DESTINATION` (a remote repository). It generates or consults (if existing) the `SYNC-DIRECTORY/successfulSyncs.csv` file to ensure that the same file is not deserialized multiple times. After successful execution, it appends the deserialized filename and timestamp to the `SYNC-DIRECTORY/successfulSyncs.csv` file.
+The `ace-dt mirror batch-deserialize` command will deserialize all new files in the `SYNC-DIRECTORY` to the `DESTINATION` (a remote repository). It generates or consults (if existing) the `SYNC-DIRECTORY/successful_syncs.csv` file to ensure that the same file is not deserialized multiple times. After successful execution, it appends the deserialized filename and timestamp to the `SYNC-DIRECTORY/successful_syncs.csv` file.
 
 For example, given a `sync/data` directory:
 
 ```txt
 sync/
 |_ data/
-   |_ recordKeeping.csv
+   |_ record-keeping.csv
    |_ 000001-tools.tar
    |_ 000002-ops.tar
    |_ 000003-cicd.tar
@@ -634,7 +634,7 @@ Upon execution, the command will deserialize each of those files to `registry.ex
 - The file `000002-ops.tar` would be deserialized to location `registry.example.com/sync:ops`.
 - The file `000003-cicd.tar` would be deserialized to location `registry.example.com/sync:cicd`.
 
-A `SYNC-DIRECTORY/successfulSyncs.csv` file will be created (if it does not exist) or appended to (if it does exist):
+A `SYNC-DIRECTORY/successful_syncs.csv` file will be created (if it does not exist) or appended to (if it does exist):
 
 ```csv
 filename,artifact,timestamp
@@ -643,7 +643,7 @@ filename,artifact,timestamp
 000003-cicd.tar,2024-08-15 16:03:35.589223735 -0400 EDT m=+0.088605142
 ```
 
-Like in the `batch-serialize` example, if the file `000004-ops.tar` were later created and existed during a subsequent execution of the `batch-deserialize` command, it would be pushed to `registry.example.com/sync:ops` (assuming the user passes the same destination image repository). The command would consult the `successfulSyncs.csv` file and see that the first 3 tar files have already been pushed, so it would only deserialize the `000004-ops.tar` file. The `SYNC-DIRECTORY/successfulSyncs.csv` file would then look like:
+Like in the `batch-serialize` example, if the file `000004-ops.tar` were later created and existed during a subsequent execution of the `batch-deserialize` command, it would be pushed to `registry.example.com/sync:ops` (assuming the user passes the same destination image repository). The command would consult the `successful_syncs.csv` file and see that the first 3 tar files have already been pushed, so it would only deserialize the `000004-ops.tar` file. The `SYNC-DIRECTORY/successful_syncs.csv` file would then look like:
 
 ```csv
 filename,artifact,timestamp

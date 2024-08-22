@@ -31,7 +31,7 @@ For example, given a file "SYNC-DIRECTORY/0-image1.tar", the blobs will be deser
 		},
 	}
 	ui.AddOptionsFlags(cmd.Flags(), &uiOptions)
-	cmd.Flags().StringVar(&action.SuccessfulSyncFile, "sync-filename", "successfulSyncs.csv", "used to override the default sync-file name.")
+	cmd.Flags().StringVar(&action.SuccessfulSyncFile, "sync-filename", "successful-syncs.csv", "used to override the default sync-file name.")
 
 	return cmd
 }
