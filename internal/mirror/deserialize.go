@@ -291,7 +291,6 @@ func consumeIndexJSON(r io.Reader) (*ocispec.Index, error) {
 	if err := json.Unmarshal(raw, index); err != nil {
 		return nil, err
 	}
-	fmt.Println(index.Annotations)
 	return index, nil
 }
 
