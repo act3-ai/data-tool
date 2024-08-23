@@ -176,6 +176,11 @@ func Deserialize(ctx context.Context, opts DeserializeOptions) error { //nolint:
 
 			// initialize the progress UI
 			ddSize := catalog.Annotations[encoding.AnnotationLayerSizeDeduplicated]
+			if ddSize == "" {
+				// <ace-dt v1.13 serialized files will not have this annotation so we need to check it for backwards compatibility
+				// we will set it to 0
+				ddSize = "0"
+			}
 			totalDeduplicatedSize, err := strconv.Atoi(ddSize)
 			if err != nil {
 				return fmt.Errorf("getting the total deduplicated size: %w", err)

@@ -141,6 +141,11 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 	}
 
 	ddb := gatherIdxManifest.Annotations[encoding.AnnotationLayerSizeDeduplicated]
+	if ddb == "" {
+		// <ace-dt v1.13 serialized files will not have this annotation so we need to check it for backwards compatibility
+		// we will set it to 0
+		ddb = "0"
+	}
 	deduplicatedBytes, err := strconv.Atoi(ddb)
 	if err != nil {
 		return fmt.Errorf("getting deduplicated bytes from the manifest annotations: %w", err)
