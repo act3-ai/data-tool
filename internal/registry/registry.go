@@ -154,20 +154,10 @@ func newHTTPClientWithOps(cfg *v1alpha1.TLS, hostName, customCertPath string) (*
 
 	defaultTransport.TLSClientConfig = ssl
 
-	// use a custom env variable for SOCKS5 proxy and auth
-	// TODO what happens if SOCKS5_PROXY and HTTP_PROXY/HTTPS_PROXY are set?
+	// use a custom env variable for SOCKS5 proxy
 	socks5Proxy := os.Getenv("SOCKS5_PROXY")
-	socks5User := os.Getenv("SOCKS5_USER")
-	socks5Pass := os.Getenv("SOCKS5_PASS")
 	if socks5Proxy != "" {
-		var proxyAuth *proxy.Auth
-		if socks5User != "" && socks5Pass != "" {
-			proxyAuth = &proxy.Auth{
-				User:     socks5User,
-				Password: socks5Pass,
-			}
-		}
-		dialer, err := proxy.SOCKS5("tcp", socks5Proxy, proxyAuth, proxy.Direct)
+		dialer, err := proxy.SOCKS5("tcp", socks5Proxy, nil, proxy.Direct)
 		if err != nil {
 			return nil, fmt.Errorf("creating a SOCKS5 dialer: %w", err)
 		}
