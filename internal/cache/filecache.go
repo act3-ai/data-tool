@@ -429,19 +429,3 @@ func WithKeyAlgorithm(alg digest.Algorithm) BottleFileCacheOpt {
 		bc.DigestAlgorithm = alg
 	}
 }
-
-// DisableLinkOnRead causes the BottleFileCache to not create hard links when creating a mote reader.
-func DisableLinkOnRead() BottleFileCacheOpt {
-	return func(bc *BottleFileCache) {
-		bc.LinkOnReadDisabled = true
-	}
-}
-
-// WithFallbackCache enables a fallback MoteCache that can provide a secondary source for motes not currently in the
-// cache, such as an HTTP source for retrieval.  This only used for a read source cache, and additionally does not
-// add items to the primary cache location when the fallback cache is used as the stand in reader.
-func WithFallbackCache(cache MoteCache) BottleFileCacheOpt {
-	return func(bc *BottleFileCache) {
-		bc.FallbackCache = cache
-	}
-}

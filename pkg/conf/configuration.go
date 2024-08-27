@@ -17,6 +17,7 @@ import (
 	telemv1alpha1 "git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
 	"git.act3-ace.com/ace/go-common/pkg/config"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
 	dtreg "gitlab.com/act3-ai/asce/data/tool/internal/registry"
 	regcache "gitlab.com/act3-ai/asce/data/tool/internal/registry/cache"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
@@ -43,6 +44,9 @@ type Configuration struct {
 	// Stores Registry Information
 	registryCache *regcache.RegistryCache
 	credStore     credentials.Store // in-memory credential store
+
+	// blob caching
+	blobCacher *orasutil.BlobCacher
 }
 
 // New returns a validated empty configuration object.  Configuration files should be defined using
@@ -82,6 +86,13 @@ func (cfg *Configuration) loadConfig(ctx context.Context) error {
 		err = overrideFunction(ctx, cfg.config)
 		if err != nil {
 			return fmt.Errorf("config override function failed: %w", err)
+		}
+	}
+
+	if cfg.config.CachePath != "" {
+		cfg.blobCacher, err = orasutil.NewBlobCacher(ctx, cfg.config.CachePath)
+		if err != nil {
+			log.ErrorContext(ctx, "failed to initialize blob cache", "error", err)
 		}
 	}
 
@@ -153,15 +164,23 @@ func (cfg *Configuration) Repository(ctx context.Context, ref string) (*remote.R
 }
 
 // GraphTarget sets up a repository target based on a reference string, making use of registry configuration
-// settings. Implements registry.GraphTargeter.
+// settings. Implements oras.GraphTarget.
 func (cfg *Configuration) GraphTarget(ctx context.Context, ref string) (oras.GraphTarget, error) {
-	return cfg.Repository(ctx, ref)
+	repo, err := cfg.Repository(ctx, ref)
+	if err != nil {
+		return nil, err
+	}
+
+	if cfg.blobCacher != nil {
+		return cfg.blobCacher.GraphTarget(repo), nil
+	}
+	return repo, nil
 }
 
 // ReadOnlyGraphTarget sets up a read-only repository target based on a reference string, making use of registry configuration
-// settings. Implements registry.GraphTargeter.
+// settings. Implements oras.ReadOnlyGraphTarget.
 func (cfg *Configuration) ReadOnlyGraphTarget(ctx context.Context, ref string) (oras.ReadOnlyGraphTarget, error) {
-	return cfg.Repository(ctx, ref)
+	return cfg.GraphTarget(ctx, ref)
 }
 
 // NewRegistry creates a ORAS registry using the registry configuration.
