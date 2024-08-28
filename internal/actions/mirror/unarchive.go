@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 )
@@ -40,17 +40,17 @@ func (action *Unarchive) Run(ctx context.Context, sourceFile, mappingSpec string
 	log := logger.FromContext(ctx)
 	cfg := action.Config.Get(ctx)
 
-	// create the oci.Store
-	store, err := oci.NewWithContext(ctx, cfg.CachePath)
+	// must enable with predecessors before deserialize, if we want scatter to utilize it later
+	storage, err := cache.NewFileCache(cfg.CachePath, cache.WithPredecessors())
 	if err != nil {
-		return fmt.Errorf("error creating oci store: %w", err)
+		return fmt.Errorf("initializing file storage: %w", err)
 	}
 
 	rootUI := ui.FromContextOrNoop(ctx)
 
 	// create the deserialize options
 	deserializeOptions := mirror.DeserializeOptions{
-		DestTarget: store,
+		DestStorage: storage,
 		DestTargetReference: registry.Reference{
 			Reference: action.Reference,
 		},
@@ -63,16 +63,17 @@ func (action *Unarchive) Run(ctx context.Context, sourceFile, mappingSpec string
 	}
 
 	// run deserialize
-	if err := mirror.Deserialize(ctx, deserializeOptions); err != nil {
-		return err
+	idxDesc, err := mirror.Deserialize(ctx, deserializeOptions)
+	if err != nil {
+		return fmt.Errorf("deserializing: %w", err)
 	}
 
 	// create the scatter options
 	scatterOptions := mirror.ScatterOptions{
 		SubsetFile: action.SubsetFile,
-		Src:        store,
-		SrcString:  cfg.CachePath,
-		SrcReference: registry.Reference{
+		Source:     storage,
+		SourceDesc: idxDesc,
+		SourceReference: registry.Reference{
 			Reference: action.Reference,
 		},
 		MappingSpec:    mappingSpec,
@@ -81,7 +82,7 @@ func (action *Unarchive) Run(ctx context.Context, sourceFile, mappingSpec string
 		RootUI:         rootUI,
 		DryRun:         action.DryRun,
 		Recursive:      action.Recursive,
-		RepoFunc:       action.Config.Repository,
+		Targeter:       action.Config,
 	}
 
 	// run scatter

@@ -36,7 +36,8 @@ type FileCache struct {
 	pendingBlobs *sync.Map // pending data in progress of being written to cache; digest.Digest : pendingBlob
 
 	// predecessors is a map of subject to referring descriptors
-	predecessors *sync.Map // map[digest.Digest][]ocispec.Descriptor
+	predecessors map[digest.Digest][]ocispec.Descriptor
+	pMux         sync.RWMutex
 
 	FallbackCache orascontent.Storage // A secondary cache to check if the primary cache does not contain a requested file.  This fallback is considered only on read operations.
 }
@@ -76,7 +77,8 @@ type FileCacheOpt func(*FileCache)
 // Push.
 func WithPredecessors() FileCacheOpt {
 	return func(fc *FileCache) {
-		fc.predecessors = &sync.Map{}
+		fc.predecessors = make(map[digest.Digest][]ocispec.Descriptor)
+		fc.pMux = sync.RWMutex{}
 	}
 }
 
@@ -128,14 +130,14 @@ func (fc *FileCache) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.Rea
 		}
 		return nil, errdef.ErrNotFound
 	}
-	m, err := fc.blobReader(ctx, desc.Digest)
-	if err != nil {
-		return nil, err
-	}
 
 	if fc.predecessors != nil {
 		if desc.MediaType == ocispec.MediaTypeImageManifest ||
 			desc.MediaType == ocispec.MediaTypeImageIndex {
+			m, err := fc.blobReader(ctx, desc.Digest)
+			if err != nil {
+				return nil, err
+			}
 			blob, err := io.ReadAll(m)
 			if err != nil {
 				return nil, fmt.Errorf("reading image manifest from cache: %w", err)
@@ -152,6 +154,11 @@ func (fc *FileCache) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.Rea
 			}
 			return io.NopCloser(bytes.NewReader(blob)), nil
 		}
+	}
+
+	m, err := fc.blobReader(ctx, desc.Digest)
+	if err != nil {
+		return nil, err
 	}
 
 	return m, nil
@@ -187,85 +194,99 @@ func (fc *FileCache) Push(ctx context.Context, expected ocispec.Descriptor, cont
 
 	var doErr error
 	blob.Once.Do(func() {
-		if fc.predecessors != nil {
-			if expected.MediaType == ocispec.MediaTypeImageManifest ||
-				expected.MediaType == ocispec.MediaTypeImageIndex {
-				blob, err := io.ReadAll(content)
-				if err != nil {
-					doErr = fmt.Errorf("reading image manifest: %w", err)
-					return
-				}
-				content = bytes.NewReader(blob)
-
-				if err := fc.addAsPredecessor(ctx, blob, expected); err != nil {
-					log.InfoContext(ctx, "adding blob as predecessor", "error", err)
-				}
-			}
-		}
-
-		exists, _ := fc.Exists(ctx, expected)
-		if exists {
-			log.InfoContext(ctx, "blob already cached", "digest", expected.Digest)
-			return
-		}
-
-		// if for some reason the cache gets deleted, rebuild our file structure
-		err := os.MkdirAll(fc.root, 0777)
-		if err != nil {
-			doErr = fmt.Errorf("creating cache directory: %w", err)
-			return
-		}
-
-		wc, err := fc.blobWriter(ctx, expected.Digest)
-		if err != nil {
-			doErr = fmt.Errorf("preparing blob writer: %w", err)
-			return
-		}
-		defer wc.Close()
-
-		// cleanup properly when an error occurs
-		cleanupOnErr := func() error {
-			// ensure the blob is committed to it's final destination so we delete the correct file
-			if err := wc.Close(); err != nil {
-				return fmt.Errorf("closing blob file: %w", err)
-
-			}
-			if err := fc.Delete(ctx, expected); err != nil {
-				return fmt.Errorf("deleting malformed blob from cache: %w", err)
-			}
-			return nil
-		}
-
-		vr := orascontent.NewVerifyReader(content, expected)
-		_, err = io.Copy(wc, vr)
-		if err != nil {
-			doErr = errors.Join(fmt.Errorf("copying blob: %w", err), cleanupOnErr())
-			return
-		}
-
-		if err := vr.Verify(); err != nil {
-			doErr = errors.Join(fmt.Errorf("verifying blob: %w", err), cleanupOnErr())
-			return
-		}
+		doErr = fc.pushOnce(ctx, expected, content)
 	})
-
 	return doErr
 }
+
+// pushOnce performs the actual pushing of the blob to the FileCache. It's intended to be used once via
+// blob.Once.Do().
+func (fc *FileCache) pushOnce(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
+	log := logger.FromContext(ctx)
+	if fc.predecessors != nil {
+		if expected.MediaType == ocispec.MediaTypeImageManifest ||
+			expected.MediaType == ocispec.MediaTypeImageIndex {
+			blob, err := io.ReadAll(content)
+			if err != nil {
+				return fmt.Errorf("reading image manifest: %w", err)
+			}
+			content = bytes.NewReader(blob)
+
+			if err := fc.addAsPredecessor(ctx, blob, expected); err != nil {
+				return fmt.Errorf("adding blob as predecessor: %w", err)
+			}
+		}
+	}
+
+	exists, _ := fc.Exists(ctx, expected)
+	if exists {
+		log.InfoContext(ctx, "blob already cached", "digest", expected.Digest)
+		// discard data, ensuring tee'd reads are successful
+		_, err := io.Copy(io.Discard, content)
+		if err != nil {
+			return fmt.Errorf("discarding duplicate blob: %w", err)
+		}
+		return nil
+	}
+
+	// if for some reason the cache gets deleted, rebuild our file structure
+	err := os.MkdirAll(fc.root, 0777)
+	if err != nil {
+		return fmt.Errorf("creating cache directory: %w", err)
+	}
+
+	wc, err := fc.blobWriter(ctx, expected.Digest)
+	if err != nil {
+		return fmt.Errorf("preparing blob writer: %w", err)
+	}
+	defer wc.Close()
+
+	// cleanup properly when an error occurs
+	cleanupOnErr := func() error {
+		// ensure the blob is committed to it's final destination so we delete the correct file
+		if err := wc.Close(); err != nil {
+			return fmt.Errorf("closing blob file: %w", err)
+
+		}
+		if err := fc.Delete(ctx, expected); err != nil {
+			return fmt.Errorf("deleting malformed blob from cache: %w", err)
+		}
+		return nil
+	}
+
+	vr := orascontent.NewVerifyReader(content, expected)
+	_, err = io.Copy(wc, vr)
+	if err != nil {
+		return errors.Join(fmt.Errorf("copying blob: %w", err), cleanupOnErr())
+	}
+
+	if err := vr.Verify(); err != nil {
+		return errors.Join(fmt.Errorf("verifying blob: %w", err), cleanupOnErr())
+	}
+	return nil
+}
+
+// ErrPredecessorsDisabled is returned by FileCache.Predecessors if the in-memory
+// predecessors graph is not initialized, i.e. NewFileCache was not called with the
+// WithPredecessors option.
+var ErrPredecessorsDisabled = errors.New("predecessors not enabled")
 
 // Predecessors finds the nodes directly pointing to a given node of a directed acyclic graph. In other
 // words, returns the "parents" of the current descriptor. Predecessors implements oras content.PredecessorFinder, and
 // is an extension of oras conent.Storage.
 //
-// Predecessors always returns an empty list if the FileCache was not initialized with the WithPredecessors option.
+// Predecessors returns an error if the FileCache was not initialized with the WithPredecessors Option.
 func (fc *FileCache) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 	if fc.predecessors != nil {
-		if listAny, found := fc.predecessors.Load(node.Digest); found {
-			descList := listAny.([]ocispec.Descriptor)
-			return descList, nil
+		fc.pMux.RLock()
+		predecessors, ok := fc.predecessors[node.Digest]
+		fc.pMux.RUnlock()
+		if !ok {
+			return []ocispec.Descriptor{}, nil
 		}
+		return predecessors, nil
 	}
-
-	return nil, nil
+	return nil, ErrPredecessorsDisabled
 }
 
 // Delete removes a specific blob from the collection of cached blobs.
@@ -389,17 +410,21 @@ func (fc *FileCache) addAsPredecessor(ctx context.Context, blob []byte, desc oci
 	}
 
 	if subjectDigest != "" {
-		updatedList := []ocispec.Descriptor{desc}
-		if listAny, found := fc.predecessors.Load(subjectDigest); found {
-			existingList := listAny.([]ocispec.Descriptor)
+		fc.pMux.Lock()
+		existingList, ok := fc.predecessors[subjectDigest]
+		if ok {
 			for _, desc := range existingList {
 				if desc.Digest == subjectDigest && desc.MediaType == subjectMediaType {
+					fc.pMux.Unlock()
 					return nil // blob is already known to be a predecessor
 				}
 			}
-			updatedList = append(updatedList, existingList...)
+			fc.predecessors[subjectDigest] = append(fc.predecessors[subjectDigest], desc)
+
+		} else {
+			fc.predecessors[subjectDigest] = []ocispec.Descriptor{desc}
 		}
-		fc.predecessors.Store(subjectDigest, updatedList)
+		fc.pMux.Unlock()
 		log.InfoContext(ctx, "adding blob manifest to subject's predecessors", "subjectDigest", subjectDigest)
 	}
 

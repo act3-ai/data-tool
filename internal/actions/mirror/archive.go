@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 
-	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
 )
 
@@ -50,18 +50,17 @@ func (action *Archive) Run(ctx context.Context, sourceFile, destFile string, exi
 	log := logger.FromContext(ctx)
 	cfg := action.Config.Get(ctx)
 
-	store, err := oci.NewWithContext(ctx, cfg.CachePath)
+	storage, err := cache.NewFileCache(cfg.CachePath, cache.WithPredecessors())
 	if err != nil {
-		return fmt.Errorf("error creating oci store: %w", err)
+		return fmt.Errorf("initializing file storage: %w", err)
 	}
-
 	rootUI := ui.FromContextOrNoop(ctx)
 
 	// create the gather opts
 	gatherOpts := mirror.GatherOptions{
 		Platforms:      action.Platforms,
 		ConcurrentHTTP: cfg.ConcurrentHTTP,
-		DestTarget:     store,
+		DestStorage:    storage,
 		Log:            log,
 		RootUI:         rootUI,
 		SourceFile:     sourceFile,
@@ -70,11 +69,12 @@ func (action *Archive) Run(ctx context.Context, sourceFile, destFile string, exi
 		IndexFallback:  action.IndexFallback,
 		DestReference:  registry.Reference{Reference: action.Reference},
 		Recursive:      action.Recursive,
-		RepoFunc:       action.Config.Repository,
+		Targeter:       action.Config,
 	}
 
 	// run the gather function
-	if err := mirror.Gather(ctx, action.DataTool.Version(), gatherOpts); err != nil {
+	idxDesc, err := mirror.Gather(ctx, action.DataTool.Version(), gatherOpts)
+	if err != nil {
 		return err
 	}
 
@@ -85,9 +85,10 @@ func (action *Archive) Run(ctx context.Context, sourceFile, destFile string, exi
 		ExistingImages:      existingImages,
 		Recursive:           action.Recursive,
 		RepoFunc:            action.Config.Repository,
-		SourceRepo:          store,
 		Compression:         action.Compression,
+		SourceStorage:       storage,
 		SourceReference:     action.Reference,
+		SourceDesc:          idxDesc,
 		WithManifestJSON:    action.WithManifestJSON,
 	}
 	// serialize it

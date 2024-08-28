@@ -2,6 +2,7 @@ package mirror
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -47,7 +48,7 @@ func (action *Gather) Run(ctx context.Context, sourceFile string, dest string) e
 	opts := mirror.GatherOptions{
 		Platforms:      action.Platforms,
 		ConcurrentHTTP: cfg.ConcurrentHTTP,
-		DestTarget:     destTarget,
+		DestStorage:    destTarget,
 		Log:            log,
 		RootUI:         rootUI,
 		SourceFile:     sourceFile,
@@ -56,11 +57,24 @@ func (action *Gather) Run(ctx context.Context, sourceFile string, dest string) e
 		IndexFallback:  action.IndexFallback,
 		DestReference:  destTarget.Reference,
 		Recursive:      action.Recursive,
-		RepoFunc:       action.Config.Repository,
+		Targeter:       action.Config,
 	}
 
 	// run the gather function
-	return mirror.Gather(ctx, action.DataTool.Version(), opts)
+	idxDesc, err := mirror.Gather(ctx, action.DataTool.Version(), opts)
+	if err != nil {
+		return fmt.Errorf("gathering artifacts: %w", err)
+	}
+
+	err = destTarget.Tag(ctx, idxDesc, destTarget.Reference.ReferenceOrDefault())
+	if err != nil {
+		return fmt.Errorf("tagging gather index manifest: %w", err)
+	}
+
+	opts.RootUI.Infof("Gather index digest: %s", idxDesc.Digest)
+	opts.RootUI.Infof("Pushed index to destination: %s", opts.Dest)
+
+	return nil
 }
 
 // WorkTracker is an object for tracking the number of blobs and bytes actually pushed.

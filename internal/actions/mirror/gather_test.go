@@ -18,6 +18,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 	"sigs.k8s.io/yaml"
@@ -278,17 +279,26 @@ func TestGatherRun(t *testing.T) {
 
 func CreateConfigWithRegHTTP(tb testing.TB, fileName, hostName string) {
 	tb.Helper()
+
 	rne := require.New(tb).NoError
-	regMap := map[string]v1alpha1.Registry{
-		hostName: {
-			Endpoints: []string{"http://" + hostName},
+	cfg := v1alpha1.Configuration{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: v1alpha1.GroupVersion.String(),
+			Kind:       "Configuration",
+		},
+		ConfigurationSpec: v1alpha1.ConfigurationSpec{
+			CachePath: tb.TempDir(), // ensure we don't use the user's real cache
+			RegistryConfig: v1alpha1.RegistryConfig{
+				Configs: map[string]v1alpha1.Registry{
+					hostName: {
+						Endpoints: []string{"http://" + hostName},
+					},
+				},
+			},
+			HideProgress: false,
 		},
 	}
-	cfg := v1alpha1.ConfigurationSpec{
-		RegistryConfig: v1alpha1.RegistryConfig{
-			Configs: regMap,
-		},
-	}
+
 	b, err := yaml.Marshal(cfg)
 	rne(err)
 	err = os.WriteFile(fileName, b, 0o666)

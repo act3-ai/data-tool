@@ -12,7 +12,6 @@ import (
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/errgroup"
-	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 
@@ -50,9 +49,10 @@ type SerializeOptions struct {
 	ExistingImages      []string
 	Recursive           bool
 	RepoFunc            func(context.Context, string) (*remote.Repository, error)
-	SourceRepo          oras.ReadOnlyGraphTarget
+	SourceStorage       content.ReadOnlyStorage
 	SourceReference     string
 	Compression         string
+	SourceDesc          ocispec.Descriptor
 	WithManifestJSON    bool
 }
 
@@ -119,17 +119,12 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 		return err
 	}
 
-	desc, err := opts.SourceRepo.Resolve(ctx, opts.SourceReference)
-	if err != nil {
-		return fmt.Errorf("getting remote descriptor for %s: %w", opts.SourceReference, err)
-	}
-
 	// Add the reference name into the annotation for book keeping
-	if desc.Annotations == nil {
-		desc.Annotations = map[string]string{}
+	if opts.SourceDesc.Annotations == nil {
+		opts.SourceDesc.Annotations = map[string]string{}
 	}
 	// This is similar to calling .Tag() on a CAS
-	desc.Annotations[ocispec.AnnotationRefName] = opts.SourceReference
+	opts.SourceDesc.Annotations[ocispec.AnnotationRefName] = opts.SourceReference
 
 	// get the deduplicated size from the annotations of the gather manifest and use it in the progress UI.
 	var gatherIdxManifest ocispec.Index
@@ -174,7 +169,7 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 			SchemaVersion: 2,
 		},
 		MediaType: ocispec.MediaTypeImageIndex,
-		Manifests: []ocispec.Descriptor{desc},
+		Manifests: []ocispec.Descriptor{opts.SourceDesc},
 		Annotations: map[string]string{
 			encoding.AnnotationGatherVersion:         dataToolVersion,
 			encoding.AnnotationSerializationVersion:  fmt.Sprint(serializationVersion),
@@ -192,7 +187,7 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 	// In fact a descriptor can be done many ways so we return all manifests that we come across.
 	mt := newManifestTracker()
 
-	if err := writeDescriptor(ctx, rootUI, progress, opts.Recursive, opts.SourceRepo, serializer, mt, desc); err != nil {
+	if err := writeDescriptor(ctx, rootUI, progress, opts.Recursive, opts.SourceStorage, serializer, mt, opts.SourceDesc); err != nil {
 		return fmt.Errorf("writing top level descriptor: %w", err)
 	}
 

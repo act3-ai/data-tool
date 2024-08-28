@@ -8,12 +8,13 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/errgroup"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry"
-	"oras.land/oras-go/v2/registry/remote"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/print"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
 )
 
 // CloneOptions define the options required to run a Clone operation.
@@ -25,7 +26,7 @@ type CloneOptions struct {
 	Log            *slog.Logger
 	SourceFile     string
 	RootUI         *ui.Task
-	RepoFunc       func(context.Context, string) (*remote.Repository, error)
+	Targeter       reg.GraphTargeter
 	Recursive      bool
 	DryRun         bool
 }
@@ -67,13 +68,19 @@ func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 		g.Go(func() error {
 			defer task.Complete()
 
-			srcTarget, err := opts.RepoFunc(gctx, src.Name)
+			srcTarget, err := opts.Targeter.GraphTarget(gctx, src.Name)
 			if err != nil {
 				return err
 			}
+
+			srcRef, err := registry.ParseReference(src.Name)
+			if err != nil {
+				return fmt.Errorf("parising source reference: %w", err)
+			}
+
 			// we fetch the reference in case it is a multi-architecture index
 			// desc, rc, err := srcTarget.FetchReference(ctx, srcTarget.Reference.ReferenceOrDefault())
-			desc, err := srcTarget.Resolve(gctx, srcTarget.Reference.ReferenceOrDefault())
+			desc, err := srcTarget.Resolve(gctx, srcRef.ReferenceOrDefault())
 			if err != nil {
 				return fmt.Errorf("error resolving the source: %w", err)
 			}
@@ -94,10 +101,24 @@ func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 
 			task.Infof("Copying %s", src.Name)
 			var destCount int
-			for _, destRef := range destinations {
+			for _, destName := range destinations {
 				destCount++
-				c, err := NewCopier(ctx, opts.Log, src.Name, destRef, srcTarget, srcTarget.Reference, desc, nil, registry.Reference{}, opts.Recursive, platforms, opts.RepoFunc)
-				// create an oras Repository for the destination
+
+				destTarget, err := opts.Targeter.GraphTarget(ctx, destName)
+				if err != nil {
+					return fmt.Errorf("initializing destination graph target: %w", err)
+				}
+
+				destRef, err := registry.ParseReference(destName)
+				if err != nil {
+					return fmt.Errorf("parising destination reference: %w", err)
+				}
+
+				copyOpts := oras.CopyGraphOptions{
+					MountFrom: mountFrom(srcRef, destRef),
+					OnMounted: onMounted(opts.Log),
+				}
+				c, err := NewCopier(ctx, opts.Log, srcTarget, destTarget, desc, opts.Recursive, platforms, copyOpts)
 				if err != nil {
 					return err
 				}
@@ -117,9 +138,9 @@ func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 					if err := Copy(gctx, c); err != nil {
 						return err
 					}
-					tag := c.destRef.ReferenceOrDefault()
+					tag := destRef.ReferenceOrDefault()
 					// Tag will work if `tag` is an actual tag or a digest
-					if err := c.dest.Tag(ctx, desc, tag); err != nil {
+					if err := destTarget.Tag(ctx, desc, tag); err != nil {
 						destTask.Complete()
 						return fmt.Errorf("tagging scattered image as %s: %w", tag, err)
 					}
@@ -129,9 +150,9 @@ func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 						return err
 					}
 					for _, d := range platformDescriptors {
-						tag := c.destRef.ReferenceOrDefault()
+						tag := destRef.ReferenceOrDefault()
 						// Tag will work if `tag` is an actual tag or a digest
-						if err := c.dest.Tag(ctx, d, tag); err != nil {
+						if err := destTarget.Tag(ctx, d, tag); err != nil {
 							destTask.Complete()
 							return fmt.Errorf("tagging scattered image as %s: %w", tag, err)
 						}

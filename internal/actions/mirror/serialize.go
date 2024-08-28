@@ -2,6 +2,9 @@ package mirror
 
 import (
 	"context"
+	"fmt"
+
+	"oras.land/oras-go/v2/registry"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
 )
@@ -20,9 +23,21 @@ type Serialize struct {
 
 // Run runs the mirror serialize action.
 func (action *Serialize) Run(ctx context.Context, ref string, destFile string, existingImages []string, n, bs, hwm int) error {
-	repo, err := action.Config.Repository(ctx, ref)
+
+	gt, err := action.Config.GraphTarget(ctx, ref)
 	if err != nil {
 		return err
+	}
+
+	rr, err := registry.ParseReference(ref)
+	if err != nil {
+		return fmt.Errorf("parsing registry reference: %w", err)
+	}
+
+	sourceRef := rr.ReferenceOrDefault()
+	sourceDesc, err := gt.Resolve(ctx, sourceRef)
+	if err != nil {
+		return fmt.Errorf("getting remote descriptor for %s: %w", sourceRef, err)
 	}
 
 	// create the Serialize Options
@@ -36,8 +51,9 @@ func (action *Serialize) Run(ctx context.Context, ref string, destFile string, e
 		ExistingImages:      existingImages,
 		Recursive:           action.Recursive,
 		RepoFunc:            action.Config.Repository,
-		SourceRepo:          repo,
-		SourceReference:     repo.Reference.ReferenceOrDefault(),
+		SourceStorage:       gt,
+		SourceReference:     sourceRef,
+		SourceDesc:          sourceDesc,
 		Compression:         action.Compression,
 		WithManifestJSON:    action.WithManifestJSON,
 	}

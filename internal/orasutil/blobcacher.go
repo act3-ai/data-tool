@@ -23,8 +23,8 @@ type BlobCacher struct {
 
 // NewBlobCacher returns a BlobCacher that utilizes a shared peristant blob storage
 // for all oras.GraphTargets that it creates.
-func NewBlobCacher(ctx context.Context, root string) (*BlobCacher, error) {
-	fcache, err := cache.NewFileCache(root)
+func NewBlobCacher(ctx context.Context, root string, opts ...cache.FileCacheOpt) (*BlobCacher, error) {
+	fcache, err := cache.NewFileCache(root, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("accessing cache storage: %w", err)
 	}
@@ -105,13 +105,17 @@ func push(ctx context.Context, storage orascontent.Storage, expected ocispec.Des
 	log := logger.FromContext(ctx)
 
 	cached, err := storage.Exists(ctx, expected)
-	if err != nil || cached {
+	switch {
+	case err != nil:
 		log.DebugContext(ctx, "unable to check blob existence in cache", "error", err)
+		fallthrough
+	case cached:
+		log.InfoContext(ctx, "skipping caching of blob")
 		err = pusherFn(ctx, expected, content)
 		if err != nil && !errors.Is(err, errdef.ErrAlreadyExists) {
 			return fmt.Errorf("pushing blob to remote: %w", err)
 		}
-	} else {
+	default:
 		// TODO: if caching the blob fails, it may block the push to the remotes?
 		pr, pw := io.Pipe()
 		tr := io.TeeReader(content, pw)

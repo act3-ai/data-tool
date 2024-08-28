@@ -111,11 +111,17 @@ func ExamplePull() {
 		panic(fmt.Sprintf("Failed to set up bottle pull directory: %v", err))
 	}
 
+	// ensure we don't default to the user's cache
+	tempCache, err := os.MkdirTemp("", "temp-cache-*")
+	if err != nil {
+		panic(fmt.Errorf("initializing temporary cache: %w", err))
+	}
+
 	// define default configuration
 	// overrides are only necessary if the desired configuration is not
 	// available by default or loaded from a file with config.AddConfigFiles().
 	config := conf.New()
-	config.AddConfigOverride(conf.WithRegistryConfig(registryConfig)) // configure testing registry for plain-http
+	config.AddConfigOverride(conf.WithRegistryConfig(registryConfig), conf.WithCachePath(tempCache)) // configure testing registry for plain-http
 
 	src, desc, err := Resolve(ctx, ociReference, config, TransferOptions{})
 	if err != nil {

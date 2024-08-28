@@ -2,6 +2,10 @@ package mirror
 
 import (
 	"context"
+	"fmt"
+
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/registry"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
@@ -28,14 +32,20 @@ func (action *Deserialize) Run(ctx context.Context, sourceFile string, dest stri
 
 	log := logger.FromContext(ctx)
 
-	repo, err := action.Config.Repository(ctx, dest)
+	gtarget, err := action.Config.GraphTarget(ctx, dest)
 	if err != nil {
 		return err
 	}
+
+	destRef, err := registry.ParseReference(dest)
+	if err != nil {
+		return fmt.Errorf("parsing destination reference: %w", err)
+	}
+
 	// create deserialize options
 	opts := mirror.DeserializeOptions{
-		DestTarget:          repo,
-		DestTargetReference: repo.Reference,
+		DestStorage:         gtarget,
+		DestTargetReference: destRef,
 		SourceFile:          sourceFile,
 		BufferSize:          action.BufferSize,
 		DryRun:              action.DryRun,
@@ -45,5 +55,17 @@ func (action *Deserialize) Run(ctx context.Context, sourceFile string, dest stri
 	}
 
 	// run mirror deserialize
-	return mirror.Deserialize(ctx, opts)
+	idxDesc, err := mirror.Deserialize(ctx, opts)
+	if err != nil {
+		return fmt.Errorf("deserializing: %w", err)
+	}
+
+	// Tag it based on the input from the user
+	tag := opts.DestTargetReference.ReferenceOrDefault()
+	opts.RootUI.Infof("Tagging root node as %q", tag)
+	if err := gtarget.Tag(ctx, idxDesc, tag); err != nil {
+		return fmt.Errorf("tagging the %q file: %w", ocispec.ImageIndexFile, err)
+	}
+
+	return nil
 }

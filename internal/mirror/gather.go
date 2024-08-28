@@ -14,21 +14,22 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
-	"oras.land/oras-go/v2/registry/remote"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
 	"gitlab.com/act3-ai/asce/data/tool/internal/print"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
 )
 
 // GatherOptions specify the requirements to run a mirror gather operation.
 type GatherOptions struct {
 	Platforms      []string
 	ConcurrentHTTP int
-	DestTarget     oras.Target
+	DestStorage    content.GraphStorage
 	Log            *slog.Logger
 	RootUI         *ui.Task
 	SourceFile     string
@@ -37,17 +38,17 @@ type GatherOptions struct {
 	IndexFallback  bool
 	DestReference  registry.Reference
 	Recursive      bool
-	RepoFunc       func(context.Context, string) (*remote.Repository, error)
+	Targeter       reg.GraphTargeter
 }
 
 // Gather will take the references defined in a SourceFile and consolidate them to a destination target.
-func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) error { //nolint:gocognit
+func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) (ocispec.Descriptor, error) { //nolint:gocognit
 	// throw the platforms in a map for easy querying
 	var platforms []*ocispec.Platform
 	if len(opts.Platforms) != 0 {
 		plat, err := parsePlatforms(opts.Platforms)
 		if err != nil {
-			return fmt.Errorf("error parsing the platforms: %w", err)
+			return ocispec.Descriptor{}, fmt.Errorf("error parsing the platforms: %w", err)
 		}
 		platforms = append(platforms, plat...)
 	}
@@ -64,7 +65,7 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) err
 	opts.Log.InfoContext(ctx, "Opening repository source file", "path", opts.SourceFile)
 	sourceList, err := ProcessSourcesFile(ctx, opts.SourceFile, nil, opts.ConcurrentHTTP)
 	if err != nil {
-		return err
+		return ocispec.Descriptor{}, err
 	}
 	var i int
 	for _, src := range sourceList {
@@ -77,23 +78,32 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) err
 			log.InfoContext(gctx, "copying", "srcReference", "dest reference", src.Name, opts.Dest)
 			// TODO: add progress back in... use GraphCopyOptions pre and post manifest
 			numBytes := atomic.Int64{}
-			c, err := NewCopier(ctx, log, src.Name, opts.Dest, nil, registry.Reference{}, ocispec.Descriptor{}, opts.DestTarget, opts.DestReference, opts.Recursive, platforms, opts.RepoFunc)
+
+			srcTarget, err := opts.Targeter.GraphTarget(ctx, src.Name)
+			if err != nil {
+				return fmt.Errorf("initializing destination graph target: %w", err)
+			}
+
+			desc, err := srcTarget.Resolve(ctx, src.Name)
+			if err != nil {
+				return fmt.Errorf("resolving source reference: %w", err)
+			}
+
+			srcRef, err := registry.ParseReference(src.Name)
+			if err != nil {
+				return fmt.Errorf("parising destination reference: %w", err)
+			}
+
+			copyOpts := oras.CopyGraphOptions{
+				MountFrom: mountFrom(srcRef, opts.DestReference),
+				OnMounted: onMounted(opts.Log),
+			}
+			c, err := NewCopier(ctx, opts.Log, srcTarget, opts.DestStorage, desc, opts.Recursive, platforms, copyOpts)
+
 			if err != nil {
 				return err
 			}
 
-			var descriptors []ocispec.Descriptor
-			c.options.PreCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
-				// does the descriptor already exist?
-				exists, err := c.dest.Exists(gctx, desc)
-				if err != nil {
-					return fmt.Errorf("checking existence of %s: %w", c.root.Digest.String(), err)
-				}
-				if exists {
-					return oras.SkipNode
-				}
-				return nil
-			}
 			// record the bytes and number of blobs that were actually copied.
 			c.options.PostCopy = func(ctx context.Context, desc ocispec.Descriptor) error {
 				// copied bytes and blobs
@@ -102,6 +112,7 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) err
 				return nil
 			}
 
+			var descriptors []ocispec.Descriptor
 			if platforms == nil {
 				if err := Copy(gctx, c); err != nil {
 					return fmt.Errorf("copying from %s: %w", src.Name, err)
@@ -111,7 +122,7 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) err
 					return err
 				}
 				// count bytes
-				if err := extractBlobs(ctx, bt.AddDescriptor, opts.DestTarget, desc); err != nil {
+				if err := extractBlobs(ctx, bt.AddDescriptor, opts.DestStorage, desc); err != nil {
 					return fmt.Errorf("counting bytes: %w", err)
 				}
 				descriptors = append(descriptors, desc)
@@ -126,7 +137,7 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) err
 						return err
 					}
 					// count bytes
-					if err := extractBlobs(ctx, bt.AddDescriptor, opts.DestTarget, d); err != nil {
+					if err := extractBlobs(ctx, bt.AddDescriptor, opts.DestStorage, d); err != nil {
 						return fmt.Errorf("counting bytes: %w", err)
 					}
 					descriptors = append(descriptors, d)
@@ -144,7 +155,7 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) err
 	}
 
 	if err = g.Wait(); err != nil {
-		return err
+		return ocispec.Descriptor{}, err
 	}
 
 	// set the ace-dt version, size, and deduplicated annotations
@@ -186,17 +197,18 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) err
 	// marshal the index bytes for push
 	b, err := json.Marshal(index)
 	if err != nil {
-		return fmt.Errorf("marshalling the index: %w", err)
+		return ocispec.Descriptor{}, fmt.Errorf("marshalling the index: %w", err)
 	}
 
-	indexDesc, err := oras.TagBytes(ctx, opts.DestTarget, ocispec.MediaTypeImageIndex, b, opts.DestReference.ReferenceOrDefault())
+	idxDesc, err := oras.PushBytes(ctx, opts.DestStorage, ocispec.MediaTypeImageIndex, b)
 	if err != nil {
-		return fmt.Errorf("pushing top-level index: %w", err)
+		return ocispec.Descriptor{}, fmt.Errorf("pushing gather index manifest: %w", err)
 	}
 	// not deferring this log b/c it shouldn't display if gather fails
-	opts.RootUI.Infof("Gathered %s (representing %s) to location: %s\n%s", print.Bytes(bt.Deduplicated), print.Bytes(bt.Total), opts.Dest, indexDesc.Digest)
+	opts.RootUI.Infof("Gathered %s (representing %s)", print.Bytes(bt.Deduplicated), print.Bytes(bt.Total))
 	opts.RootUI.Infof("%s pushed for %d blobs", print.Bytes(wt.transferred.Load()), wt.blobs.Load())
-	return nil
+
+	return idxDesc, nil
 }
 
 func annotateManifest(srcRef string, desc ocispec.Descriptor, labels map[string]string, sourceIndex []byte) (ocispec.Descriptor, error) {
