@@ -47,7 +47,7 @@ func (bc *BlobCacher) GraphTarget(gt oras.GraphTarget) oras.GraphTarget {
 type CachedGraphTarget struct {
 	oras.GraphTarget
 
-	Cache PredecessorStorage
+	Cache orascontent.GraphStorage
 }
 
 // Fetch prefers to read from the local cache, falling back to the remote on misses.
@@ -160,7 +160,7 @@ func push(ctx context.Context, storage orascontent.Storage, expected ocispec.Des
 }
 
 // predecessors returns the union of predecessors known by the cache (storage) and the predecessors known by the remote.
-func predecessors(ctx context.Context, storage PredecessorStorage, node ocispec.Descriptor,
+func predecessors(ctx context.Context, storage orascontent.GraphStorage, node ocispec.Descriptor,
 	remotePredecessors func(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error)) ([]ocispec.Descriptor, error) {
 
 	rp, err := remotePredecessors(ctx, node)
