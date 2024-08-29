@@ -191,7 +191,7 @@ func Deserialize(ctx context.Context, opts DeserializeOptions) (ocispec.Descript
 			}
 			totalDeduplicatedSize, err := strconv.Atoi(ddSize)
 			if err != nil {
-				return fmt.Errorf("getting the total deduplicated size: %w", err)
+				return ocispec.Descriptor{}, fmt.Errorf("getting the total deduplicated size: %w", err)
 			}
 			progress.Update(0, int64(totalDeduplicatedSize))
 

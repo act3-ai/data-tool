@@ -128,7 +128,7 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 
 	// get the deduplicated size from the annotations of the gather manifest and use it in the progress UI.
 	var gatherIdxManifest ocispec.Index
-	gatherManifestBytes, err := content.FetchAll(ctx, opts.SourceRepo, desc)
+	gatherManifestBytes, err := content.FetchAll(ctx, opts.SourceStorage, opts.SourceDesc)
 	if err != nil {
 		return fmt.Errorf("fetching the gather manifest: %w", err)
 	}
@@ -146,7 +146,7 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 	if err != nil {
 		return fmt.Errorf("getting deduplicated bytes from the manifest annotations: %w", err)
 	}
-	progress.Update(desc.Size, int64(deduplicatedBytes))
+	progress.Update(opts.SourceDesc.Size, int64(deduplicatedBytes))
 
 	// Add caching
 	// fsBlobCache := cache.NewFilesystemCache(cfg.CachePath)
