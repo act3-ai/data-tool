@@ -177,8 +177,8 @@ github.com/neilotoole/slogt v1.1.0 h1:c7qE92sq+V0yvCuaxph+RQ2jOKL61c4hqS1Bv9W7FZ
 github.com/neilotoole/slogt v1.1.0/go.mod h1:RCrGXkPc/hYybNulqQrMHRtvlQ7F6NktNVLuLwk6V+w=
 github.com/notaryproject/notation-core-go v1.1.0 h1:xCybcONOKcCyPNihJUSa+jRNsyQFNkrk0eJVVs1kWeg=
 github.com/notaryproject/notation-core-go v1.1.0/go.mod h1:+6AOh41JPrnVLbW/19SJqdhVHwKgIINBO/np0e7nXJA=
-github.com/notaryproject/notation-go v1.1.1 h1:EAY8ERBWhrdaG9MIumSZ9xyUHktgr6OkCByd75HR+FA=
-github.com/notaryproject/notation-go v1.1.1/go.mod h1:XykI2i5jHb6cGf+bcG/cIeNfNO2u4Xoy2mkuOKHjVVI=
+github.com/notaryproject/notation-go v1.2.0 h1:Muq/S+Vyyerq/hefD1SUaIqFbNrhV/zgXi/M9sL4bpg=
+github.com/notaryproject/notation-go v1.2.0/go.mod h1:re9V+TfuNRaUq5e3NuNcCJN53++sL2KbnJrjGyOUpgE=
 github.com/notaryproject/notation-plugin-framework-go v1.0.0 h1:6Qzr7DGXoCgXEQN+1gTZWuJAZvxh3p8Lryjn5FaLzi4=
 github.com/notaryproject/notation-plugin-framework-go v1.0.0/go.mod h1:RqWSrTOtEASCrGOEffq0n8pSg2KOgKYiWqFWczRSics=
 github.com/notaryproject/tspclient-go v0.2.0 h1:g/KpQGmyk/h7j60irIRG1mfWnibNOzJ8WhLqAzuiQAQ=
