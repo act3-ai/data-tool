@@ -154,20 +154,10 @@ func newHTTPClientWithOps(cfg *v1alpha1.TLS, hostName, customCertPath string) (*
 
 	defaultTransport.TLSClientConfig = ssl
 
-	// use a custom env variable for SOCKS5 proxy
-	socks5Proxy := os.Getenv("SOCKS5_PROXY")
-	if socks5Proxy != "" {
-		sURL, err := url.Parse(socks5Proxy)
-		if err != nil {
-			return nil, fmt.Errorf("parsing SOCKS5 proxy URL: %w", err)
-		}
+	// get the proxy from the environment
+	dialer := proxy.FromEnvironment()
 
-		// proxy.FromURL handles SOCKS5 and SOCKS5h and auth by parsing from the environmental variable
-		dialer, err := proxy.FromURL(sURL, proxy.Direct)
-		if err != nil {
-			return nil, fmt.Errorf("creating socks5 dialer: %w", err)
-		}
-
+	if dialer != nil {
 		defaultTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
 			return dialer.Dial(network, addr)
 		}
