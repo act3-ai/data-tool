@@ -536,7 +536,6 @@ func (fc *FileCache) blobReader(ctx context.Context, dgst digest.Digest) (io.Rea
 		return nil, fmt.Errorf("creating temporary file: %w", err)
 	}
 	tmpPath := tf.Name()
-	fmt.Printf("creating temp link for blob %s to file %s\n", dgst, tmpPath)
 	if err := tf.Close(); err != nil {
 		return nil, fmt.Errorf("closing temporary file: %w", err)
 	}
@@ -565,7 +564,6 @@ func (fc *FileCache) blobReader(ctx context.Context, dgst digest.Digest) (io.Rea
 		},
 		file: tmpFile,
 		closeFn: func() error {
-			fmt.Printf("closing temp read file %s\n", tmpPath)
 			return errors.Join(tmpFile.Close(), os.Remove(tmpPath))
 		},
 	}, nil
