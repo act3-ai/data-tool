@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -58,17 +57,9 @@ func NewCopier(ctx context.Context,
 	// originating index is needed for multi-architecture images, we only want to pull the data if the descriptor is an index and platforms are defined.
 	if encoding.IsIndex(copier.root.MediaType) && platforms != nil {
 		// need descriptor to assess the mediaType otherwise I would just use oras.FetchBytes instead of resolving above
-		rc, err := src.Fetch(ctx, copier.root)
+		b, err := content.FetchAll(ctx, src, copier.root)
 		if err != nil {
 			return nil, fmt.Errorf("fetching the originating index: %w", err)
-		}
-		b, err := io.ReadAll(rc)
-		if err != nil {
-			return nil, fmt.Errorf("reading the index bytes: %w", err)
-		}
-		err = rc.Close()
-		if err != nil {
-			return nil, fmt.Errorf("closing blob fetcher: %w", err)
 		}
 		copier.originatingIndex = b
 	}
