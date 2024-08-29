@@ -66,6 +66,10 @@ func NewCopier(ctx context.Context,
 		if err != nil {
 			return nil, fmt.Errorf("reading the index bytes: %w", err)
 		}
+		err = rc.Close()
+		if err != nil {
+			return nil, fmt.Errorf("closing blob fetcher: %w", err)
+		}
 		copier.originatingIndex = b
 	}
 	return &copier, nil

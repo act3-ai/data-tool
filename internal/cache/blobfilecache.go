@@ -138,6 +138,7 @@ func (fc *FileCache) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.Rea
 			if err != nil {
 				return nil, err
 			}
+			defer m.Close()
 			blob, err := io.ReadAll(m)
 			if err != nil {
 				return nil, fmt.Errorf("reading image manifest from cache: %w", err)
@@ -461,7 +462,7 @@ func (fc *FileCache) commitBlob(ctx context.Context, srcpath string, blob *blob)
 		// TODO check if they are on the same filesystem to avoid this copy (not just if they are in the same directory).
 		// Due to bind mounts this check is not sufficient anyway.
 
-		tmpFile, err := os.CreateTemp(fc.root, "tmp_*")
+		tmpFile, err := os.CreateTemp(fc.root, "tmp_write_*")
 		if err != nil {
 			return fmt.Errorf("creating temporary file: %w", err)
 		}
@@ -530,11 +531,12 @@ func (fc *FileCache) blobReader(ctx context.Context, dgst digest.Digest) (io.Rea
 	blobPath := fc.blobPath(dgst)
 
 	// create a temporary duplicate via a hard-link
-	tf, err := os.CreateTemp(fc.root, "tmp_*")
+	tf, err := os.CreateTemp(fc.root, "tmp_read_*")
 	if err != nil {
 		return nil, fmt.Errorf("creating temporary file: %w", err)
 	}
 	tmpPath := tf.Name()
+	fmt.Printf("creating temp link for blob %s to file %s\n", dgst, tmpPath)
 	if err := tf.Close(); err != nil {
 		return nil, fmt.Errorf("closing temporary file: %w", err)
 	}
@@ -563,6 +565,7 @@ func (fc *FileCache) blobReader(ctx context.Context, dgst digest.Digest) (io.Rea
 		},
 		file: tmpFile,
 		closeFn: func() error {
+			fmt.Printf("closing temp read file %s\n", tmpPath)
 			return errors.Join(tmpFile.Close(), os.Remove(tmpPath))
 		},
 	}, nil

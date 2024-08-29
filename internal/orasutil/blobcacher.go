@@ -70,7 +70,6 @@ func (c *CachedGraphTarget) Predecessors(ctx context.Context, node ocispec.Descr
 func fetch(ctx context.Context, storage orascontent.Storage, target ocispec.Descriptor, remoteFetcherFn func(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error)) (io.ReadCloser, error) {
 	log := logger.FromContext(ctx)
 
-	var res io.ReadCloser
 	rc, err := storage.Fetch(ctx, target)
 	if err != nil {
 		log.DebugContext(ctx, "unable to fetch blob from cache, falling back to remote", "error", err)
@@ -79,6 +78,7 @@ func fetch(ctx context.Context, storage orascontent.Storage, target ocispec.Desc
 		if err != nil {
 			return nil, fmt.Errorf("fetching blob from remote: %w", err)
 		}
+		defer remoterc.Close()
 
 		// since we don't have control over when the returned io.ReadCloser is read,
 		// we must first fully cache the blob, then return a reader; i.e. we cannot
@@ -87,17 +87,19 @@ func fetch(ctx context.Context, storage orascontent.Storage, target ocispec.Desc
 		if err != nil {
 			return nil, fmt.Errorf("caching fetched blob: %w", err)
 		}
-		defer remoterc.Close()
+
+		err = remoterc.Close()
+		if err != nil {
+			return nil, fmt.Errorf("closing remote fetcher: %w", err)
+		}
 
 		localrc, err := storage.Fetch(ctx, target)
 		if err != nil {
 			return nil, fmt.Errorf("fetching reader for cached blob: %w", err)
 		}
-		res = localrc
-	} else {
-		res = rc
+		return localrc, nil
 	}
-	return res, nil
+	return rc, nil
 }
 
 // push caches blobs (to storage) while pushing with the provided pusherFn.
