@@ -169,7 +169,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 }
 
 func generateExistingImagesList(images map[string]string) []string {
-	existingImages := make([]string, len(images))
+	var existingImages []string
 	for image := range images {
 		existingImages = append(existingImages, image)
 	}
