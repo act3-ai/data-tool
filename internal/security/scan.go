@@ -340,7 +340,7 @@ func getManifestDetails(ctx context.Context, reference string, repoFunction func
 				return nil, fmt.Errorf("fetching reference %s: %w", img.Config.Digest.String(), err)
 			}
 			var platform ocispec.Platform
-			if err = json.NewDecoder(rc).Decode(&platform); err != nil && errors.Is(io.EOF, err) {
+			if err = json.NewDecoder(rc).Decode(&platform); err != nil && errors.Is(err, io.EOF) {
 				return nil, fmt.Errorf("decoding platform %+v: %w", &platform, err)
 			}
 			platformString := formatPlatformString(&platform)

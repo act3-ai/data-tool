@@ -267,13 +267,13 @@ func SetupLFSServer(t *testing.T, lfsStorage, serverName string) *httptest.Serve
 
 				if err := copyLFSFromResponse(oidPath, r); err != nil {
 					errStr := fmt.Sprintf("[%s Server] copying lfs file from request: %v", serverName, err)
-					t.Errorf(errStr)
+					t.Error(errStr)
 					http.Error(w, errStr, http.StatusInternalServerError)
 				}
 
 			case err != nil:
 				errStr := fmt.Sprintf("[%s Server] resolving oid status: %v", serverName, err)
-				t.Errorf(errStr)
+				t.Error(errStr)
 				http.Error(w, errStr, http.StatusInternalServerError)
 			}
 
