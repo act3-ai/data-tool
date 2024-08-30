@@ -79,7 +79,7 @@ func (notarySigs *NotarySignatures) Sign(ctx context.Context, pkProvider Private
 		}
 	}
 
-	notarySigner, err := signer.New(privKey, notarySigs.CertChain)
+	notarySigner, err := signer.NewGenericSigner(privKey, notarySigs.CertChain)
 	if err != nil {
 		return fmt.Errorf("failed to create notary signer: %w", err)
 	}
