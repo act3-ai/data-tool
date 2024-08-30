@@ -183,7 +183,8 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) err
 
 func annotateManifest(srcRef string, desc ocispec.Descriptor, labels map[string]string, sourceIndex []byte) (ocispec.Descriptor, error) {
 	desc.Annotations = map[string]string{
-		ref.AnnotationSrcRef: srcRef,
+		ref.AnnotationSrcRef:      srcRef,
+		ocispec.AnnotationRefName: srcRef,
 	}
 
 	if len(labels) != 0 {
