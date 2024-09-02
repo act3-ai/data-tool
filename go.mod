@@ -8,7 +8,7 @@ require (
 	git.act3-ace.com/ace/data/schema v1.2.13
 	git.act3-ace.com/ace/data/telemetry v1.0.0
 	git.act3-ace.com/ace/go-common v0.0.0-20240319120227-e77a013aa92d
-	github.com/Masterminds/sprig/v3 v3.2.3
+	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/adrg/xdg v0.5.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.17.0
@@ -44,6 +44,7 @@ require (
 )
 
 require (
+	dario.cat/mergo v1.0.1 // indirect
 	git.act3-ace.com/ace/hub/api/v6 v6.0.0-20240813105127-9a831192ed1f // indirect
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
 	github.com/MakeNowJust/heredoc/v2 v2.0.1 // indirect
@@ -69,7 +70,7 @@ require (
 
 require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
-	github.com/Masterminds/semver/v3 v3.2.1 // indirect
+	github.com/Masterminds/semver/v3 v3.3.0 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -84,7 +85,7 @@ require (
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-version v1.7.0
-	github.com/huandu/xstrings v1.4.0 // indirect
+	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/invopop/jsonschema v0.12.0 // indirect
@@ -105,9 +106,9 @@ require (
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
-	github.com/shopspring/decimal v1.3.1 // indirect
+	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	github.com/spf13/cast v1.6.0 // indirect
+	github.com/spf13/cast v1.7.0 // indirect
 	github.com/vbatts/tar-split v0.11.5 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
