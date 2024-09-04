@@ -42,7 +42,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 	// iterate through records, skip the first line, load the data into the map.
 	for {
 		record, err := r.Read()
-		if errors.Is(io.EOF, err) {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {

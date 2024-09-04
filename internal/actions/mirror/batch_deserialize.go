@@ -38,7 +38,7 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 	existingSyncs := map[string]string{}
 	for {
 		syncedFile, err := r.Read()
-		if errors.Is(io.EOF, err) {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
