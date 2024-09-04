@@ -19,6 +19,7 @@ import (
 type BatchSerialize struct {
 	*Action
 	TrackerFile string
+	Compression string
 }
 
 // Run runs the mirror batch-serialize action.
@@ -141,6 +142,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 			RepoFunc:            action.Config.Repository,
 			SourceRepo:          repo,
 			SourceReference:     image,
+			Compression:         action.Compression,
 		}
 		// new image name
 		newSyncNumber := counter + 1
