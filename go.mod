@@ -31,7 +31,7 @@ require (
 	golang.org/x/term v0.23.0
 	golang.org/x/text v0.17.0
 	k8s.io/apimachinery v0.31.0
-	k8s.io/utils v0.0.0-20240821151609-f90d01438635
+	k8s.io/utils v0.0.0-20240902221715-702e33fdd3c3
 	oras.land/oras-go/v2 v2.5.0
 	sigs.k8s.io/yaml v1.4.0
 )
