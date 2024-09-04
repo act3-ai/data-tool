@@ -45,6 +45,7 @@ func newBatchSerializeCmd(tool *actions.Action) *cobra.Command {
 	ui.AddOptionsFlags(cmd.Flags(), &uiOptions)
 	cmd.Flags().StringVar(&action.TrackerFile, "tracker-filename", "record-keeping.csv", "used to override the default tracker-file name. Tracker file exists or will be created in the SYNC-DIRECTORY/data/ directory.")
 	cmd.Flags().StringVar(&action.Compression, "compression", "", "Supports zstd and gzip compression methods. (Default behavior is no compression.)")
+	cmd.Flags().BoolVar(&action.WithManifestJSON, "manifest-json", false, "Save a manifest.json file similar to the output of 'ctr images export' (fully compatible) or 'docker image save' (not fully compatible). Recommended to be used on images gathered with one platform specified.")
 
 	return cmd
 }

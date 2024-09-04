@@ -18,8 +18,9 @@ import (
 // BatchSerialize represents the mirror batch-serialize action.
 type BatchSerialize struct {
 	*Action
-	TrackerFile string
-	Compression string
+	TrackerFile      string
+	Compression      string
+	WithManifestJSON bool
 }
 
 // Run runs the mirror batch-serialize action.
@@ -143,13 +144,22 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 			SourceRepo:          repo,
 			SourceReference:     image,
 			Compression:         action.Compression,
+			WithManifestJSON:    action.WithManifestJSON,
 		}
 		// new image name
 		newSyncNumber := counter + 1
 		// convert to string
 		fileName := fmt.Sprintf("%06d-%s", newSyncNumber, imgName)
-		// TODO: add compression when merged in.
-		fileName = filepath.Join(syncDir, strings.Join([]string{fileName, "tar"}, "."))
+		var extension string
+		switch action.Compression {
+		case "zstd":
+			extension = "tar.zst"
+		case "gzip":
+			extension = "tar.gz"
+		default:
+			extension = "tar"
+		}
+		fileName = filepath.Join(syncDir, strings.Join([]string{fileName, extension}, "."))
 		log.InfoContext(ctx, "serializing artifact to file:", "artifactName", imgName, "file", fileName)
 		if err := mirror.Serialize(ctx, fileName, "", action.DataTool.Version(), opts); err != nil {
 			return err

@@ -13,6 +13,9 @@ type Serialize struct {
 	Checkpoint          string                    // path to save the checkpoint file
 	ExistingCheckpoints []mirror.ResumeFromLedger // a slice of existing checkpoint files in the case of multiple failures
 	Compression         string                    // compression type (zstd and gzip supported)
+
+	// WithManifestJSON specifies whether or not to write out a manifest.json file, similar to 'docker image save'.
+	WithManifestJSON bool
 }
 
 // Run runs the mirror serialize action.
@@ -36,6 +39,7 @@ func (action *Serialize) Run(ctx context.Context, ref string, destFile string, e
 		SourceRepo:          repo,
 		SourceReference:     repo.Reference.ReferenceOrDefault(),
 		Compression:         action.Compression,
+		WithManifestJSON:    action.WithManifestJSON,
 	}
 
 	return mirror.Serialize(ctx, destFile, action.Checkpoint, action.DataTool.Version(), opts)

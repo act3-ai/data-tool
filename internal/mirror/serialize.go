@@ -53,6 +53,7 @@ type SerializeOptions struct {
 	SourceRepo          oras.ReadOnlyGraphTarget
 	SourceReference     string
 	Compression         string
+	WithManifestJSON    bool
 }
 
 // Serialize takes the artifact created in a gather operation and serializes it to tar.
@@ -199,6 +200,17 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 	index.Manifests = mt.Manifests()
 	if err := serializer.SaveIndex(index); err != nil {
 		return err
+	}
+
+	if opts.WithManifestJSON {
+		mj, err := encoding.BuildManifestJSON(ctx, opts.SourceRepo, index.Manifests)
+		if err != nil {
+			return fmt.Errorf("building manifest.json: %w", err)
+		}
+
+		if err = serializer.SaveManifestJSON(mj); err != nil {
+			return fmt.Errorf("saving manifest.json to archive: %w", err)
+		}
 	}
 
 	// clean up

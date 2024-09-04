@@ -172,6 +172,15 @@ func (ow *OCILayoutSerializer) SaveIndex(index ocispec.Index) error {
 	return ow.writeFileBytes(ocispec.ImageIndexFile, data)
 }
 
+// SaveManifestJSON writes out the top level manifest.json file.
+func (ow *OCILayoutSerializer) SaveManifestJSON(mj ManifestJSON) error {
+	data, err := json.MarshalIndent(mj.Manifests, "", "  ")
+	if err != nil {
+		return err
+	}
+	return ow.writeFileBytes("manifest.json", data)
+}
+
 // SkipBlob tells the serializer to never write a blob with the given digest.
 func (ow *OCILayoutSerializer) SkipBlob(desc ocispec.Descriptor) {
 	ow.existingBlobs[desc.Digest] = desc

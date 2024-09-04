@@ -29,6 +29,9 @@ type Archive struct {
 	// It will push the nested index to the target repository and add its reference to the annotations of the main gather index.
 	IndexFallback bool
 
+	// WithManifestJSON specifies whether or not to write out a manifest.json file, similar to 'docker image save'.
+	WithManifestJSON bool
+
 	// ExtraAnnotations defines the user-created annotations to add to the index of the gather repository.
 	ExtraAnnotations map[string]string
 
@@ -85,6 +88,7 @@ func (action *Archive) Run(ctx context.Context, sourceFile, destFile string, exi
 		SourceRepo:          store,
 		Compression:         action.Compression,
 		SourceReference:     action.Reference,
+		WithManifestJSON:    action.WithManifestJSON,
 	}
 	// serialize it
 	return mirror.Serialize(ctx, destFile, action.Checkpoint, action.DataTool.Version(), options)
