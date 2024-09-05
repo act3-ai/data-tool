@@ -130,10 +130,11 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 		// get the existing images list
 		existingImages := generateExistingImagesList(trackerMap[imgName])
 		// create the image target
-		repo, err := action.Config.Repository(ctx, image)
+		gt, err := action.Config.GraphTarget(ctx, image)
 		if err != nil {
 			return err
 		}
+
 		// for each image, create the serialize options
 		opts := mirror.SerializeOptions{
 			BufferOpts:          mirror.BlockBufOptions{}, // I think this should be empty, this feature shouldn't be used with a tape drive right?
@@ -141,7 +142,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 			ExistingImages:      existingImages,
 			Recursive:           action.Recursive,
 			RepoFunc:            action.Config.Repository,
-			SourceRepo:          repo,
+			SourceStorage:       gt,
 			SourceReference:     image,
 			Compression:         action.Compression,
 			WithManifestJSON:    action.WithManifestJSON,
@@ -167,7 +168,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 		// iterate the counter if serialize is successful
 		counter++
 		// get the reference digest
-		desc, err := repo.Resolve(ctx, image)
+		desc, err := gt.Resolve(ctx, image)
 		if err != nil {
 			return fmt.Errorf("getting repository descriptor: %w", err)
 		}

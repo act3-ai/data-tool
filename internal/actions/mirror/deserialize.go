@@ -32,7 +32,7 @@ func (action *Deserialize) Run(ctx context.Context, sourceFile string, dest stri
 
 	log := logger.FromContext(ctx)
 
-	gtarget, err := action.Config.GraphTarget(ctx, dest)
+	gt, err := action.Config.GraphTarget(ctx, dest)
 	if err != nil {
 		return err
 	}
@@ -44,7 +44,7 @@ func (action *Deserialize) Run(ctx context.Context, sourceFile string, dest stri
 
 	// create deserialize options
 	opts := mirror.DeserializeOptions{
-		DestStorage:         gtarget,
+		DestStorage:         gt,
 		DestTargetReference: destRef,
 		SourceFile:          sourceFile,
 		BufferSize:          action.BufferSize,
@@ -63,7 +63,7 @@ func (action *Deserialize) Run(ctx context.Context, sourceFile string, dest stri
 	// Tag it based on the input from the user
 	tag := opts.DestTargetReference.ReferenceOrDefault()
 	opts.RootUI.Infof("Tagging root node as %q", tag)
-	if err := gtarget.Tag(ctx, idxDesc, tag); err != nil {
+	if err := gt.Tag(ctx, idxDesc, tag); err != nil {
 		return fmt.Errorf("tagging the %q file: %w", ocispec.ImageIndexFile, err)
 	}
 

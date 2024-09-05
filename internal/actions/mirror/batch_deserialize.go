@@ -14,6 +14,7 @@ import (
 	"git.act3-ace.com/ace/data/tool/internal/mirror"
 	"git.act3-ace.com/ace/data/tool/internal/ui"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"oras.land/oras-go/v2/registry"
 )
 
 // BatchDeserialize represents the mirror batch-deserialize action.
@@ -74,14 +75,18 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 			}
 			// create the destination target
 			destinationWithReference := fmt.Sprintf("%s:%s", destination, strings.Split(splitName[1], ".")[0])
-			repo, err := action.Config.Repository(ctx, destinationWithReference)
+			gt, err := action.Config.GraphTarget(ctx, destinationWithReference)
 			if err != nil {
 				return err
 			}
+			destRef, err := registry.ParseReference(destinationWithReference)
+			if err != nil {
+				return fmt.Errorf("parsing destination reference: %w", err)
+			}
 			// build the deserialize options
 			opts := mirror.DeserializeOptions{
-				DestTarget:          repo,
-				DestTargetReference: repo.Reference,
+				DestStorage:         gt,
+				DestTargetReference: destRef,
 				SourceFile:          filepath.Join(syncDir, entry.Name()),
 				BufferSize:          0,
 				DryRun:              false,
@@ -91,7 +96,7 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 			}
 			// deserialize each tar file to the destination directory and tag with the image name.
 			// e.g., registry.example.com/foo:image1, registry.example.com/foo:image2, etc...
-			if err := mirror.Deserialize(ctx, opts); err != nil {
+			if _, err := mirror.Deserialize(ctx, opts); err != nil {
 				return err
 			}
 			successfulSyncs = append(successfulSyncs, []string{entry.Name(), destinationWithReference, time.Now().String()})

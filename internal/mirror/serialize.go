@@ -198,7 +198,7 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 	}
 
 	if opts.WithManifestJSON {
-		mj, err := encoding.BuildManifestJSON(ctx, opts.SourceRepo, index.Manifests)
+		mj, err := encoding.BuildManifestJSON(ctx, opts.SourceStorage, index.Manifests)
 		if err != nil {
 			return fmt.Errorf("building manifest.json: %w", err)
 		}
