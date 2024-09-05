@@ -19,7 +19,6 @@ import (
 
 	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
 	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
@@ -172,7 +171,7 @@ func makeArchivePath(scratchPath string) (string, error) {
 // if necessary.  Items that have an archive/compression format specified
 // are archived if the matching archive file does not already exist, and only
 // files that do not have digests that appear in the cache are archived.
-func archiveParts(ctx context.Context, btl *bottle.Bottle, compressionLevel string, tmpFileMap *sync.Map) error {
+func archiveParts(ctx context.Context, btl *Bottle, compressionLevel string, tmpFileMap *sync.Map) error {
 	log := logger.FromContext(ctx)
 	log.InfoContext(ctx, "Archiving files/directories in bottle")
 
@@ -206,7 +205,7 @@ func archiveParts(ctx context.Context, btl *bottle.Bottle, compressionLevel stri
 	return errGroup.Wait()
 }
 
-func archivePart(ctx context.Context, btlPartMutex sync.Locker, progress *ui.Progress, part storage.PartInfo, btl *bottle.Bottle, compressionLevel string, tmpFileMap *sync.Map) error {
+func archivePart(ctx context.Context, btlPartMutex sync.Locker, progress *ui.Progress, part storage.PartInfo, btl *Bottle, compressionLevel string, tmpFileMap *sync.Map) error {
 	log := logger.FromContext(ctx)
 	log.InfoContext(ctx, "Active file", "filename", part.GetName())
 
@@ -296,7 +295,7 @@ func archivePart(ctx context.Context, btlPartMutex sync.Locker, progress *ui.Pro
 // digestParts calculates digest values for any files in the bottle, and records them in the
 // bottle structure.  The process is skipped if a digest is already present in the bottle. For
 // most cases, the digest is calculated as part of the archival process using a stream pipeline.
-func digestParts(ctx context.Context, btl *bottle.Bottle) error {
+func digestParts(ctx context.Context, btl *Bottle) error {
 	log := logger.FromContext(ctx)
 	log.InfoContext(ctx, "Digesting files/directories in bottle")
 	defer log.InfoContext(ctx, "Digesting completed")
@@ -327,7 +326,7 @@ func digestParts(ctx context.Context, btl *bottle.Bottle) error {
 	return errGroup.Wait()
 }
 
-func digestPart(ctx context.Context, btlPartMutex sync.Locker, p *ui.Progress, part storage.PartInfo, btl *bottle.Bottle) error {
+func digestPart(ctx context.Context, btlPartMutex sync.Locker, p *ui.Progress, part storage.PartInfo, btl *Bottle) error {
 	log := logger.FromContext(ctx)
 	log.InfoContext(ctx, "Checking if digest for file already exists", "filename", part.GetName())
 
@@ -384,7 +383,7 @@ func digestPart(ctx context.Context, btlPartMutex sync.Locker, p *ui.Progress, p
 }
 
 // commitParts commits newly added/archived files to the cache.
-func commitParts(ctx context.Context, btl *bottle.Bottle, tmpFileMap *sync.Map) error {
+func commitParts(ctx context.Context, btl *Bottle, tmpFileMap *sync.Map) error {
 	log := logger.FromContext(ctx)
 	log.InfoContext(ctx, "Committing new files/directories in bottle to cache")
 	for _, part := range btl.GetParts() {

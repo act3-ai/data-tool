@@ -82,28 +82,6 @@ func (btl *Bottle) ScratchPath() string {
 	return filepath.Join(btl.cachePath, "scratch")
 }
 
-// PartStatus is a bitmask for file status flags.
-type PartStatus uint8
-
-const (
-	// StatusExists indicates a file that is tracked.
-	StatusExists PartStatus = 1 << iota
-	// StatusCached indicates a file that exists in the cache based on the
-	// digest stored in the Bottle.
-	StatusCached
-	// StatusChanged indicates a file that has been modified more recently
-	// than the entry known last update.
-	StatusChanged
-	// StatusDigestMatch indicates a digest match.
-	StatusDigestMatch
-	// StatusNew indicates a discovered file that is currently untracked.
-	StatusNew
-	// StatusDeleted indicates tracked file that is no longer discovered.
-	StatusDeleted
-	// StatusVirtual indicates tracked file that is not stored locally, e.g. excluded with a selector on pull.
-	StatusVirtual
-)
-
 // GetPartStatus looks for an existing file entry based on the search file entry
 // information, and returns a status bitfield.
 func (btl *Bottle) GetPartStatus(search PartTrack) PartStatus {

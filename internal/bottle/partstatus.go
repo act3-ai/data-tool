@@ -1,5 +1,4 @@
-// Package status handles inspecting the filesystem for changes
-package status
+package bottle
 
 import (
 	"context"
@@ -16,10 +15,71 @@ import (
 	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
 	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
+)
+
+// Options define a set of options for processing file statuses.
+type Options struct {
+	// WantDetails enables directory tree walking for gathering files changed within directories
+	WantDetails bool
+
+	// Visitor is a delegate for processing individual file infos with status indicators, set to null to perform a default Display action
+	Visitor Visitor
+}
+
+// PartStatus is a bitmask for file status flags.
+type PartStatus uint8
+
+const (
+	// StatusExists indicates a file that is tracked.
+	StatusExists PartStatus = 1 << iota
+	// StatusCached indicates a file that exists in the cache based on the
+	// digest stored in the Bottle.
+	StatusCached
+	// StatusChanged indicates a file that has been modified more recently
+	// than the entry known last update.
+	StatusChanged
+	// StatusDigestMatch indicates a digest match.
+	StatusDigestMatch
+	// StatusNew indicates a discovered file that is currently untracked.
+	StatusNew
+	// StatusDeleted indicates tracked file that is no longer discovered.
+	StatusDeleted
+	// StatusVirtual indicates tracked file that is not stored locally, e.g. excluded with a selector on pull.
+	StatusVirtual
+)
+
+// Options define a set of options for processing file statuses.
+type Options struct {
+	// WantDetails enables directory tree walking for gathering files changed within directories
+	WantDetails bool
+
+	// Visitor is a delegate for processing individual file infos with status indicators, set to null to perform a default Display action
+	Visitor Visitor
+}
+
+// PartStatus is a bitmask for file status flags.
+type PartStatus uint8
+
+const (
+	// StatusExists indicates a file that is tracked.
+	StatusExists PartStatus = 1 << iota
+	// StatusCached indicates a file that exists in the cache based on the
+	// digest stored in the Bottle.
+	StatusCached
+	// StatusChanged indicates a file that has been modified more recently
+	// than the entry known last update.
+	StatusChanged
+	// StatusDigestMatch indicates a digest match.
+	StatusDigestMatch
+	// StatusNew indicates a discovered file that is currently untracked.
+	StatusNew
+	// StatusDeleted indicates tracked file that is no longer discovered.
+	StatusDeleted
+	// StatusVirtual indicates tracked file that is not stored locally, e.g. excluded with a selector on pull.
+	StatusVirtual
 )
 
 // partStatuses is a collection of file entry lists that organize them into various
@@ -34,11 +94,11 @@ type partStatuses struct {
 
 // Visitor is a function delegate for performing an action based on a provided file info and status indicator
 // return true to halt processing, or false to continue.
-type Visitor func(storage.PartInfo, bottle.PartStatus) (bool, error)
+type Visitor func(storage.PartInfo, PartStatus) (bool, error)
 
 // AddEntry processes a file status and adds a file entry to the appropriate status collection.
-func (fss *partStatuses) AddEntry(e storage.PartInfo, s bottle.PartStatus, dirpaths []string) {
-	if s&bottle.StatusExists != bottle.StatusExists {
+func (fss *partStatuses) AddEntry(e storage.PartInfo, s PartStatus, dirpaths []string) {
+	if s&StatusExists != StatusExists {
 		fss.New = append(fss.New, e)
 	} else {
 		// Existing items must be removed from the "Deleted" list
@@ -56,9 +116,9 @@ func (fss *partStatuses) AddEntry(e storage.PartInfo, s bottle.PartStatus, dirpa
 			break
 		}
 	}
-	if s&(bottle.StatusChanged|bottle.StatusDigestMatch) == bottle.StatusChanged {
+	if s&(StatusChanged|StatusDigestMatch) == StatusChanged {
 		fss.Changed = append(fss.Changed, e)
-	} else if s&bottle.StatusCached == bottle.StatusCached {
+	} else if s&StatusCached == StatusCached {
 		fss.Cached = append(fss.Cached, e)
 	}
 
@@ -114,7 +174,7 @@ func (fss *partStatuses) Display(out *strings.Builder) {
 // VisitAll calls a status visitor for each file info in the status structure.
 func (fss *partStatuses) VisitAll(visitor Visitor) error {
 	for _, v := range fss.Cached {
-		stop, err := visitor(v, bottle.StatusCached)
+		stop, err := visitor(v, StatusCached)
 		if err != nil {
 			return fmt.Errorf("failed visiting cached: %w", err)
 		}
@@ -123,7 +183,7 @@ func (fss *partStatuses) VisitAll(visitor Visitor) error {
 		}
 	}
 	for _, v := range fss.Changed {
-		stop, err := visitor(v, bottle.StatusChanged)
+		stop, err := visitor(v, StatusChanged)
 		if err != nil {
 			return fmt.Errorf("failed visiting changed: %w", err)
 		}
@@ -132,7 +192,7 @@ func (fss *partStatuses) VisitAll(visitor Visitor) error {
 		}
 	}
 	for _, v := range fss.Deleted {
-		stop, err := visitor(v, bottle.StatusDeleted)
+		stop, err := visitor(v, StatusDeleted)
 		if err != nil {
 			return fmt.Errorf("failed visiting deleted: %w", err)
 		}
@@ -141,7 +201,7 @@ func (fss *partStatuses) VisitAll(visitor Visitor) error {
 		}
 	}
 	for _, v := range fss.New {
-		stop, err := visitor(v, bottle.StatusNew)
+		stop, err := visitor(v, StatusNew)
 		if err != nil {
 			return fmt.Errorf("failed visiting new: %w", err)
 		}
@@ -161,7 +221,7 @@ func (fss *partStatuses) ChangesDetected() bool {
 
 // getDirArchiveSize gets the uncompressed size of a directory by archiving it, without
 // compression. The archived data is ignored.
-func getDirArchiveSize(ctx context.Context, btl *bottle.Bottle, path string) (int64, error) {
+func getDirArchiveSize(ctx context.Context, btl *Bottle, path string) (int64, error) {
 	counter := archive.NewPipeCounter()
 	counter.ConnectOut(&archive.PipeTerm{})
 	defer counter.Close()
@@ -173,69 +233,12 @@ func getDirArchiveSize(ctx context.Context, btl *bottle.Bottle, path string) (in
 	return counter.Count, err
 }
 
-// Options define a set of options for processing file statuses.
-type Options struct {
-	// WantDetails enables directory tree walking for gathering files changed within directories
-	WantDetails bool
-
-	// Visitor is a delegate for processing individual file infos with status indicators, set to null to perform a default Display action
-	Visitor Visitor
-}
-
-// statusFileVisitor is a callback function for processing files discovered in
-// a data bottle path (hidden files are skipped.)  If a file is found in
-// the bottle, its last modified time is checked against the record in
-// the bottle.
-// path is the relative file path within the bottle.
-func statusFileVisitor(ctx context.Context, btl *bottle.Bottle, fss *partStatuses, opts Options, path string, info fs.FileInfo) error {
-	log := logger.FromContext(ctx)
-	logger.V(log, 1).InfoContext(ctx, "found file", "path", path)
-	if info.IsDir() {
-		panic("expected a file")
-	}
-
-	// ignore hidden files
-	if strings.HasPrefix(info.Name(), ".") {
-		logger.V(log, 2).InfoContext(ctx, "skipping hidden file.")
-		return nil
-	}
-
-	entry := bottle.PartTrack{
-		Part: latest.Part{
-			Name: path,
-			Size: info.Size(),
-		},
-		MediaType: mediatype.MediaTypeLayerZstd,
-		Modified:  info.ModTime(),
-	}
-
-	// We may want to support zero length files for  marker files, etc.  But for now, the zero length fails schema
-	// validation so here we throw an error to inform the user
-	if entry.Size == 0 {
-		return fmt.Errorf("zero length part file detected, which is not currently supported: %s", path)
-	}
-
-	status := btl.GetPartStatus(entry)
-
-	// HACK - Ultimately, UpdatePartMetadata will overwrite the layer size. Adding it here
-	// even if archival and digesting is necessary is safe as it will just be overwritten.
-	if (status & bottle.StatusExists) == bottle.StatusExists {
-		// validating exists guarantees that btl.GetPartByName does not return nil
-		pInfo := btl.GetPartByName(entry.Name)
-		entry.LayerSize = pInfo.GetLayerSize()
-	}
-
-	fss.AddEntry(&entry, status, []string{})
-
-	return nil
-}
-
 // statusDirVisitor is a callback function for processing directories discovered
 // in a data bottle path (hidden dirs are skipped).  If a directory is found in
 // the bottle, it is further walked to determine the latest update time among
 // all files, to determine if a change has occurred since the last time recorded
 // for the bottle entry.
-func statusDirVisitor(ctx context.Context, btl *bottle.Bottle, fS *partStatuses, opts Options, path string, info fs.FileInfo) error {
+func statusDirVisitor(ctx context.Context, btl *Bottle, fS *partStatuses, opts Options, path string, info fs.FileInfo) error {
 	log := logger.FromContext(ctx)
 	logger.V(log, 1).InfoContext(ctx, "found directory", "path", path)
 	if !info.IsDir() {
@@ -271,7 +274,7 @@ func statusDirVisitor(ctx context.Context, btl *bottle.Bottle, fS *partStatuses,
 	if err != nil {
 		return err
 	}
-	entry := bottle.PartTrack{
+	entry := PartTrack{
 		Part: latest.Part{
 			Name: path + "/",
 			Size: archSize,
@@ -283,7 +286,7 @@ func statusDirVisitor(ctx context.Context, btl *bottle.Bottle, fS *partStatuses,
 	status := btl.GetPartStatus(entry)
 	var dirpaths []string
 
-	if status&bottle.StatusCached == bottle.StatusCached && opts.WantDetails {
+	if status&StatusCached == StatusCached && opts.WantDetails {
 		// details causes a secondary walk of a subdirectory tree to determine which
 		// files have been updated, and is thus a bit of a performance hit.  This only
 		// checks directories that seem to have changed
@@ -301,7 +304,7 @@ func statusDirVisitor(ctx context.Context, btl *bottle.Bottle, fS *partStatuses,
 
 	// HACK - Ultimately, UpdatePartMetadata will overwrite the layer size. Adding it here
 	// even if archival and digesting is necessary is safe as it will just be overwritten.
-	if (status & bottle.StatusExists) == bottle.StatusExists {
+	if (status & StatusExists) == StatusExists {
 		// validating exists guarantees that btl.GetPartByName does not return nil
 		pInfo := btl.GetPartByName(entry.Name)
 		entry.LayerSize = pInfo.GetLayerSize()
@@ -316,7 +319,7 @@ func statusDirVisitor(ctx context.Context, btl *bottle.Bottle, fS *partStatuses,
 // subdirectories, and determines if the files are cached, new, or updated.
 // Returns a string containing bottle info if opts specifies display.
 // Also returns a boolean that is true if files changed.
-func InspectBottleFiles(ctx context.Context, btl *bottle.Bottle, opts Options) (string, bool, error) {
+func InspectBottleFiles(ctx context.Context, btl *Bottle, opts Options) (string, bool, error) {
 	log := logger.FromContext(ctx)
 	logger.V(log, 1).InfoContext(ctx, "Scanning for files and directories")
 	bottlePath := btl.GetPath()
@@ -370,7 +373,7 @@ func InspectBottleFiles(ctx context.Context, btl *bottle.Bottle, opts Options) (
 		}
 		for _, p := range btl.VirtualPartTracker.VirtRecords {
 			part := contentIDMap[p.ContentID]
-			pS.AddEntry(part, bottle.StatusVirtual|bottle.StatusExists, []string{})
+			pS.AddEntry(part, StatusVirtual|StatusExists, []string{})
 		}
 	}
 	var displayStr strings.Builder
@@ -386,4 +389,52 @@ func InspectBottleFiles(ctx context.Context, btl *bottle.Bottle, opts Options) (
 		}
 	}
 	return displayStr.String(), false, nil
+}
+
+// statusFileVisitor is a callback function for processing files discovered in
+// a data bottle path (hidden files are skipped.)  If a file is found in
+// the bottle, its last modified time is checked against the record in
+// the
+// path is the relative file path within the
+func statusFileVisitor(ctx context.Context, btl *Bottle, fss *partStatuses, opts Options, path string, info fs.FileInfo) error {
+	log := logger.FromContext(ctx)
+	logger.V(log, 1).InfoContext(ctx, "found file", "path", path)
+	if info.IsDir() {
+		panic("expected a file")
+	}
+
+	// ignore hidden files
+	if strings.HasPrefix(info.Name(), ".") {
+		logger.V(log, 2).InfoContext(ctx, "skipping hidden file.")
+		return nil
+	}
+
+	entry := PartTrack{
+		Part: latest.Part{
+			Name: path,
+			Size: info.Size(),
+		},
+		MediaType: mediatype.MediaTypeLayerZstd,
+		Modified:  info.ModTime(),
+	}
+
+	// We may want to support zero length files for  marker files, etc.  But for now, the zero length fails schema
+	// validation so here we throw an error to inform the user
+	if entry.Size == 0 {
+		return fmt.Errorf("zero length part file detected, which is not currently supported: %s", path)
+	}
+
+	status := btl.GetPartStatus(entry)
+
+	// HACK - Ultimately, UpdatePartMetadata will overwrite the layer size. Adding it here
+	// even if archival and digesting is necessary is safe as it will just be overwritten.
+	if (status & StatusExists) == StatusExists {
+		// validating exists guarantees that btl.GetPartByName does not return nil
+		pInfo := btl.GetPartByName(entry.Name)
+		entry.LayerSize = pInfo.GetLayerSize()
+	}
+
+	fss.AddEntry(&entry, status, []string{})
+
+	return nil
 }
