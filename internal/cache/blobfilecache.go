@@ -92,6 +92,10 @@ func WithFallbackCache(store orascontent.Storage) FileCacheOpt {
 // Exists returns true if the given item appears in the cache, as a file.
 // This does not check the pending blobs.
 func (fc *FileCache) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
+	if err := target.Digest.Validate(); err != nil {
+		return false, fmt.Errorf("validating digest: %w", err)
+	}
+
 	path := fc.blobPath(target.Digest)
 	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
 		if fc.FallbackCache != nil {
@@ -141,6 +145,10 @@ func (fc *FileCache) Exists(ctx context.Context, target ocispec.Descriptor) (boo
 // opening the blob, the file is hard linked to a temporary file name, and
 // the temporary file is removed upon close.
 func (fc *FileCache) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
+	if err := desc.Digest.Validate(); err != nil {
+		return nil, fmt.Errorf("validating digest: %w", err)
+	}
+
 	path := fc.blobPath(desc.Digest)
 	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
 		if fc.FallbackCache != nil {
@@ -189,6 +197,10 @@ func (fc *FileCache) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.Rea
 
 // Push copies blob content to a file if there is not already a copy in progress.
 func (fc *FileCache) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
+	if err := expected.Digest.Validate(); err != nil {
+		return fmt.Errorf("validating digest: %w", err)
+	}
+
 	log := logger.V(logger.FromContext(ctx), 1)
 	b := &pendingBlob{
 		blob: blob{
@@ -339,6 +351,10 @@ var ErrPredecessorsDisabled = errors.New("predecessors not enabled")
 //
 // Predecessors returns an error if the FileCache was not initialized with the WithPredecessors Option.
 func (fc *FileCache) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	if err := node.Digest.Validate(); err != nil {
+		return nil, fmt.Errorf("validating digest: %w", err)
+	}
+
 	if fc.predecessors != nil {
 		fc.pMux.RLock()
 		predecessors, ok := fc.predecessors[node.Digest]
@@ -353,6 +369,10 @@ func (fc *FileCache) Predecessors(ctx context.Context, node ocispec.Descriptor) 
 
 // Delete removes a specific blob from the collection of cached blobs.
 func (fc *FileCache) Delete(ctx context.Context, desc ocispec.Descriptor) error {
+	if err := desc.Digest.Validate(); err != nil {
+		return fmt.Errorf("validating digest: %w", err)
+	}
+
 	blobpath := fc.blobPath(desc.Digest)
 	exists, err := fc.Exists(ctx, desc)
 	switch {
