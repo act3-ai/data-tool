@@ -26,8 +26,6 @@ import (
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
-// TODO: Consider a custom Mounter interface that could "mount" files into the cache, instead of pushing with a reader
-
 // FileCache is an implementation of orasutil.PredecessorStorage to manage
 // the caching of blobs as files on disk. Essentially a file-based oras content.Storage,
 // with an optional in-memory PredecessorFinder, i.e. predecessor graphs are not persistent.
@@ -288,6 +286,45 @@ func (fc *FileCache) pushOnce(ctx context.Context, expected ocispec.Descriptor, 
 	if err := vr.Verify(); err != nil {
 		return errors.Join(fmt.Errorf("verifying blob: %w", err), cleanupOnErr())
 	}
+	return nil
+}
+
+// Mount creates a hardlink from path to the underlying cache filesystem. A full descriptor is not required,
+// however the digest field is. Mount implements oras registry.Mounter interface.
+func (fc *FileCache) Mount(ctx context.Context, desc ocispec.Descriptor, path string, getContent func() (io.ReadCloser, error)) error {
+	if err := desc.Digest.Validate(); err != nil {
+		return fmt.Errorf("validating digest: %w", err)
+	}
+	log := logger.FromContext(ctx).With("digest", desc.Digest, "mountPath", path)
+
+	exists, err := fc.Exists(ctx, desc)
+	switch {
+	case exists:
+		log.InfoContext(ctx, "cache entry already exists")
+		return nil
+	case err != nil:
+		log.ErrorContext(ctx, "failed to check existence in cache", "error", err)
+		fallthrough
+	default:
+		blobPath := fc.blobPath(desc.Digest)
+		err = os.Link(path, blobPath)
+		if err == nil {
+			log.InfoContext(ctx, "mount successful")
+			break
+		}
+		// hardlink may fail if file is not within the same filesystem.
+		log.InfoContext(ctx, "mount failed, falling back to push", "error", err)
+		rc, err := getContent()
+		if err != nil {
+			return fmt.Errorf("retrieving content: %w", err)
+		}
+
+		err = fc.Push(ctx, desc, rc)
+		if err != nil {
+			return fmt.Errorf("pushing content: %w", err)
+		}
+	}
+
 	return nil
 }
 
