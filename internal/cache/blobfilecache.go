@@ -26,9 +26,28 @@ import (
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
-// FileCache is an implementation of orasutil.PredecessorStorage to manage
-// the caching of blobs as files on disk. Essentially a file-based oras content.Storage,
-// with an optional in-memory PredecessorFinder, i.e. predecessor graphs are not persistent.
+// FileCacher implements oras' content.GraphStorage as well as registry.Mounter.
+type FileCacher interface {
+	// content.GraphStorage
+	Exists(ctx context.Context, target ocispec.Descriptor) (bool, error)
+	Fetch(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error)
+	Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error
+	Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error)
+	// registry.Mounter
+	Mount(ctx context.Context, desc ocispec.Descriptor, path string, getContent func() (io.ReadCloser, error)) error
+}
+
+// FileCacheManager extends FileCacher with ability to remove blobs.
+type FileCacheManager interface {
+	FileCacher
+
+	Delete(ctx context.Context, desc ocispec.Descriptor) error
+	Prune(ctx context.Context, maxSize int64) error
+}
+
+// FileCache is an implementation of FileCacheManager. A persistant file-based oras content.Storage,
+// with an optional in-memory PredecessorFinder (enabling it to be used as a content.GraphStorage).
+// Predecessors() returns an error if NewFileCache() was not provided the WithPredecessors() option.
 type FileCache struct {
 	root         string    // cache root directory
 	pendingBlobs *sync.Map // pending data in progress of being written to cache; digest.Digest : pendingBlob
@@ -37,11 +56,13 @@ type FileCache struct {
 	predecessors map[digest.Digest][]ocispec.Descriptor
 	pMux         sync.RWMutex
 
-	FallbackCache orascontent.Storage // A secondary cache to check if the primary cache does not contain a requested file.  This fallback is considered only on read operations.
+	fallbackCache orascontent.ReadOnlyStorage // A secondary cache capable of supplementing files not found in the primary.
 }
 
-// pendingBlob simply wraps Blob with a channel, notifying potential
-// duplicate pushes the it has completed.
+// pendingBlob simply wraps blob with a channel, notifying potential
+// duplicate pushes the it has completed. Simultaneous pushes are de-duplicated such that
+// the second push reads and discards from its input reader, blocking until the first completes.
+// This ensures graph integrity and safe calls of oras.CopyGraph().
 type pendingBlob struct {
 	blob
 
@@ -49,7 +70,7 @@ type pendingBlob struct {
 	done chan struct{}
 }
 
-// NewFileCache creates a new file cache object for managing data blobs.
+// NewFileCache creates a new FileCache object for managing data blobs.
 func NewFileCache(path string, opts ...FileCacheOpt) (*FileCache, error) {
 	fc := &FileCache{
 		root:         path,
@@ -66,12 +87,12 @@ func NewFileCache(path string, opts ...FileCacheOpt) (*FileCache, error) {
 	return fc, nil
 }
 
-// FileCacheOpt is a functional option type for configuring a file cache
+// FileCacheOpt is a functional option type for configuring a FileCache
 // on creation.
 type FileCacheOpt func(*FileCache)
 
-// WithPredecessors enables blob predecessors (in-memory). Predecessors are
-// established during calls to Fetch, if the blob exists in the cache or fallback cache, or
+// WithPredecessors enables (in-memory) blob predecessors. Predecessors are
+// established during calls to Fetch (if the blob exists in the cache or fallback cache) or
 // Push.
 func WithPredecessors() FileCacheOpt {
 	return func(fc *FileCache) {
@@ -85,7 +106,7 @@ func WithPredecessors() FileCacheOpt {
 // add items to the primary cache location when the fallback cache is used as the stand in reader.
 func WithFallbackCache(store orascontent.Storage) FileCacheOpt {
 	return func(fc *FileCache) {
-		fc.FallbackCache = store
+		fc.fallbackCache = store
 	}
 }
 
@@ -98,8 +119,8 @@ func (fc *FileCache) Exists(ctx context.Context, target ocispec.Descriptor) (boo
 
 	path := fc.blobPath(target.Digest)
 	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
-		if fc.FallbackCache != nil {
-			fallbackExists, err := fc.FallbackCache.Exists(ctx, target)
+		if fc.fallbackCache != nil {
+			fallbackExists, err := fc.fallbackCache.Exists(ctx, target)
 			if err != nil {
 				return fallbackExists, fmt.Errorf("checking blob existence in fallback cache: %w", err)
 			}
@@ -151,8 +172,8 @@ func (fc *FileCache) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.Rea
 
 	path := fc.blobPath(desc.Digest)
 	if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
-		if fc.FallbackCache != nil {
-			rc, err := fc.FallbackCache.Fetch(ctx, desc)
+		if fc.fallbackCache != nil {
+			rc, err := fc.fallbackCache.Fetch(ctx, desc)
 			if err != nil {
 				return nil, fmt.Errorf("fetching from fallback cache: %w", err)
 			}
