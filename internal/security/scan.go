@@ -85,8 +85,10 @@ func ScanArtifacts(ctx context.Context,
 	dryRun bool) ([]*ArtifactDetails, error) {
 
 	var results []*ArtifactDetails
+	log := logger.FromContext(ctx)
 	switch {
 	case sourceFile != "":
+		log.InfoContext(ctx, "scanning from sourcefile:", "file", sourceFile)
 		scannedResults, err := scanFromSourceFile(ctx, sourceFile, concurrency, repoFunction)
 		if err != nil {
 			return nil, err
@@ -94,6 +96,7 @@ func ScanArtifacts(ctx context.Context,
 		results = scannedResults.results
 
 	case artifactReference != "":
+		log.InfoContext(ctx, "scanning from artifact:", "reference", artifactReference)
 		scannedResults, err := scanFromMirrorArtifact(ctx, artifactReference, concurrency, repoFunction, dryRun)
 		if err != nil {
 			return nil, err
@@ -157,6 +160,7 @@ func scanFromMirrorArtifact(ctx context.Context, //nolint:gocognit
 	repoFunction func(context.Context, string) (*remote.Repository, error),
 	dryRun bool) (*ScanningResults, error) {
 
+	log := logger.FromContext(ctx)
 	scanned := ScanningResults{
 		results: []*ArtifactDetails{},
 		mu:      sync.Mutex{},
@@ -166,6 +170,7 @@ func scanFromMirrorArtifact(ctx context.Context, //nolint:gocognit
 	if err != nil {
 		return nil, fmt.Errorf("extracting sources from artifact: %w", err)
 	}
+	log.InfoContext(ctx, "extracted sources from mirror artifact: ", "number", len(m))
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
 	for s, source := range m {
@@ -175,6 +180,7 @@ func scanFromMirrorArtifact(ctx context.Context, //nolint:gocognit
 				Matches: []Matches{},
 			}
 			matches := make(map[string]Matches)
+			log.InfoContext(ctx, "fetching manifest details", "artifact", source.Name, "originatingReference", s)
 			artifactDetails, err := getManifestDetails(gctx, source.Name, repoFunction, dryRun)
 			if err != nil {
 				return fmt.Errorf("getting artifact details for %s: %w", s, err)
@@ -183,6 +189,7 @@ func scanFromMirrorArtifact(ctx context.Context, //nolint:gocognit
 			// load the predecessor digests
 			artifactDetails.handlePredecessors()
 			// if this is not a dry run
+			log.InfoContext(ctx, "details fetched", "artifact", s, "details", artifactDetails)
 			switch {
 			case !dryRun && artifactDetails.SBOMDigest == "":
 				sboms, err := GenerateSBOM(ctx, source.Name, artifactDetails.repository)
@@ -237,6 +244,10 @@ func scanFromMirrorArtifact(ctx context.Context, //nolint:gocognit
 			scanned.mu.Unlock()
 			return nil
 		})
+	}
+
+	if err = g.Wait(); err != nil {
+		return nil, err
 	}
 	return &scanned, nil
 }
@@ -456,10 +467,7 @@ func GenerateSBOM(ctx context.Context, reference string, repository oras.GraphTa
 
 			entry, err := GenerateSBOM(ctx, refMan.String(), repository)
 			if err != nil {
-				// ignore the error for now but log it out
-				// TODO: handle this better- usually fails on in-toto signature manifests and bottles, find a way to filter without having to download and interate through those manifests.
-				log.ErrorContext(ctx, "failed SBOM generation", "reference", refMan.String(), "error", err)
-				return nil, nil
+				return nil, err
 			}
 			sboms = append(sboms, entry...)
 		}
@@ -467,7 +475,9 @@ func GenerateSBOM(ctx context.Context, reference string, repository oras.GraphTa
 		// exec out to syft to generate the SBOM
 		res, err := syftReference(ctx, reference)
 		if err != nil {
-			return nil, err
+			// syft regularly fails if passed a signature, helmfile, or bottle manifest. Ignore but log the error.
+			log.InfoContext(ctx, "failed SBOM generation", "reference", reference, "error", err)
+			return nil, nil
 		}
 
 		// Upload the SBOM... create a manifest and encode SBOM into a layer.

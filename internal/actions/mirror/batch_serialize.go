@@ -24,7 +24,7 @@ type BatchSerialize struct {
 }
 
 // Run runs the mirror batch-serialize action.
-func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir string) error {
+func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir string) error { //nolint:gocognit
 	log := logger.FromContext(ctx)
 	// navigate to syncDir and
 	// if trackerFile exists, open it.

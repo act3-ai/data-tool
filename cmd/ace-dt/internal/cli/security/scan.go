@@ -24,7 +24,7 @@ func newScanCommand(tool *securityActions.Action) *cobra.Command {
 
 	cmd.Flags().StringVar(&action.SourceFile, "source-file", "", "Define a sources.list file to scan for vulnerabilities")
 	cmd.Flags().StringVar(&action.GatherArtifactReference, "gathered-image", "", "Define an artifact reference created by Gather to scan for vulnerabilities")
-	cmd.Flags().StringVarP(&action.Output, "output", "o", "json", "Define how you would like the output displayed. Supported types are json (default), markdown, csv, and table.")
+	cmd.Flags().StringVarP(&action.Output, "output", "o", "table", "Define how you would like the output displayed. Supported types are json (default), markdown, csv, and table.")
 	cmd.Flags().BoolVar(&action.DryRun, "check", false, "Outputs scanning information without generating SBOMS (only applicable to --gathered-image input)")
 	ui.AddOptionsFlags(cmd.Flags(), &uiOptions)
 	return cmd
