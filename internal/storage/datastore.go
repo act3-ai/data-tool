@@ -11,14 +11,12 @@ import (
 	"io"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/notaryproject/notation-core-go/signature/cose"
 	"github.com/notaryproject/notation-core-go/signature/jws"
 	notaryreg "github.com/notaryproject/notation-go/registry"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"k8s.io/apimachinery/pkg/labels"
 	orascontent "oras.land/oras-go/v2/content"
 
 	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
@@ -67,31 +65,6 @@ type DataStore struct {
 
 	// disable in stream digest calculation
 	DisableDigestCalc bool
-}
-
-// PartInfo is an interface for oci file entry data retrieval.
-type PartInfo interface {
-	// GetName returns a file name
-	GetName() string
-	// GetContentSize returns the size of a file in the bottle config (uncompressed, unarchived form)
-	GetContentSize() int64
-	// GetContentDigest returns the digest of a file as it exists in uncompressed/unarchived state, and is the digest
-	// referened in bottle config
-	GetContentDigest() digest.Digest
-	// GetLabels returns a map of label keys to values associated with a file
-	GetLabels() labels.Set
-
-	// GetLayerSize is the size of the layer (often compresses size)
-	GetLayerSize() int64
-	// GetLayerDigest returns the digest of a file, as stored in cache or on the server.  This can be the compressed and/or
-	// archived form of the file, and in OCI terms is the LayerDigest
-	GetLayerDigest() digest.Digest
-	// GetMediaType returns the content media type string for a file
-	GetMediaType() string
-
-	// GetModTime returns the last known modified time of a file, and can be used to determine if a file on disk has
-	// been modified since the last bottle operation
-	GetModTime() time.Time
 }
 
 // NewDataStore creates a new data store.
