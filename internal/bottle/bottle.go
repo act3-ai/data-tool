@@ -84,7 +84,7 @@ func (btl *Bottle) ScratchPath() string {
 
 // GetPartStatus looks for an existing file entry based on the search file entry
 // information, and returns a status bitfield.
-func (btl *Bottle) GetPartStatus(search PartTrack) PartStatus {
+func (btl *Bottle) GetPartStatus(ctx context.Context, search PartTrack) PartStatus {
 	part := btl.partByName(search.GetName())
 	var status PartStatus
 

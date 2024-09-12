@@ -16,7 +16,6 @@ import (
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
-	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
 )
 
@@ -85,19 +84,19 @@ const (
 // partStatuses is a collection of file entry lists that organize them into various
 // status lists for display.
 type partStatuses struct {
-	New        []storage.PartInfo
-	Cached     []storage.PartInfo
-	Changed    []storage.PartInfo
-	Deleted    []storage.PartInfo
+	New        []PartInfo
+	Cached     []PartInfo
+	Changed    []PartInfo
+	Deleted    []PartInfo
 	DirDetails map[string][]string
 }
 
 // Visitor is a function delegate for performing an action based on a provided file info and status indicator
 // return true to halt processing, or false to continue.
-type Visitor func(storage.PartInfo, PartStatus) (bool, error)
+type Visitor func(PartInfo, PartStatus) (bool, error)
 
 // AddEntry processes a file status and adds a file entry to the appropriate status collection.
-func (fss *partStatuses) AddEntry(e storage.PartInfo, s PartStatus, dirpaths []string) {
+func (fss *partStatuses) AddEntry(e PartInfo, s PartStatus, dirpaths []string) {
 	if s&StatusExists != StatusExists {
 		fss.New = append(fss.New, e)
 	} else {
@@ -283,7 +282,7 @@ func statusDirVisitor(ctx context.Context, btl *Bottle, fS *partStatuses, opts O
 		Modified:  latestUpdate,
 	}
 
-	status := btl.GetPartStatus(entry)
+	status := btl.GetPartStatus(ctx, entry)
 	var dirpaths []string
 
 	if status&StatusCached == StatusCached && opts.WantDetails {
@@ -367,7 +366,7 @@ func InspectBottleFiles(ctx context.Context, btl *Bottle, opts Options) (string,
 	}
 	if btl.VirtualPartTracker != nil {
 		// build a cache for fast access by content ID/digest
-		contentIDMap := make(map[digest.Digest]storage.PartInfo, len(btl.VirtualPartTracker.VirtRecords))
+		contentIDMap := make(map[digest.Digest]PartInfo, len(btl.VirtualPartTracker.VirtRecords))
 		for _, part := range btl.GetParts() {
 			contentIDMap[part.GetContentDigest()] = part
 		}
@@ -424,7 +423,7 @@ func statusFileVisitor(ctx context.Context, btl *Bottle, fss *partStatuses, opts
 		return fmt.Errorf("zero length part file detected, which is not currently supported: %s", path)
 	}
 
-	status := btl.GetPartStatus(entry)
+	status := btl.GetPartStatus(ctx, entry)
 
 	// HACK - Ultimately, UpdatePartMetadata will overwrite the layer size. Adding it here
 	// even if archival and digesting is necessary is safe as it will just be overwritten.
