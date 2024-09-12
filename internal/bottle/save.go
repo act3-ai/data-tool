@@ -178,7 +178,7 @@ func handlePartMedia(ctx context.Context, cachePath string, fetcher content.Fetc
 	case mediatype.MediaTypeLayerTarGzip, mediatype.MediaTypeLayerTarGzipLegacy:
 		return errors.New("gzip is not implemented")
 	case mediatype.MediaTypeLayer, mediatype.MediaTypeLayerRawOld, mediatype.MediaTypeLayerRawLegacy:
-		destFile, err := os.OpenFile(destPath, os.O_CREATE, 0666)
+		destFile, err := os.Create(destPath)
 		if err != nil {
 			return fmt.Errorf("opening destination file")
 		}

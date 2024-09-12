@@ -129,7 +129,7 @@ func ExamplePull() {
 	}
 
 	// also fails on send telemetry event failure
-	err = Pull(ctx, src, desc, bottleDir, PullOptions{})
+	err = Pull(ctx, src, desc, bottleDir, PullOptions{TransferOptions: TransferOptions{CachePath: tempCache}})
 	if err != nil {
 		panic(fmt.Sprintf("Bottle pull failed: %v\n", err))
 	}
