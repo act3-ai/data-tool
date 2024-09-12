@@ -31,7 +31,6 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
 	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
-	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
 )
 
@@ -64,7 +63,7 @@ type Bottle struct {
 	// cachePath is the cache directory
 	cachePath string
 
-	cacheManager         cache.MoteCache
+	cache                cache.FileCacher
 	VirtualPartTracker   *VirtualParts
 	DisableCreateDestDir bool
 	disableCache         bool
@@ -93,9 +92,10 @@ func (btl *Bottle) GetPartStatus(ctx context.Context, search PartTrack) PartStat
 	}
 
 	status |= StatusExists
-	if part.GetLayerDigest() != "" && btl.cacheManager.MoteExists(part.GetLayerDigest()) {
+	if exists, _ := btl.cache.Exists(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest()}); exists {
 		status |= StatusCached
 	}
+
 	if btl.VirtualPartTracker != nil {
 		dig := search.GetLayerDigest()
 		if btl.VirtualPartTracker.HasContent(dig) {
@@ -431,10 +431,10 @@ func (btl *Bottle) GetConfigPath() string {
 	return configFile(btl.GetPath())
 }
 
-// GetCache returns a MoteCache interface for working with local
+// GetCache returns a cache.FileCacher interface for working with local
 // cache data.
-func (btl *Bottle) GetCache() cache.MoteCache {
-	return btl.cacheManager
+func (btl *Bottle) GetCache() cache.FileCacher {
+	return btl.cache
 }
 
 // GetBottleID returns a digest for the bottle configuration.
@@ -464,8 +464,8 @@ func (btl *Bottle) NumParts() int {
 }
 
 // GetParts returns a slice of PartTrack structures presented as a slice of FileInfo interfaces.
-func (btl *Bottle) GetParts() []storage.PartInfo {
-	parts := make([]storage.PartInfo, len(btl.Parts))
+func (btl *Bottle) GetParts() []PartInfo {
+	parts := make([]PartInfo, len(btl.Parts))
 	for i, v := range btl.Parts {
 		parts[i] = &v
 	}
@@ -473,7 +473,7 @@ func (btl *Bottle) GetParts() []storage.PartInfo {
 }
 
 // GetPartByLayerDescriptor returns a PartInfo for a part based on a descriptor from a manifest, matching by digest.
-func (btl *Bottle) GetPartByLayerDescriptor(descriptor ocispec.Descriptor) storage.PartInfo {
+func (btl *Bottle) GetPartByLayerDescriptor(descriptor ocispec.Descriptor) PartInfo {
 	for _, p := range btl.Parts {
 		if p.LayerDigest == descriptor.Digest {
 			return &p
@@ -483,7 +483,7 @@ func (btl *Bottle) GetPartByLayerDescriptor(descriptor ocispec.Descriptor) stora
 }
 
 // GetPartByName returns a single FileInfo matching the provided name.
-func (btl *Bottle) GetPartByName(partName string) storage.PartInfo {
+func (btl *Bottle) GetPartByName(partName string) PartInfo {
 	part := btl.partByName(partName)
 	if part == nil {
 		return nil
@@ -961,12 +961,13 @@ func NewBottle(options ...BOption) (*Bottle, error) {
 		}
 	}
 	if !btl.disableCache {
-		btl.cacheManager = cache.NewBottleFileCache(btl.cachePath)
-		if err := btl.cacheManager.Initialize(); err != nil {
-			return nil, err
+		var err error
+		btl.cache, err = cache.NewFileCache(btl.cachePath, cache.WithPredecessors())
+		if err != nil {
+			return nil, fmt.Errorf("initializing cache: %w", err)
 		}
 	} else {
-		btl.cacheManager = &cache.NilCache{}
+		btl.cache = &cache.NilFileCache{}
 	}
 
 	// if btl.VirtualPartTracker != nil {

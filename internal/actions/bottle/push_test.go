@@ -29,7 +29,6 @@ import (
 	tlog "git.act3-ace.com/ace/go-common/pkg/test"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
-	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	tbtl "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
 	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
 )
@@ -205,10 +204,7 @@ func push(t *testing.T, ctx context.Context, btlDir string, destInfo *DestStoreI
 		},
 	}
 
-	store := storage.NewDataStore(btl)
-	defer store.Close()
-
-	if err := tbtl.PushBottle(ctx, btl, store, destInfo, destInfo.Ref, pushOpts); err != nil {
+	if err := tbtl.PushBottle(ctx, btl, destInfo, destInfo.Ref, pushOpts); err != nil {
 		t.Fatalf("pushing bottle to source repository: error = %v", err)
 	}
 }

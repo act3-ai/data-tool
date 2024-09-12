@@ -17,7 +17,6 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
-	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
 )
@@ -177,17 +176,16 @@ func pull(ctx context.Context, target content.ReadOnlyStorage, desc ocispec.Desc
 		return nil, fmt.Errorf("initializing part selector func: %w", err)
 	}
 
-	dataCache := storage.NewDataStore(btl)
 	copyOptions := oras.CopyGraphOptions{
 		Concurrency:    pullOpts.concurrency(),
 		PreCopy:        prePullParts(progress),
-		PostCopy:       postPullParts(progress, btl, dataCache),
-		OnCopySkipped:  onPullSkipped(progress, btl, dataCache),
+		PostCopy:       postPullParts(progress, btl),
+		OnCopySkipped:  postPullParts(progress, btl),
 		FindSuccessors: selectPartSuccessors(btl, partSelector),
 	}
 
 	log.InfoContext(ctx, "copying bottle layers from remote", "layers", len(btl.Manifest.GetLayerDescriptors()))
-	err = oras.CopyGraph(ctx, target, dataCache, desc, copyOptions)
+	err = oras.CopyGraph(ctx, target, btl.GetCache(), desc, copyOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failure to copygraph for bottle: %w", err)
 	}
@@ -204,9 +202,9 @@ func pull(ctx context.Context, target content.ReadOnlyStorage, desc ocispec.Desc
 	}
 
 	log.InfoContext(ctx, "pull complete")
-	if err := dataCache.Close(); err != nil {
-		return btl, fmt.Errorf("closing datastore: %w", err)
-	}
+	// if err := dataCache.Close(); err != nil {
+	// 	return btl, fmt.Errorf("closing datastore: %w", err)
+	// }
 
 	return btl, nil
 }
@@ -311,9 +309,7 @@ func prePullParts(progress *ui.Progress) func(ctx context.Context, desc ocispec.
 
 // postPullParts returns a func for the oras.CopyGraphOptions option PostCopy func. It extracts a recently
 // cached part to its final destination.
-func postPullParts(progress *ui.Progress, btl *bottle.Bottle,
-	dataStore *storage.DataStore,
-) func(ctx context.Context, desc ocispec.Descriptor) error {
+func postPullParts(progress *ui.Progress, btl *bottle.Bottle) func(ctx context.Context, desc ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
 		switch {
 		case desc.MediaType == ocispec.MediaTypeImageManifest:
@@ -321,7 +317,7 @@ func postPullParts(progress *ui.Progress, btl *bottle.Bottle,
 		case mediatype.IsBottleConfig(desc.MediaType):
 			// noop
 		case mediatype.IsLayer(desc.MediaType):
-			handled, err := dataStore.CopyFromCache(ctx, desc, btl.GetPartByLayerDescriptor(desc).GetName())
+			handled, err := bottle.CopyFromCache(ctx, btl, desc, btl.GetPartByLayerDescriptor(desc).GetName())
 			// update the progress after copy, even if the copy failed.
 			// TODO: progress doesn't really seem to be working...
 			progress.Update(desc.Size, desc.Size)
@@ -411,29 +407,29 @@ func selectPartSuccessors(btl *bottle.Bottle, selector bottle.PartSelectorFunc) 
 // onPullSkipped handles the extraction of cached parts to their destinations when they're skipped
 // during a copy to the cache. This funcion is triggered whenever the cache hits, i.e. returns true
 // on existence check.
-func onPullSkipped(progress *ui.Progress, btl *bottle.Bottle, dataStore *storage.DataStore) func(ctx context.Context,
-	desc ocispec.Descriptor) error {
-	return func(ctx context.Context, desc ocispec.Descriptor) error {
-		switch {
-		case desc.MediaType == ocispec.MediaTypeImageManifest:
-			// noop
-		case mediatype.IsBottleConfig(desc.MediaType):
-			// noop
-		case mediatype.IsLayer(desc.MediaType):
-			handled, err := dataStore.CopyFromCache(ctx, desc, btl.GetPartByLayerDescriptor(desc).GetName())
-			progress.Update(desc.Size, desc.Size)
-			switch {
-			case err != nil:
-				return err
-			case !handled:
-				return fmt.Errorf("part not found in cache despite passing prior existence check %s", desc.Digest) // should be impossible
-			default:
-				logger.V(logger.FromContext(ctx), 1).InfoContext(ctx, "copied from cache")
-			}
-		default:
-			return fmt.Errorf("unsupported mediatype skipped '%s'", desc.MediaType)
-		}
-		// skip was safe
-		return nil
-	}
-}
+// func onPullSkipped(progress *ui.Progress, btl *bottle.Bottle, dataStore *storage.DataStore) func(ctx context.Context,
+// 	desc ocispec.Descriptor) error {
+// 	return func(ctx context.Context, desc ocispec.Descriptor) error {
+// 		switch {
+// 		case desc.MediaType == ocispec.MediaTypeImageManifest:
+// 			// noop
+// 		case mediatype.IsBottleConfig(desc.MediaType):
+// 			// noop
+// 		case mediatype.IsLayer(desc.MediaType):
+// 			handled, err := dataStore.CopyFromCache(ctx, desc, btl.GetPartByLayerDescriptor(desc).GetName())
+// 			progress.Update(desc.Size, desc.Size)
+// 			switch {
+// 			case err != nil:
+// 				return err
+// 			case !handled:
+// 				return fmt.Errorf("part not found in cache despite passing prior existence check %s", desc.Digest) // should be impossible
+// 			default:
+// 				logger.V(logger.FromContext(ctx), 1).InfoContext(ctx, "copied from cache")
+// 			}
+// 		default:
+// 			return fmt.Errorf("unsupported mediatype skipped '%s'", desc.MediaType)
+// 		}
+// 		// skip was safe
+// 		return nil
+// 	}
+// }

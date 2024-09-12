@@ -2,18 +2,23 @@ package bottle
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
 	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
+	"git.act3-ace.com/ace/data/tool/internal/archive"
 	"git.act3-ace.com/ace/data/tool/internal/bottle/label"
-	"git.act3-ace.com/ace/data/tool/internal/storage"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/content"
 )
 
 // SaveOptions is a structure for supplying options to the SaveUpdatesToSet function. By default, all options
@@ -68,7 +73,7 @@ func PrepareUpdatedParts(ctx context.Context, btl *Bottle) Visitor {
 	fsys := os.DirFS(btl.GetPath())
 
 	// TODO why does this function not return an error, return an error
-	return func(info storage.PartInfo, status PartStatus) (bool, error) {
+	return func(info PartInfo, status PartStatus) (bool, error) {
 		name := info.GetName()
 		log := logger.FromContext(ctx).With("name", name)
 
@@ -109,6 +114,87 @@ func PrepareUpdatedParts(ctx context.Context, btl *Bottle) Visitor {
 			return false, nil
 		}
 		return false, nil
+	}
+}
+
+// CopyFromCache copies a bottle part from the cache, handling extraction and decompression
+// based on part mediatypes.
+func CopyFromCache(ctx context.Context, btl *Bottle, desc ocispec.Descriptor, name string) (bool, error) {
+	exists, err := btl.cache.Exists(ctx, desc)
+	switch {
+	case err != nil:
+		return false, fmt.Errorf("checking part existence in cache: %w", err)
+	case !exists:
+		return false, nil
+	default:
+		if err := handlePartMedia(ctx, btl.cachePath, btl.cache, desc, name); err != nil {
+			return false, fmt.Errorf("copying part from cache: %w", err)
+		}
+		return true, nil
+	}
+}
+
+// ErrUnknownLayerMediaType is the error if the layer media type is unknown.
+var ErrUnknownLayerMediaType = errors.New("unknown layer media type")
+
+// handlePartMedia copies the layer into the part file/directory given by partName.
+func handlePartMedia(ctx context.Context, cachePath string, fetcher content.Fetcher, desc ocispec.Descriptor, partName string) error {
+
+	destPath := filepath.Join(cachePath, filepath.FromSlash(partName))
+	if err := os.MkdirAll(destPath, 0777); err != nil {
+		return fmt.Errorf("error creating archivePath: %w", err)
+	}
+
+	_, err := os.Stat(destPath)
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		// noop, ideal
+	case err != nil:
+		return fmt.Errorf("stat-ing destination: %w", err)
+	default:
+		// TODO: is this what we want?
+		if err := os.Remove(destPath); err != nil {
+			return fmt.Errorf("removing destination file: %w", err)
+		}
+	}
+
+	rc, err := fetcher.Fetch(ctx, desc)
+	if err != nil {
+		return fmt.Errorf("fetching from cache: %w", err)
+	}
+	defer rc.Close()
+
+	switch desc.MediaType {
+	case mediatype.MediaTypeLayerTar:
+		return archive.ExtractTarFromReader(ctx, rc, destPath)
+	case mediatype.MediaTypeLayerTarOld, mediatype.MediaTypeLayerTarLegacy:
+		return archive.ExtractTarCompatFromReader(ctx, rc, cachePath)
+	case mediatype.MediaTypeLayerTarZstd:
+		return archive.ExtractTarZstdFromReader(ctx, rc, destPath)
+	case mediatype.MediaTypeLayerTarZstdOld, mediatype.MediaTypeLayerTarZstdLegacy:
+		return archive.ExtractTarZstdCompatFromReader(ctx, rc, cachePath)
+	case mediatype.MediaTypeLayerZstd:
+		return archive.ExtractZstdFromReader(ctx, rc, destPath)
+	case mediatype.MediaTypeLayerTarGzip, mediatype.MediaTypeLayerTarGzipLegacy:
+		return errors.New("gzip is not implemented")
+	case mediatype.MediaTypeLayer, mediatype.MediaTypeLayerRawOld, mediatype.MediaTypeLayerRawLegacy:
+		destFile, err := os.OpenFile(destPath, os.O_CREATE, 0666)
+		if err != nil {
+			return fmt.Errorf("opening destination file")
+		}
+		defer destFile.Close()
+
+		_, err = io.Copy(destFile, rc)
+		if err != nil {
+			return fmt.Errorf("copying part: %w", err)
+		}
+
+		if err := rc.Close(); err != nil {
+			return fmt.Errorf("closing part source: %w", err)
+		}
+		return nil
+	default:
+		return ErrUnknownLayerMediaType
 	}
 }
 

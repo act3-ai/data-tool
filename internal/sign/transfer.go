@@ -18,7 +18,6 @@ import (
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
-	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 )
 
 // Pull copies all signatures referring to the subject descriptor from source to btlPath.
@@ -102,7 +101,7 @@ func fetchNotarySig(ctx context.Context, source content.ReadOnlyGraphStorage, ma
 // The additional descriptor is for the referrers fallback mechanism, which only supports
 // a single tag. Due to the data-race nature of the fallback mechanism it is likely undesired
 // behavior will occur if more than one fallback manifest is found in the .signature directory.
-func PrepareSigsGraph(ctx context.Context, btlPath string, localStore *storage.DataStore, subject ocispec.Descriptor) error {
+func PrepareSigsGraph(ctx context.Context, btlPath string, storage content.GraphStorage, subject ocispec.Descriptor) error {
 	log := logger.V(logger.FromContext(ctx), 1)
 
 	sigsDir := bottle.SigDir(btlPath)
@@ -140,7 +139,7 @@ func PrepareSigsGraph(ctx context.Context, btlPath string, localStore *storage.D
 		switch sigType {
 		case notationreg.ArtifactTypeNotation: // notation sig manifest
 			if !addedNotationCfg {
-				_, err := localStore.AddLooseData(ctx, bytes.NewReader([]byte("{}")), notationreg.ArtifactTypeNotation, nil)
+				err := storage.Push(ctx, ocispec.DescriptorEmptyJSON, bytes.NewReader([]byte("{}")))
 				if err != nil {
 					return fmt.Errorf("adding notation config to file store: %w", err)
 				}
@@ -153,24 +152,33 @@ func PrepareSigsGraph(ctx context.Context, btlPath string, localStore *storage.D
 		// add layers
 		for _, sigLayer := range manifest.Layers {
 			layerFilePath := filepath.Join(sigsDir, sigLayer.Digest.Hex())
-			layerData, err := os.ReadFile(layerFilePath)
+			layerFile, err := os.Open(layerFilePath)
 			if err != nil {
-				return fmt.Errorf("opening bottle signature layer for reading: %w", err)
+				return fmt.Errorf("opening signature file: %w", err)
 			}
-			_, err = localStore.AddLooseData(ctx, bytes.NewReader(layerData), sigLayer.MediaType, nil)
-			if err != nil {
-				return fmt.Errorf("adding bottle signature layer to file store: %w", err)
+			defer layerFile.Close()
+
+			if err := storage.Push(ctx, sigLayer, layerFile); err != nil {
+				return fmt.Errorf("pushing signature to storage: %w", err)
 			}
-			log.InfoContext(ctx, "added signature layer to filestore", "descriptor", sigLayer)
+
+			if err := layerFile.Close(); err != nil {
+				return fmt.Errorf("closing signature file: %w", err)
+			}
+			log.InfoContext(ctx, "pushed signature layer to storage", "descriptor", sigLayer)
 		}
 
 		// add sig manifest itself
-		_, err = localStore.AddLooseData(ctx, bytes.NewReader(manifestRaw), manifest.MediaType, &subject)
-		if err != nil {
-			return fmt.Errorf("adding bottle signature manifest to file store: %w", err)
+		manifestDesc := ocispec.Descriptor{
+			Digest:    digest.FromBytes(manifestRaw),
+			MediaType: sigType,
+			Size:      int64(len(manifestRaw)),
+		}
+		if err := storage.Push(ctx, manifestDesc, bytes.NewReader(manifestRaw)); err != nil {
+			return fmt.Errorf("pushing signature manifest to storage: %w", err)
 		}
 
-		log.InfoContext(ctx, "added signature manifest to filestore", "manifestSubject", manifest.Subject, "bottleManDesc", subject) // manifest.Subject should equal bottle descriptor
+		log.InfoContext(ctx, "pushed signature manifest to storage", "manifestSubject", manifest.Subject, "bottleManDesc", subject) // manifest.Subject should equal bottle descriptor
 	}
 
 	return nil

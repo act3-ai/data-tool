@@ -14,7 +14,6 @@ import (
 
 	latest "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
-	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
 )
 
@@ -247,7 +246,7 @@ func CheckIfCanInitialize(bottlePath string, force bool) error {
 }
 
 // PartSelectorFunc is a function that returns true if the part should be included in the download.
-type PartSelectorFunc func(storage.PartInfo) bool
+type PartSelectorFunc func(PartInfo) bool
 
 var errNoRootBottleFound = errors.New("root bottle directory was not found")
 

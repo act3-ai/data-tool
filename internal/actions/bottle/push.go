@@ -11,7 +11,6 @@ import (
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
-	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	tbtl "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	telem "gitlab.com/act3-ai/asce/data/tool/pkg/telemetry"
@@ -72,9 +71,6 @@ func (action *Push) Run(ctx context.Context) error {
 
 	}
 
-	store := storage.NewDataStore(btl)
-	defer store.Close()
-
 	log.InfoContext(ctx, "pushing bottle with signatures")
 	pushOpts := tbtl.PushOptions{
 		TransferOptions: tbottle.TransferOptions{
@@ -82,7 +78,7 @@ func (action *Push) Run(ctx context.Context) error {
 			CachePath:   cfg.CachePath,
 		},
 	}
-	if err := tbtl.PushBottle(ctx, btl, store, action.Config, action.Ref, pushOpts); err != nil {
+	if err := tbtl.PushBottle(ctx, btl, action.Config, action.Ref, pushOpts); err != nil {
 		return fmt.Errorf("pushing bottle and signatures: %w", err)
 	}
 
@@ -100,7 +96,7 @@ func (action *Push) Run(ctx context.Context) error {
 	telemAdapt := telem.NewAdapter(cfg.Telemetry, cfg.TelemetryUserName)
 	event := telemAdapt.NewEvent(r.String(), rawManifest, types.EventPush)
 
-	telemUrls, err := telemAdapt.NotifyTelemetry(ctx, store, btl.Manifest.GetManifestDescriptor(), action.Dir, event)
+	telemUrls, err := telemAdapt.NotifyTelemetry(ctx, btl.GetCache(), btl.Manifest.GetManifestDescriptor(), action.Dir, event)
 	if err != nil {
 		return fmt.Errorf("notifying telemetry: %w", err)
 	}

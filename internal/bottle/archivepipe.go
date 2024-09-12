@@ -15,12 +15,11 @@ import (
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 
 	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/errgroup"
 
 	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
 	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
-	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
-	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
 )
@@ -205,17 +204,22 @@ func archiveParts(ctx context.Context, btl *Bottle, compressionLevel string, tmp
 	return errGroup.Wait()
 }
 
-func archivePart(ctx context.Context, btlPartMutex sync.Locker, progress *ui.Progress, part storage.PartInfo, btl *Bottle, compressionLevel string, tmpFileMap *sync.Map) error {
+func archivePart(ctx context.Context, btlPartMutex sync.Locker, progress *ui.Progress, part PartInfo, btl *Bottle, compressionLevel string, tmpFileMap *sync.Map) error {
 	log := logger.FromContext(ctx)
 	log.InfoContext(ctx, "Active file", "filename", part.GetName())
 
 	defer progress.Infof("%v completed", part.GetName())
 
 	// Skip if the part has a digest (has been archived and digested before), AND the digest matches the cache
-	if part.GetLayerDigest() != "" && btl.GetCache().MoteExists(part.GetLayerDigest()) {
+	exists, err := btl.cache.Exists(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest()})
+	if err != nil {
+		logger.V(log, 1).ErrorContext(ctx, "checking for part in cache", "error", err)
+	}
+	if exists {
 		logger.V(log, 1).InfoContext(ctx, "Skipping archive because it was found in cache", "filename", part.GetName(), "digest", part.GetLayerDigest())
 		return nil
 	}
+
 	// Skip if the part is already archived / compressed or marked oci RAW
 	mt := part.GetMediaType()
 	if !(mediatype.IsArchived(mt) || mediatype.IsCompressed(mt)) || mediatype.IsRaw(mt) {
@@ -326,7 +330,7 @@ func digestParts(ctx context.Context, btl *Bottle) error {
 	return errGroup.Wait()
 }
 
-func digestPart(ctx context.Context, btlPartMutex sync.Locker, p *ui.Progress, part storage.PartInfo, btl *Bottle) error {
+func digestPart(ctx context.Context, btlPartMutex sync.Locker, p *ui.Progress, part PartInfo, btl *Bottle) error {
 	log := logger.FromContext(ctx)
 	log.InfoContext(ctx, "Checking if digest for file already exists", "filename", part.GetName())
 
@@ -416,9 +420,11 @@ func commitParts(ctx context.Context, btl *Bottle, tmpFileMap *sync.Map) error {
 			log.InfoContext(ctx, "Temporary archive exist", "path", fname)
 		}
 
-		cman := btl.GetCache()
-
-		if cman.MoteExists(part.GetLayerDigest()) {
+		exists, err := btl.cache.Exists(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest()})
+		if err != nil {
+			logger.V(log, 1).ErrorContext(ctx, "checking for part in cache", "error", err)
+		}
+		if exists {
 			logger.V(log, 1).InfoContext(ctx, "File found in cache", "filename", part.GetName(), "digest", part.GetLayerDigest())
 			if tempExists && archivedOrCompressed {
 				logger.V(log, 1).InfoContext(ctx, "Removing temporarily created archive")
@@ -429,24 +435,34 @@ func commitParts(ctx context.Context, btl *Bottle, tmpFileMap *sync.Map) error {
 			continue
 		}
 
-		dgst := part.GetLayerDigest()
-		log.InfoContext(ctx, "creating cache entry", "digest", dgst.String())
-		mote, err := cman.CreateMote(dgst, mt, part.GetContentSize())
-		if err != nil {
-			return fmt.Errorf("error creating cache mote: %w", err)
-		}
-
-		log.InfoContext(ctx, "created temporary mote")
-		var copyType int
 		if tempExists {
-			log.InfoContext(ctx, "moving archived file data to cache")
-			copyType = cache.CommitMove
+			log.InfoContext(ctx, "mounting archived file data to cache")
+			// getContent is a fallback if the initial mount fails
+			getContentFn := func() (io.ReadCloser, error) {
+				f, err := os.Open(fname)
+				if err != nil {
+					return nil, fmt.Errorf("retrieving content: %w", err)
+				}
+				return f, nil
+			}
+			err = btl.cache.Mount(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest()}, fname, getContentFn)
+			if err != nil {
+				return fmt.Errorf("mouting part file: %w", err)
+			}
 		} else {
-			log.InfoContext(ctx, "copying raw file data to cache")
-			copyType = cache.CommitCopy
-		}
-		if err := cman.CommitMote(fname, mote, copyType); err != nil {
-			return fmt.Errorf("error committing mote to cache: %w", err)
+			f, err := os.Open(fname)
+			if err != nil {
+				return fmt.Errorf("retrieving content: %w", err)
+			}
+			defer f.Close()
+
+			if err := btl.cache.Push(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest()}, f); err != nil {
+				return fmt.Errorf("pushing part to cache: %w", err)
+			}
+
+			if err := f.Close(); err != nil {
+				return fmt.Errorf("closing part file: %w", err)
+			}
 		}
 	}
 	return nil

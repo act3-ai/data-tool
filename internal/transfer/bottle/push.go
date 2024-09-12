@@ -17,27 +17,26 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
-	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
 )
 
 // PushBottle copies a bottle to a remote location via oras.ExtendedCopyGraph. ReferrerOptions are used
 // to include refferers of the bottle in the copy.
-func PushBottle(ctx context.Context, btl *bottle.Bottle, store *storage.DataStore, gt reg.GraphTargeter, reference string, pushCfg PushOptions, rOpts ...ReferrerOption) error {
+func PushBottle(ctx context.Context, btl *bottle.Bottle, gt reg.GraphTargeter, reference string, pushCfg PushOptions, rOpts ...ReferrerOption) error {
 	log := logger.FromContext(ctx)
 
 	// prepare referrers
 	log.InfoContext(ctx, "preparing bottle referrers")
 	rOpts = append(rOpts, withSignatures()) // always push with signatures
 	for _, o := range rOpts {
-		if err := o(ctx, btl, store); err != nil {
+		if err := o(ctx, btl); err != nil {
 			return fmt.Errorf("preparing bottle referrers: %w", err)
 		}
 	}
 
 	// prep bottle, parts should have already been prepped via commit
 	log.InfoContext(ctx, "preparing bottle metadata")
-	if err := AddBottleMetadataToStore(ctx, btl, store); err != nil {
+	if err := AddBottleMetadataToStore(ctx, btl); err != nil {
 		return fmt.Errorf("preparing bottle metadata: %w", err)
 	}
 
@@ -49,9 +48,9 @@ func PushBottle(ctx context.Context, btl *bottle.Bottle, store *storage.DataStor
 	// copy bottle
 	extCopyOpts := oras.ExtendedCopyGraphOptions{
 		CopyGraphOptions: oras.CopyGraphOptions{
-			Concurrency: pushCfg.Concurrency,              // TODO: this should be a method, which already exists, but we're in a different pkg
-			PreCopy:     prePush(btl, store, destRef, gt), // cross-registry virtual part handling
-			MountFrom:   pushMountFrom(btl, destRef),      // cross-repo virtual part mounting (same registry)
+			Concurrency: pushCfg.Concurrency,         // TODO: this should be a method, which already exists, but we're in a different pkg
+			PreCopy:     prePush(btl, destRef, gt),   // cross-registry virtual part handling
+			MountFrom:   pushMountFrom(btl, destRef), // cross-repo virtual part mounting (same registry)
 		},
 	}
 
@@ -62,7 +61,7 @@ func PushBottle(ctx context.Context, btl *bottle.Bottle, store *storage.DataStor
 
 	manDesc := btl.Manifest.GetManifestDescriptor()
 	log.InfoContext(ctx, "pushing bottle", "bottleID", btl.GetBottleID(), "manDescDigest", manDesc.Digest) //nolint
-	if err := oras.ExtendedCopyGraph(ctx, store, repo, manDesc, extCopyOpts); err != nil {
+	if err := oras.ExtendedCopyGraph(ctx, btl.GetCache(), repo, manDesc, extCopyOpts); err != nil {
 		return fmt.Errorf("pushing bottle: %w", err)
 	}
 
@@ -75,13 +74,13 @@ func PushBottle(ctx context.Context, btl *bottle.Bottle, store *storage.DataStor
 }
 
 // ReferrerOption prepares a bottle's referrers for transfer via oras.ExtendedCopyGraph.
-type ReferrerOption func(ctx context.Context, btl *bottle.Bottle, store *storage.DataStore) error
+type ReferrerOption func(ctx context.Context, btl *bottle.Bottle) error
 
 // withSignatures prepares a bottle's signatures for transfer via oras.ExtendedCopyGraph.
 func withSignatures() ReferrerOption {
-	return func(ctx context.Context, btl *bottle.Bottle, store *storage.DataStore) error {
+	return func(ctx context.Context, btl *bottle.Bottle) error {
 		manDesc := btl.Manifest.GetManifestDescriptor()
-		if err := sigcustom.PrepareSigsGraph(ctx, btl.GetPath(), store, manDesc); err != nil {
+		if err := sigcustom.PrepareSigsGraph(ctx, btl.GetPath(), btl.GetCache(), manDesc); err != nil {
 			return fmt.Errorf("preparing bottle signatures: %w", err)
 		}
 		return nil
@@ -90,23 +89,45 @@ func withSignatures() ReferrerOption {
 
 // AddBottleMetadataToStore adds config and manifest data to the DataStore as loose files for oras to find.  Another
 // option would be to cache these.
-func AddBottleMetadataToStore(ctx context.Context, btl *bottle.Bottle, store *storage.DataStore) error {
-	manData, err := btl.Manifest.GetManifestRaw()
-	if err != nil {
-		return fmt.Errorf("bottle manifest not configured before push: %w", err)
+func AddBottleMetadataToStore(ctx context.Context, btl *bottle.Bottle) error {
+	log := logger.V(logger.FromContext(ctx), 1)
+
+	storage := btl.GetCache()
+
+	exists, err := storage.Exists(ctx, btl.Manifest.GetManifestDescriptor())
+	switch {
+	case err != nil:
+		return fmt.Errorf("checking bottle manifest existence in storage: %w", err)
+	case exists:
+		log.InfoContext(ctx, "bottle manifest already exists in cache", "digest", btl.Manifest.GetManifestDescriptor().Digest)
+	default:
+		manData, err := btl.Manifest.GetManifestRaw()
+		if err != nil {
+			return fmt.Errorf("bottle manifest not configured before push: %w", err)
+		}
+
+		if err := storage.Push(ctx, btl.Manifest.GetManifestDescriptor(), bytes.NewReader(manData)); err != nil {
+			return fmt.Errorf("pushing bottle manifest to storage: %w", err)
+		}
 	}
-	cfgData, err := btl.GetConfiguration()
-	if err != nil {
-		return fmt.Errorf("bottle manifest not configured before push: %w", err)
+
+	exists, err = storage.Exists(ctx, btl.Manifest.GetConfigDescriptor())
+	switch {
+	case err != nil:
+		return fmt.Errorf("checking bottle config existence in storage: %w", err)
+	case exists:
+		log.InfoContext(ctx, "bottle config already exists in cache", "digest", btl.Manifest.GetConfigDescriptor().Digest)
+	default:
+		cfgData, err := btl.GetConfiguration()
+		if err != nil {
+			return fmt.Errorf("bottle config not configured before push: %w", err)
+		}
+
+		if err := storage.Push(ctx, btl.Manifest.GetConfigDescriptor(), bytes.NewReader(cfgData)); err != nil {
+			return fmt.Errorf("pushing bottle config to storage: %w", err)
+		}
 	}
-	_, err = store.AddLooseData(ctx, bytes.NewReader(manData), btl.Manifest.GetManifestDescriptor().MediaType, nil)
-	if err != nil {
-		return fmt.Errorf("unable to add manifest data to data store: %w", err)
-	}
-	_, err = store.AddLooseData(ctx, bytes.NewReader(cfgData), mediatype.MediaTypeBottleConfig, nil)
-	if err != nil {
-		return fmt.Errorf("unable to add manifest data to data store: %w", err)
-	}
+
 	return nil
 }
 
@@ -153,7 +174,7 @@ func pushMountFrom(btl *bottle.Bottle, dest ref.Ref) func(ctx context.Context, d
 // PreCopy handles the current descriptor before it is copied. PreCopy can
 // return a SkipNode to signal that desc should be skipped when it already
 // exists in the target.
-func prePush(btl *bottle.Bottle, cacheStorage *storage.DataStore, dest ref.Ref, gt reg.GraphTargeter) func(ctx context.Context, desc ocispec.Descriptor) error {
+func prePush(btl *bottle.Bottle, dest ref.Ref, gt reg.GraphTargeter) func(ctx context.Context, desc ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
 		log := logger.FromContext(ctx).With("digest", desc.Digest)
 
@@ -162,7 +183,7 @@ func prePush(btl *bottle.Bottle, cacheStorage *storage.DataStore, dest ref.Ref, 
 		}
 
 		// prefer copying from cache over another registry
-		exists, err := cacheStorage.Exists(ctx, desc)
+		exists, err := btl.GetCache().Exists(ctx, desc)
 		switch {
 		case err != nil:
 			return fmt.Errorf("checking for descriptor in bottle datastore: %w", err)
