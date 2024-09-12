@@ -47,7 +47,7 @@ func TestFileCache_Push(t *testing.T) {
 			args{
 				ocispec.Descriptor{
 					MediaType: "application/octet-stream",
-					Digest:    digest.Digest("sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"),
+					Digest:    digest.Digest("sha256:39a1bcc65412eb1e8b57044922fa28da68f0f59698596d9b3698f0134b3791b8"),
 					Size:      int64(len(blobA)),
 				},
 				bytes.NewReader(blobA),
@@ -95,7 +95,7 @@ func TestFileCache_Fetch(t *testing.T) {
 			args{
 				ocispec.Descriptor{
 					MediaType: "application/octet-stream",
-					Digest:    digest.Digest("sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"),
+					Digest:    digest.Digest("sha256:39a1bcc65412eb1e8b57044922fa28da68f0f59698596d9b3698f0134b3791b8"),
 					Size:      int64(len(blobA))},
 			},
 			errdef.ErrNotFound},
@@ -150,7 +150,7 @@ func TestFileCache_Exists(t *testing.T) {
 	}
 	malformedDesc := ocispec.Descriptor{
 		MediaType: "application/octet-stream",
-		Digest:    digest.Digest("sha256:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"),
+		Digest:    digest.Digest("sha256:39a1bcc65412eb1e8b57044922fa28da68f0f59698596d9b3698f0134b3791b8"),
 		Size:      int64(len(blobA)),
 	}
 
