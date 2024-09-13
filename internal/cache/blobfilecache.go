@@ -112,6 +112,30 @@ func (fc *FileCache) Exists(ctx context.Context, target ocispec.Descriptor) (boo
 		logger.FromContext(ctx).ErrorContext(ctx, "updating cached blob access time", "path", path, "error", err)
 	}
 
+	// oras.ExtendedCopyGraph will expect predecessors to be setup
+	if target.MediaType == ocispec.MediaTypeImageManifest ||
+		target.MediaType == ocispec.MediaTypeImageIndex {
+		m, err := fc.blobReader(ctx, target.Digest)
+		if err != nil {
+			return true, err
+		}
+		defer m.Close()
+		blob, err := io.ReadAll(m)
+		if err != nil {
+			return true, fmt.Errorf("reading image manifest from cache: %w", err)
+		}
+		if err := m.Close(); err != nil {
+			return true, fmt.Errorf("closing blob file: %w", err)
+		}
+
+		if err := fc.addAsPredecessor(ctx, blob, target); err != nil {
+			// json.Unmarshal error, which isn't fatal here but
+			// likely will be downstream. Perhaps they know something we don't,
+			// so we log the error and eat it
+			logger.FromContext(ctx).ErrorContext(ctx, "adding blob as predecessor", "error", err)
+		}
+	}
+
 	return true, nil
 }
 
