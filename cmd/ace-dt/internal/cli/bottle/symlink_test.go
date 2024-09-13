@@ -69,7 +69,7 @@ func Test_Functional_SymLinkFileToSymLinkFile(t *testing.T) {
 
 	// check cachepath, looking for part that is larger than a symlink (check if ace-dt cached the symlink and not the compressed+digested part)
 	dgst := bottleParts[0].GetLayerDigest()
-	cachePart := filepath.Join(cfg.CachePath, dgst.Algorithm().String(), dgst.Encoded())
+	cachePart := filepath.Join(cfg.CachePath, "blobs", dgst.Algorithm().String(), dgst.Encoded())
 	finfo, err := os.Stat(cachePart)
 	assert.NoError(t, err)
 	assert.Less(t, int64(1000), finfo.Size())
