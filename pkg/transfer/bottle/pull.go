@@ -179,8 +179,8 @@ func pull(ctx context.Context, target content.ReadOnlyStorage, desc ocispec.Desc
 	copyOptions := oras.CopyGraphOptions{
 		Concurrency:    pullOpts.concurrency(),
 		PreCopy:        prePullParts(progress),
-		PostCopy:       postPullParts(progress, btl),
-		OnCopySkipped:  postPullParts(progress, btl),
+		PostCopy:       postPull(progress, btl),
+		OnCopySkipped:  postPull(progress, btl),
 		FindSuccessors: selectPartSuccessors(btl, partSelector),
 	}
 
@@ -215,15 +215,24 @@ func fetchBottleMetadata(ctx context.Context, btl *bottle.Bottle, target content
 	desc ocispec.Descriptor,
 ) error {
 	// get manifest data
-	if err := fetchBottleManifest(ctx, btl, target, desc); err != nil {
+	if err := handleBottleManifest(ctx, btl, target, desc); err != nil {
 		return fmt.Errorf("fetching bottle manifest: %w", err)
 	}
 
 	// get config data and apply pre- and post-config functions
-	if err := fetchBottleConfig(ctx, btl, target, btl.Manifest.GetConfigDescriptor()); err != nil {
+	if err := handleBottleConfig(ctx, btl, target, btl.Manifest.GetConfigDescriptor()); err != nil {
 		return fmt.Errorf("fetching bottle config: %w", err)
 	}
 
+	if err := verifyPull(btl); err != nil {
+		return fmt.Errorf("validating bottle manifest against configuration: %w", err)
+	}
+
+	return nil
+}
+
+// verifyPull validates a bottle's part configuration against the manifest layers.
+func verifyPull(btl *bottle.Bottle) error {
 	numParts := btl.NumParts()
 	numLayers := len(btl.Manifest.GetLayerDescriptors())
 	if numParts != numLayers {
@@ -233,19 +242,20 @@ func fetchBottleMetadata(ctx context.Context, btl *bottle.Bottle, target content
 	return nil
 }
 
-// fetchBottleManifest fetches a bottle's manifest and populates the appropriate manifest
+// handleBottleManifest fetches a bottle's manifest and populates the appropriate manifest
 // related fields.
-func fetchBottleManifest(ctx context.Context, btl *bottle.Bottle, target content.Fetcher,
-	desc ocispec.Descriptor,
-) error {
-	manBytes, err := content.FetchAll(ctx, target, desc)
+func handleBottleManifest(ctx context.Context, btl *bottle.Bottle, storage content.Fetcher,
+	desc ocispec.Descriptor) error {
+
+	// fetch from cache storage
+	manBytes, err := content.FetchAll(ctx, storage, desc)
 	if err != nil {
-		return fmt.Errorf("fetching bottle manifest: %w", err)
+		return fmt.Errorf("fetching bottle manifest from storage: %w", err)
 	}
 
 	manifestHandler := oci.ManifestFromData(ocispec.MediaTypeImageManifest, manBytes)
 	if manifestHandler.GetStatus().Error != nil {
-		return fmt.Errorf("constructing manifest handler from raw manifest: %w", err)
+		return fmt.Errorf("constructing manifest handler from raw manifest: %w", manifestHandler.GetStatus().Error)
 	}
 	btl.SetManifest(manifestHandler)
 
@@ -258,11 +268,10 @@ func fetchBottleManifest(ctx context.Context, btl *bottle.Bottle, target content
 	return nil
 }
 
-// fetchBottleConfig fetches a bottle's config and populates the appropriate config
+// handleBottleConfig fetches a bottle's config and populates the appropriate config
 // related fields.
-func fetchBottleConfig(ctx context.Context, btl *bottle.Bottle, src content.Fetcher,
-	desc ocispec.Descriptor,
-) error {
+func handleBottleConfig(ctx context.Context, btl *bottle.Bottle, src content.Fetcher,
+	desc ocispec.Descriptor) error {
 	cfgBytes, err := content.FetchAll(ctx, src, desc)
 	if err != nil {
 		return fmt.Errorf("fetching from remote: %w", err)
@@ -307,15 +316,19 @@ func prePullParts(progress *ui.Progress) func(ctx context.Context, desc ocispec.
 	}
 }
 
-// postPullParts returns a func for the oras.CopyGraphOptions option PostCopy func. It extracts a recently
-// cached part to its final destination.
-func postPullParts(progress *ui.Progress, btl *bottle.Bottle) func(ctx context.Context, desc ocispec.Descriptor) error {
+// postPull returns a func for the oras.CopyGraphOptions option PostCopy/OnCopySkipped func. It extracts a recently
+// cached part to its final destination or appropriately handles the manifest or config.
+func postPull(progress *ui.Progress, btl *bottle.Bottle) func(ctx context.Context, desc ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
 		switch {
 		case desc.MediaType == ocispec.MediaTypeImageManifest:
-			// noop
+			// if err := handleBottleManifest(ctx, btl, btl.GetCache(), desc); err != nil {
+			// 	return fmt.Errorf("handling bottle manifest: %w", err)
+			// }
 		case mediatype.IsBottleConfig(desc.MediaType):
-			// noop
+			// if err := handleBottleConfig(ctx, btl, btl.GetCache(), desc); err != nil {
+			// 	return fmt.Errorf("handling bottle config: %w", err)
+			// }
 		case mediatype.IsLayer(desc.MediaType):
 			handled, err := bottle.CopyFromCache(ctx, btl, desc, btl.GetPartByLayerDescriptor(desc).GetName())
 			// update the progress after copy, even if the copy failed.

@@ -127,7 +127,7 @@ func CopyFromCache(ctx context.Context, btl *Bottle, desc ocispec.Descriptor, na
 	case !exists:
 		return false, nil
 	default:
-		if err := handlePartMedia(ctx, btl.cachePath, btl.cache, desc, name); err != nil {
+		if err := handlePartMedia(ctx, btl.localPath, btl.cache, desc, name); err != nil {
 			return false, fmt.Errorf("copying part from cache: %w", err)
 		}
 		return true, nil
@@ -138,9 +138,9 @@ func CopyFromCache(ctx context.Context, btl *Bottle, desc ocispec.Descriptor, na
 var ErrUnknownLayerMediaType = errors.New("unknown layer media type")
 
 // handlePartMedia copies the layer into the part file/directory given by partName.
-func handlePartMedia(ctx context.Context, cachePath string, fetcher content.Fetcher, desc ocispec.Descriptor, partName string) error {
+func handlePartMedia(ctx context.Context, localPath string, fetcher content.Fetcher, desc ocispec.Descriptor, partName string) error {
 
-	destPath := filepath.Join(cachePath, filepath.FromSlash(partName))
+	destPath := filepath.Join(localPath, filepath.FromSlash(partName))
 	if err := os.MkdirAll(destPath, 0777); err != nil {
 		return fmt.Errorf("error creating archivePath: %w", err)
 	}
@@ -168,11 +168,11 @@ func handlePartMedia(ctx context.Context, cachePath string, fetcher content.Fetc
 	case mediatype.MediaTypeLayerTar:
 		return archive.ExtractTarFromReader(ctx, rc, destPath)
 	case mediatype.MediaTypeLayerTarOld, mediatype.MediaTypeLayerTarLegacy:
-		return archive.ExtractTarCompatFromReader(ctx, rc, cachePath)
+		return archive.ExtractTarCompatFromReader(ctx, rc, localPath)
 	case mediatype.MediaTypeLayerTarZstd:
 		return archive.ExtractTarZstdFromReader(ctx, rc, destPath)
 	case mediatype.MediaTypeLayerTarZstdOld, mediatype.MediaTypeLayerTarZstdLegacy:
-		return archive.ExtractTarZstdCompatFromReader(ctx, rc, cachePath)
+		return archive.ExtractTarZstdCompatFromReader(ctx, rc, localPath)
 	case mediatype.MediaTypeLayerZstd:
 		return archive.ExtractZstdFromReader(ctx, rc, destPath)
 	case mediatype.MediaTypeLayerTarGzip, mediatype.MediaTypeLayerTarGzipLegacy:

@@ -340,13 +340,16 @@ func (fc *FileCache) Mount(ctx context.Context, desc ocispec.Descriptor, path st
 		fallthrough
 	default:
 		blobPath := fc.blobPath(desc.Digest)
+		if err := os.MkdirAll(blobPath, 0777); err != nil {
+			log.ErrorContext(ctx, "initializing file cache directories", "error", err)
+		}
 		err = os.Link(path, blobPath)
 		if err == nil {
 			log.InfoContext(ctx, "mount successful")
 			break
 		}
 		// hardlink may fail if file is not within the same filesystem.
-		log.InfoContext(ctx, "mount failed, falling back to push", "error", err)
+		log.ErrorContext(ctx, "mount failed, falling back to push", "error", err)
 		rc, err := getContent()
 		if err != nil {
 			return fmt.Errorf("retrieving content: %w", err)
