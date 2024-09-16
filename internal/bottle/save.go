@@ -141,22 +141,6 @@ var ErrUnknownLayerMediaType = errors.New("unknown layer media type")
 func handlePartMedia(ctx context.Context, localPath string, fetcher content.Fetcher, desc ocispec.Descriptor, partName string) error {
 
 	destPath := filepath.Join(localPath, filepath.FromSlash(partName))
-	if err := os.MkdirAll(destPath, 0777); err != nil {
-		return fmt.Errorf("error creating archivePath: %w", err)
-	}
-
-	_, err := os.Stat(destPath)
-	switch {
-	case errors.Is(err, os.ErrNotExist):
-		// noop, ideal
-	case err != nil:
-		return fmt.Errorf("stat-ing destination: %w", err)
-	default:
-		// TODO: is this what we want?
-		if err := os.Remove(destPath); err != nil {
-			return fmt.Errorf("removing destination file: %w", err)
-		}
-	}
 
 	rc, err := fetcher.Fetch(ctx, desc)
 	if err != nil {
@@ -178,9 +162,12 @@ func handlePartMedia(ctx context.Context, localPath string, fetcher content.Fetc
 	case mediatype.MediaTypeLayerTarGzip, mediatype.MediaTypeLayerTarGzipLegacy:
 		return errors.New("gzip is not implemented")
 	case mediatype.MediaTypeLayer, mediatype.MediaTypeLayerRawOld, mediatype.MediaTypeLayerRawLegacy:
+		if err := os.MkdirAll(filepath.Dir(destPath), 0777); err != nil {
+			return fmt.Errorf("initializing part parent directories: %w", err)
+		}
 		destFile, err := os.Create(destPath)
 		if err != nil {
-			return fmt.Errorf("opening destination file")
+			return fmt.Errorf("opening destination file: %w", err)
 		}
 		defer destFile.Close()
 

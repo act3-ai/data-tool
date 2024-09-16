@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
@@ -66,6 +67,10 @@ func ExtractZstdFromReader(ctx context.Context, rc io.ReadCloser, destPath strin
 func extractWithPipeStreamFromReader(ctx context.Context, in io.ReadCloser, destPath string, makeParents bool) error {
 	log := logger.FromContext(ctx).With("dest", destPath)
 	log.DebugContext(ctx, "Extracting archive")
+
+	if err := os.MkdirAll(destPath, 0777); err != nil {
+		return fmt.Errorf("error creating archivePath: %w", err)
+	}
 
 	tar := TarExtractor{
 		OverwriteExisting:     true,
