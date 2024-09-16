@@ -339,10 +339,16 @@ func (fc *FileCache) Mount(ctx context.Context, desc ocispec.Descriptor, path st
 		log.ErrorContext(ctx, "failed to check existence in cache", "error", err)
 		fallthrough
 	default:
+		path, err := filepath.EvalSymlinks(path)
+		if err != nil {
+			return fmt.Errorf("evaluating potential symlink: %w", err)
+		}
+
 		blobPath := fc.blobPath(desc.Digest)
 		if err := os.MkdirAll(blobPath, 0777); err != nil {
 			log.ErrorContext(ctx, "initializing file cache directories", "error", err)
 		}
+
 		err = os.Link(path, blobPath)
 		if err == nil {
 			log.InfoContext(ctx, "mount successful")
