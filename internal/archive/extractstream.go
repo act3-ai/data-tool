@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
@@ -50,6 +51,10 @@ func ExtractZstdFromReader(ctx context.Context, rc io.ReadCloser, destPath strin
 	dec := &PipeZstdDec{}
 	dec.ConnectIn(rc)
 	defer dec.Close()
+
+	if err := os.MkdirAll(filepath.Dir(destPath), 0777); err != nil {
+		return fmt.Errorf("initializing part parent directories: %w", err)
+	}
 
 	out, err := makeOutfilePipestream(destPath)
 	if err != nil {
