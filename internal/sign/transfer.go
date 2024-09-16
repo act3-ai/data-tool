@@ -171,7 +171,7 @@ func PrepareSigsGraph(ctx context.Context, btlPath string, storage content.Graph
 		// add sig manifest itself
 		manifestDesc := ocispec.Descriptor{
 			Digest:    digest.FromBytes(manifestRaw),
-			MediaType: sigType,
+			MediaType: ocispec.MediaTypeImageManifest,
 			Size:      int64(len(manifestRaw)),
 		}
 		if err := storage.Push(ctx, manifestDesc, bytes.NewReader(manifestRaw)); err != nil {
