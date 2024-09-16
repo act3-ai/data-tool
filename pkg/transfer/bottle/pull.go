@@ -15,6 +15,7 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
+	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
@@ -184,8 +185,13 @@ func pull(ctx context.Context, target content.ReadOnlyStorage, desc ocispec.Desc
 		FindSuccessors: selectPartSuccessors(btl, partSelector),
 	}
 
+	// ensure parts are not skipped, since CopyGraph will skip now that the manifest exists
+	dest := &orasutil.UnreliableStorage{
+		Storage: btl.GetCache(),
+	}
+
 	log.InfoContext(ctx, "copying bottle layers from remote", "layers", len(btl.Manifest.GetLayerDescriptors()))
-	err = oras.CopyGraph(ctx, target, btl.GetCache(), desc, copyOptions)
+	err = oras.CopyGraph(ctx, target, dest, desc, copyOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failure to copygraph for bottle: %w", err)
 	}
