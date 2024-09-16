@@ -9,45 +9,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/opencontainers/go-digest"
-
 	latest "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
 	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
+
+	"github.com/opencontainers/go-digest"
+
 	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
-)
-
-// Options define a set of options for processing file statuses.
-type Options struct {
-	// WantDetails enables directory tree walking for gathering files changed within directories
-	WantDetails bool
-
-	// Visitor is a delegate for processing individual file infos with status indicators, set to null to perform a default Display action
-	Visitor Visitor
-}
-
-// PartStatus is a bitmask for file status flags.
-type PartStatus uint8
-
-const (
-	// StatusExists indicates a file that is tracked.
-	StatusExists PartStatus = 1 << iota
-	// StatusCached indicates a file that exists in the cache based on the
-	// digest stored in the Bottle.
-	StatusCached
-	// StatusChanged indicates a file that has been modified more recently
-	// than the entry known last update.
-	StatusChanged
-	// StatusDigestMatch indicates a digest match.
-	StatusDigestMatch
-	// StatusNew indicates a discovered file that is currently untracked.
-	StatusNew
-	// StatusDeleted indicates tracked file that is no longer discovered.
-	StatusDeleted
-	// StatusVirtual indicates tracked file that is not stored locally, e.g. excluded with a selector on pull.
-	StatusVirtual
 )
 
 // Options define a set of options for processing file statuses.
@@ -393,8 +363,7 @@ func InspectBottleFiles(ctx context.Context, btl *Bottle, opts Options) (string,
 // statusFileVisitor is a callback function for processing files discovered in
 // a data bottle path (hidden files are skipped.)  If a file is found in
 // the bottle, its last modified time is checked against the record in
-// the
-// path is the relative file path within the
+// the bottle. path is the relative file path within the bottle.
 func statusFileVisitor(ctx context.Context, btl *Bottle, fss *partStatuses, opts Options, path string, info fs.FileInfo) error {
 	log := logger.FromContext(ctx)
 	logger.V(log, 1).InfoContext(ctx, "found file", "path", path)

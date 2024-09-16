@@ -45,7 +45,7 @@ type FileCacheManager interface {
 	Prune(ctx context.Context, maxSize int64) error
 }
 
-// FileCache is an implementation of FileCacheManager. A persistant file-based oras content.Storage,
+// FileCache is an implementation of FileCacheManager. A persistent file-based oras content.Storage,
 // with an optional in-memory PredecessorFinder (enabling it to be used as a content.GraphStorage).
 // Predecessors() returns an error if NewFileCache() was not provided the WithPredecessors() option.
 type FileCache struct {

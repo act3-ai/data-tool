@@ -454,10 +454,9 @@ func commitParts(ctx context.Context, btl *Bottle, tmpFileMap *sync.Map) error {
 			if err != nil {
 				return fmt.Errorf("retrieving content: %w", err)
 			}
-			defer f.Close()
 
 			if err := btl.cache.Push(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest()}, f); err != nil {
-				return fmt.Errorf("pushing part to cache: %w", err)
+				return errors.Join(fmt.Errorf("pushing part to cache: %w", err), f.Close())
 			}
 
 			if err := f.Close(); err != nil {

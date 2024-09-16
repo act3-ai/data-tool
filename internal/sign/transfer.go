@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -156,10 +157,9 @@ func PrepareSigsGraph(ctx context.Context, btlPath string, storage content.Graph
 			if err != nil {
 				return fmt.Errorf("opening signature file: %w", err)
 			}
-			defer layerFile.Close()
 
 			if err := storage.Push(ctx, sigLayer, layerFile); err != nil {
-				return fmt.Errorf("pushing signature to storage: %w", err)
+				return errors.Join(fmt.Errorf("pushing signature to storage: %w", err), layerFile.Close())
 			}
 
 			if err := layerFile.Close(); err != nil {

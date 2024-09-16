@@ -22,5 +22,5 @@ func (u *UnreliableStorage) Exists(ctx context.Context, target ocispec.Descripto
 		return false, nil
 	}
 
-	return u.Storage.Exists(ctx, target) // nolint
+	return u.Storage.Exists(ctx, target) //nolint
 }
