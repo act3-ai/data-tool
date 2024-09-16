@@ -410,14 +410,14 @@ func Test_Functional_SymLinkPostInitThenPush(t *testing.T) {
 
 	// check cachepath, looking for part that is larger than a symlink (check if ace-dt cached the symlink and not the compressed+digested part)
 	dgst0 := bottleParts[0].GetLayerDigest()
-	cachePart := filepath.Join(cfg.CachePath, dgst0.Algorithm().String(), dgst0.Encoded())
+	cachePart := filepath.Join(cfg.CachePath, "blobs", dgst0.Algorithm().String(), dgst0.Encoded())
 	finfo, err := os.Stat(cachePart)
 	assert.NoError(t, err)
 	assert.Less(t, int64(1000), finfo.Size())
 
 	// check cachepath, looking for part that is larger than a symlink (check if ace-dt cached the symlink and not the compressed+digested part)
 	dgst := bottleParts[1].GetLayerDigest()
-	cachePart = filepath.Join(cfg.CachePath, dgst.Algorithm().String(), dgst.Encoded())
+	cachePart = filepath.Join(cfg.CachePath, "blobs", dgst.Algorithm().String(), dgst.Encoded())
 	finfo, err = os.Stat(cachePart)
 	assert.NoError(t, err)
 	assert.Less(t, int64(1000), finfo.Size())
