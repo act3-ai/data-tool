@@ -345,7 +345,8 @@ func (fc *FileCache) Mount(ctx context.Context, desc ocispec.Descriptor, path st
 		}
 
 		blobPath := fc.blobPath(desc.Digest)
-		if err := os.MkdirAll(blobPath, 0777); err != nil {
+		blobDir := filepath.Dir(blobPath)
+		if err := os.MkdirAll(blobDir, 0777); err != nil {
 			log.ErrorContext(ctx, "initializing file cache directories", "error", err)
 		}
 
