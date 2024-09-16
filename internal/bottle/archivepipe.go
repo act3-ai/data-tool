@@ -395,75 +395,78 @@ func commitParts(ctx context.Context, btl *Bottle, tmpFileMap *sync.Map) error {
 		if btl.VirtualPartTracker != nil && btl.VirtualPartTracker.HasContent(part.GetContentDigest()) {
 			continue
 		}
-		log.InfoContext(ctx, "File about to be committed", "filename", part.GetName())
-		if part.GetLayerDigest() == "" {
-			return fmt.Errorf("digest for file %s not found in bottle", part.GetName())
-		}
 
-		// Get the file name if not an archive, or the archive file name.
-		fname := btl.NativePath(part.GetName())
-		mt := part.GetMediaType()
-		tempExists := false
-		archivedOrCompressed := mediatype.IsArchived(mt) || mediatype.IsCompressed(mt)
-		// any object within the tmpFileMap will need to be moved to the final cache destination.
-		if n, ok := tmpFileMap.Load(part.GetName()); ok {
-			fname = n.(string)
-			tempExists = true
-		} else if archivedOrCompressed {
-			// TODO: this object doesn't appear in the tmpFileMap, but is archived/compressed, can this state occur?
-			fname = filepath.Join(btl.ScratchPath(), part.GetName())
-		}
-		// determine if a temp archive file exists that will need to be moved to cache
-		// this is mainly for trace messaging
-		if _, err := os.Stat(fname); !errors.Is(err, fs.ErrNotExist) && archivedOrCompressed {
-			tempExists = true
-			log.InfoContext(ctx, "Temporary archive exist", "path", fname)
-		}
-
-		exists, err := btl.cache.Exists(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest()})
-		if err != nil {
-			logger.V(log, 1).ErrorContext(ctx, "checking for part in cache", "error", err)
-		}
-		if exists {
-			logger.V(log, 1).InfoContext(ctx, "File found in cache", "filename", part.GetName(), "digest", part.GetLayerDigest())
-			if tempExists && archivedOrCompressed {
-				logger.V(log, 1).InfoContext(ctx, "Removing temporarily created archive")
-				if err := os.Remove(fname); err != nil {
-					return fmt.Errorf("failed to remove archive: %w", err)
-				}
-			}
-			continue
-		}
-
-		if tempExists {
-			log.InfoContext(ctx, "mounting archived file data to cache")
-			// getContent is a fallback if the initial mount fails
-			getContentFn := func() (io.ReadCloser, error) {
-				f, err := os.Open(fname)
-				if err != nil {
-					return nil, fmt.Errorf("retrieving content: %w", err)
-				}
-				return f, nil
-			}
-			err = btl.cache.Mount(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest()}, fname, getContentFn)
-			if err != nil {
-				return fmt.Errorf("mouting part file: %w", err)
-			}
-		} else {
-			f, err := os.Open(fname)
-			if err != nil {
-				return fmt.Errorf("retrieving content: %w", err)
-			}
-
-			if err := btl.cache.Push(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest()}, f); err != nil {
-				return errors.Join(fmt.Errorf("pushing part to cache: %w", err), f.Close())
-			}
-
-			if err := f.Close(); err != nil {
-				return fmt.Errorf("closing part file: %w", err)
-			}
+		if err := commitPart(ctx, btl, part, tmpFileMap); err != nil {
+			return fmt.Errorf("committing part: %w", err)
 		}
 	}
+	return nil
+}
+
+func commitPart(ctx context.Context, btl *Bottle, part PartInfo, tmpFileMap *sync.Map) error {
+	log := logger.FromContext(ctx)
+
+	log.InfoContext(ctx, "File about to be committed", "filename", part.GetName())
+	if part.GetLayerDigest() == "" {
+		return fmt.Errorf("digest for file %s not found in bottle", part.GetName())
+	}
+
+	// Get the file name if not an archive, or the archive file name.
+	fname := btl.NativePath(part.GetName())
+	mt := part.GetMediaType()
+	var tempExists = false
+	archivedOrCompressed := mediatype.IsArchived(mt) || mediatype.IsCompressed(mt)
+	// any object within the tmpFileMap will need to be moved to the final cache destination.
+	if n, ok := tmpFileMap.Load(part.GetName()); ok {
+		fname = n.(string)
+		tempExists = true
+	} else if archivedOrCompressed {
+		// TODO: this object doesn't appear in the tmpFileMap, but is archived/compressed, can this state occur?
+		fname = filepath.Join(btl.ScratchPath(), part.GetName())
+	}
+	// determine if a temp archive file exists that will need to be moved to cache
+	// this is mainly for trace messaging
+	if _, err := os.Stat(fname); !errors.Is(err, fs.ErrNotExist) && archivedOrCompressed {
+		tempExists = true
+		log.InfoContext(ctx, "Temporary archive exist", "path", fname)
+	}
+
+	exists, err := btl.cache.Exists(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest()})
+	if err != nil {
+		logger.V(log, 1).ErrorContext(ctx, "checking for part in cache", "error", err)
+	}
+	if exists {
+		logger.V(log, 1).InfoContext(ctx, "File found in cache", "filename", part.GetName(), "digest", part.GetLayerDigest())
+		if tempExists && archivedOrCompressed {
+			logger.V(log, 1).InfoContext(ctx, "Removing temporarily created archive")
+			if err := os.Remove(fname); err != nil {
+				return fmt.Errorf("failed to remove archive: %w", err)
+			}
+		}
+		return nil
+	}
+
+	log.InfoContext(ctx, "mounting archived file data to cache")
+	// getContent is a fallback if the initial mount fails
+	getContentFn := func() (io.ReadCloser, error) {
+		f, err := os.Open(fname)
+		if err != nil {
+			return nil, fmt.Errorf("retrieving content: %w", err)
+		}
+		return f, nil
+	}
+
+	if err := btl.cache.Mount(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest()}, fname, getContentFn); err != nil {
+		return fmt.Errorf("mouting part file: %w", err)
+	}
+
+	if tempExists && archivedOrCompressed {
+		logger.V(log, 1).InfoContext(ctx, "Removing temporarily created archive")
+		if err := os.Remove(fname); err != nil {
+			return fmt.Errorf("failed to remove archive: %w", err)
+		}
+	}
+
 	return nil
 }
 

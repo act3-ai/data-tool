@@ -11,10 +11,11 @@ import (
 	"strings"
 	"time"
 
+	"oras.land/oras-go/v2/registry"
+
 	"git.act3-ace.com/ace/data/tool/internal/mirror"
 	"git.act3-ace.com/ace/data/tool/internal/ui"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"oras.land/oras-go/v2/registry"
 )
 
 // BatchDeserialize represents the mirror batch-deserialize action.

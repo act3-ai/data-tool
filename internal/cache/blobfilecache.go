@@ -362,9 +362,12 @@ func (fc *FileCache) Mount(ctx context.Context, desc ocispec.Descriptor, path st
 			return fmt.Errorf("retrieving content: %w", err)
 		}
 
-		err = fc.Push(ctx, desc, rc)
-		if err != nil {
-			return fmt.Errorf("pushing content: %w", err)
+		if err := fc.Push(ctx, desc, rc); err != nil {
+			return errors.Join(fmt.Errorf("pushing content: %w", err), rc.Close())
+		}
+
+		if err := rc.Close(); err != nil {
+			return fmt.Errorf("closing getContent source: %w", err)
 		}
 	}
 
