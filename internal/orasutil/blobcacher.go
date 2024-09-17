@@ -5,32 +5,39 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
+	"os"
 
-	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	orascontent "oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
 
-	"git.act3-ace.com/ace/data/tool/internal/cache"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 // BlobCacher wraps oras interfaces ensuring they share a persistent blob cache.
 type BlobCacher struct {
-	fcache *cache.FileCache
+	cache orascontent.Storage
 }
 
-// NewBlobCacher returns a BlobCacher that utilizes a shared peristant blob storage
-// for all oras.GraphTargets that it creates.
-func NewBlobCacher(ctx context.Context, root string, opts ...cache.FileCacheOpt) (*BlobCacher, error) {
-	fcache, err := cache.NewFileCache(root, opts...)
+// NewBlobCacher returns a BlobCacher that utilizes a shared peristant file storage
+// for all oras.GraphTargets that it creates. Safe to use if root does not yet exist.
+func NewBlobCacher(_ context.Context, root string) (*BlobCacher, error) {
+	if _, err := os.Stat(root); errors.Is(err, fs.ErrNotExist) {
+		if err := os.MkdirAll(root, 0777); err != nil {
+			return nil, fmt.Errorf("creating cache directory: %w", err)
+		}
+	}
+
+	storage, err := oci.NewStorage(root)
 	if err != nil {
-		return nil, fmt.Errorf("accessing cache storage: %w", err)
+		return nil, fmt.Errorf("initializing cache storage interface: %w", err)
 	}
 
 	return &BlobCacher{
-		fcache: fcache,
+		cache: storage,
 	}, nil
 }
 
@@ -38,7 +45,7 @@ func NewBlobCacher(ctx context.Context, root string, opts ...cache.FileCacheOpt)
 func (bc *BlobCacher) GraphTarget(gt oras.GraphTarget) oras.GraphTarget {
 	return &CachedGraphTarget{
 		GraphTarget: gt,
-		Cache:       bc.fcache,
+		Cache:       bc.cache,
 	}
 }
 
@@ -47,7 +54,7 @@ func (bc *BlobCacher) GraphTarget(gt oras.GraphTarget) oras.GraphTarget {
 type CachedGraphTarget struct {
 	oras.GraphTarget
 
-	Cache orascontent.GraphStorage
+	Cache orascontent.Storage
 }
 
 // Fetch prefers to read from the local cache, falling back to the remote on misses.
@@ -61,12 +68,12 @@ func (c *CachedGraphTarget) Push(ctx context.Context, expected ocispec.Descripto
 }
 
 // Predecessors returns the union of locally known predecessors and remote known predecessors.
-func (c *CachedGraphTarget) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-	return predecessors(ctx, c.Cache, node, c.GraphTarget.Predecessors)
-}
+// func (c *CachedGraphTarget) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+// 	return predecessors(ctx, c.Cache, node, c.GraphTarget.Predecessors)
+// }
 
 // fetch prefers to read from a local cache (storage), falling back to the
-// remote with the fetcherFn on misses.
+// remoteFetcherFn on misses.
 func fetch(ctx context.Context, storage orascontent.Storage, target ocispec.Descriptor, remoteFetcherFn func(ctx context.Context, target ocispec.Descriptor) (io.ReadCloser, error)) (io.ReadCloser, error) {
 	log := logger.FromContext(ctx)
 
@@ -102,8 +109,8 @@ func fetch(ctx context.Context, storage orascontent.Storage, target ocispec.Desc
 	return rc, nil
 }
 
-// push caches blobs (to storage) while pushing with the provided pusherFn.
-func push(ctx context.Context, storage orascontent.Storage, expected ocispec.Descriptor, content io.Reader, pusherFn func(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error) error {
+// push caches blobs while pushing with the provided remotePusherFn.
+func push(ctx context.Context, storage orascontent.Storage, expected ocispec.Descriptor, content io.Reader, remotePusherFn func(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error) error {
 	log := logger.FromContext(ctx)
 
 	cached, err := storage.Exists(ctx, expected)
@@ -113,7 +120,7 @@ func push(ctx context.Context, storage orascontent.Storage, expected ocispec.Des
 		fallthrough
 	case cached:
 		log.InfoContext(ctx, "skipping caching of blob")
-		err = pusherFn(ctx, expected, content)
+		err = remotePusherFn(ctx, expected, content)
 		if err != nil && !errors.Is(err, errdef.ErrAlreadyExists) {
 			return fmt.Errorf("pushing blob to remote: %w", err)
 		}
@@ -130,7 +137,7 @@ func push(ctx context.Context, storage orascontent.Storage, expected ocispec.Des
 			close(done)
 		}()
 
-		err = pusherFn(ctx, expected, tr)
+		err = remotePusherFn(ctx, expected, tr)
 		switch {
 		case err != nil && !errors.Is(err, errdef.ErrAlreadyExists):
 			return fmt.Errorf("pushing blob to remote: %w", err)
@@ -150,7 +157,7 @@ func push(ctx context.Context, storage orascontent.Storage, expected ocispec.Des
 			}
 
 			<-done
-			if cacheErr != nil {
+			if cacheErr != nil && !errors.Is(err, errdef.ErrAlreadyExists) {
 				return fmt.Errorf("caching blob: %w", err)
 			}
 		}
@@ -160,33 +167,33 @@ func push(ctx context.Context, storage orascontent.Storage, expected ocispec.Des
 }
 
 // predecessors returns the union of predecessors known by the cache (storage) and the predecessors known by the remote.
-func predecessors(ctx context.Context, storage orascontent.GraphStorage, node ocispec.Descriptor,
-	remotePredecessors func(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error)) ([]ocispec.Descriptor, error) {
+// func predecessors(ctx context.Context, storage orascontent.GraphStorage, node ocispec.Descriptor,
+// 	remotePredecessors func(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error)) ([]ocispec.Descriptor, error) {
 
-	rp, err := remotePredecessors(ctx, node)
-	if err != nil {
-		return nil, fmt.Errorf("retrieving predecessors from remote: %w", err)
-	}
+// 	rp, err := remotePredecessors(ctx, node)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("retrieving predecessors from remote: %w", err)
+// 	}
 
-	lp, err := storage.Predecessors(ctx, node)
-	if err != nil {
-		return nil, fmt.Errorf("retrieving predecessors from local storage: %w", err)
-	}
+// 	lp, err := storage.Predecessors(ctx, node)
+// 	if err != nil {
+// 		return nil, fmt.Errorf("retrieving predecessors from local storage: %w", err)
+// 	}
 
-	resolver := make(map[digest.Digest]ocispec.Descriptor, len(lp))
-	for _, desc := range rp {
-		resolver[desc.Digest] = desc
-	}
+// 	resolver := make(map[digest.Digest]ocispec.Descriptor, len(lp))
+// 	for _, desc := range rp {
+// 		resolver[desc.Digest] = desc
+// 	}
 
-	// take the union, including duplicate digests if the mediatypes are different
-	// TODO: Do we want to include dups with different mediatypes?
-	for _, desc := range lp {
-		existingDesc, ok := resolver[desc.Digest]
-		if !ok || existingDesc.MediaType != desc.MediaType {
-			rp = append(rp, desc)
-			continue
-		}
-	}
+// 	// take the union, including duplicate digests if the mediatypes are different
+// 	// TODO: Do we want to include dups with different mediatypes?
+// 	for _, desc := range lp {
+// 		existingDesc, ok := resolver[desc.Digest]
+// 		if !ok || existingDesc.MediaType != desc.MediaType {
+// 			rp = append(rp, desc)
+// 			continue
+// 		}
+// 	}
 
-	return rp, nil
-}
+// 	return rp, nil
+// }

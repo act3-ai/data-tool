@@ -17,7 +17,6 @@ import (
 	telemv1alpha1 "git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
 	"git.act3-ace.com/ace/go-common/pkg/config"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
 	dtreg "gitlab.com/act3-ai/asce/data/tool/internal/registry"
 	regcache "gitlab.com/act3-ai/asce/data/tool/internal/registry/cache"
@@ -91,7 +90,7 @@ func (cfg *Configuration) loadConfig(ctx context.Context) error {
 	}
 
 	if cfg.config.CachePath != "" {
-		cfg.blobCacher, err = orasutil.NewBlobCacher(ctx, cfg.config.CachePath, cache.WithPredecessors())
+		cfg.blobCacher, err = orasutil.NewBlobCacher(ctx, cfg.config.CachePath)
 		if err != nil {
 			log.ErrorContext(ctx, "failed to initialize blob cache", "error", err)
 		}
