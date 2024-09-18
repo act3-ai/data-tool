@@ -29,6 +29,7 @@ type PredecessorCacher struct {
 // by storing predecessors in-memory.
 func NewPredecessorCacher(storage orascontent.Storage) orascontent.GraphStorage {
 	return &PredecessorCacher{
+		Storage:      storage,
 		predecessors: make(map[digest.Digest][]ocispec.Descriptor),
 	}
 }
