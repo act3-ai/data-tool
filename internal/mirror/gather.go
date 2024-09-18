@@ -3,6 +3,7 @@ package mirror
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -10,11 +11,13 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
@@ -201,12 +204,23 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) (oc
 	}
 
 	idxDesc, err := oras.PushBytes(ctx, opts.DestStorage, ocispec.MediaTypeImageIndex, b)
-	if err != nil {
+	switch {
+	case err != nil && !errors.Is(err, errdef.ErrAlreadyExists):
 		return ocispec.Descriptor{}, fmt.Errorf("pushing gather index manifest: %w", err)
+	case errors.Is(err, errdef.ErrAlreadyExists):
+		// in the case of directly using the local cache (e.g. in archive) we can recover
+		idxDesc = ocispec.Descriptor{
+			MediaType: ocispec.MediaTypeImageIndex,
+			// ArtifactType: encoding.MediaTypeGather, // not necessary
+			Digest: digest.FromBytes(b),
+			Size:   int64(len(b)),
+		}
+		fallthrough
+	default:
+		// not deferring this log b/c it shouldn't display if gather fails
+		opts.RootUI.Infof("Gathered %s (representing %s)", print.Bytes(bt.Deduplicated), print.Bytes(bt.Total))
+		opts.RootUI.Infof("%s pushed for %d blobs", print.Bytes(wt.transferred.Load()), wt.blobs.Load())
 	}
-	// not deferring this log b/c it shouldn't display if gather fails
-	opts.RootUI.Infof("Gathered %s (representing %s)", print.Bytes(bt.Deduplicated), print.Bytes(bt.Total))
-	opts.RootUI.Infof("%s pushed for %d blobs", print.Bytes(wt.transferred.Load()), wt.blobs.Load())
 
 	return idxDesc, nil
 }
