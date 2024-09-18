@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
@@ -41,16 +42,17 @@ func (action *Unarchive) Run(ctx context.Context, sourceFile, mappingSpec string
 	cfg := action.Config.Get(ctx)
 
 	// must enable with predecessors before deserialize, if we want scatter to utilize it later
-	storage, err := cache.NewFileCache(cfg.CachePath, cache.WithPredecessors())
+	storage, err := oci.NewStorage(cfg.CachePath)
 	if err != nil {
-		return fmt.Errorf("initializing file storage: %w", err)
+		return fmt.Errorf("initializing cache storage: %w", err)
 	}
+	gstorage := cache.NewPredecessorCacher(storage)
 
 	rootUI := ui.FromContextOrNoop(ctx)
 
 	// create the deserialize options
 	deserializeOptions := mirror.DeserializeOptions{
-		DestStorage: storage,
+		DestStorage: gstorage,
 		DestTargetReference: registry.Reference{
 			Reference: action.Reference,
 		},
@@ -71,7 +73,7 @@ func (action *Unarchive) Run(ctx context.Context, sourceFile, mappingSpec string
 	// create the scatter options
 	scatterOptions := mirror.ScatterOptions{
 		SubsetFile: action.SubsetFile,
-		Source:     storage,
+		Source:     gstorage,
 		SourceDesc: idxDesc,
 		SourceReference: registry.Reference{
 			Reference: action.Reference,
