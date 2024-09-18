@@ -9,6 +9,7 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 
+	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
 )
 
@@ -50,17 +51,19 @@ func (action *Archive) Run(ctx context.Context, sourceFile, destFile string, exi
 	log := logger.FromContext(ctx)
 	cfg := action.Config.Get(ctx)
 
-	storage, err := cache.NewFileCache(cfg.CachePath, cache.WithPredecessors())
+	storage, err := oci.NewStorage(cfg.CachePath)
 	if err != nil {
-		return fmt.Errorf("initializing file storage: %w", err)
+		return fmt.Errorf("initializing cache storage: %w", err)
 	}
+	gstorage := cache.NewPredecessorCacher(storage)
+
 	rootUI := ui.FromContextOrNoop(ctx)
 
 	// create the gather opts
 	gatherOpts := mirror.GatherOptions{
 		Platforms:      action.Platforms,
 		ConcurrentHTTP: cfg.ConcurrentHTTP,
-		DestStorage:    storage,
+		DestStorage:    gstorage,
 		Log:            log,
 		RootUI:         rootUI,
 		SourceFile:     sourceFile,
@@ -86,7 +89,7 @@ func (action *Archive) Run(ctx context.Context, sourceFile, destFile string, exi
 		Recursive:           action.Recursive,
 		RepoFunc:            action.Config.Repository,
 		Compression:         action.Compression,
-		SourceStorage:       storage,
+		SourceStorage:       gstorage,
 		SourceReference:     action.Reference,
 		SourceDesc:          idxDesc,
 		WithManifestJSON:    action.WithManifestJSON,
