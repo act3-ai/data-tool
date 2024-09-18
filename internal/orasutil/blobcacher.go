@@ -24,7 +24,7 @@ type BlobCacher struct {
 
 // NewBlobCacher returns a BlobCacher that utilizes a shared peristant file storage
 // for all oras.GraphTargets that it creates. Safe to use if root does not yet exist.
-func NewBlobCacher(_ context.Context, root string) (*BlobCacher, error) {
+func NewBlobCacher(root string) (*BlobCacher, error) {
 	if _, err := os.Stat(root); errors.Is(err, fs.ErrNotExist) {
 		if err := os.MkdirAll(root, 0777); err != nil {
 			return nil, fmt.Errorf("creating cache directory: %w", err)

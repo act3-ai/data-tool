@@ -90,7 +90,7 @@ func (cfg *Configuration) loadConfig(ctx context.Context) error {
 	}
 
 	if cfg.config.CachePath != "" {
-		cfg.blobCacher, err = orasutil.NewBlobCacher(ctx, cfg.config.CachePath)
+		cfg.blobCacher, err = orasutil.NewBlobCacher(cfg.config.CachePath)
 		if err != nil {
 			log.ErrorContext(ctx, "failed to initialize blob cache", "error", err)
 		}
