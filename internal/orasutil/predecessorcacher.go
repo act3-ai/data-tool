@@ -17,6 +17,7 @@ import (
 // PredecessorCacher wraps an oras content.Storage to cache referrers included in manifests
 // during Fetch, Push, and Exists operations. Implements oras.GraphStorage.
 type PredecessorCacher struct {
+	// Storage is where fetches/existance checks originate from and pushes are forwarded to.
 	orascontent.Storage
 
 	// predecessors is a map of subject to referring descriptors
@@ -24,6 +25,18 @@ type PredecessorCacher struct {
 	predecessors map[digest.Digest][]ocispec.Descriptor
 }
 
+// NewPredecessorCacher extends and oras content.Storage to a content.GraphStorage
+// by storing predecessors in-memory.
+func NewPredecessorCacher(storage orascontent.Storage) orascontent.GraphStorage {
+	return &PredecessorCacher{
+		predecessors: make(map[digest.Digest][]ocispec.Descriptor),
+	}
+}
+
+// Exists ultimately returns the same value as a call to Exists to the underlying
+// content.Storage. If the target descriptor exists and has an image manifest or index
+// mediatype it will fetch from the underlying storage and add establish a predecessor
+// if applicable.
 func (pc *PredecessorCacher) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
 	exists, err := pc.Storage.Exists(ctx, target)
 	switch {
@@ -57,25 +70,34 @@ func (pc *PredecessorCacher) Exists(ctx context.Context, target ocispec.Descript
 
 }
 
+// Fetch first fetches the blob from the underlying content.Storage. If the descriptor has an
+// image manifest or index mediatype it will read the manifest into memory, establish a predecessor
+// if applicable, finally returning a io.ReadCloser for the in-memory manifest.
 func (pc *PredecessorCacher) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
 	rc, err := pc.Storage.Fetch(ctx, desc)
-	if desc.MediaType != ocispec.MediaTypeImageManifest &&
-		desc.MediaType != ocispec.MediaTypeImageIndex {
-		return rc, err // propagate error
-	}
+	switch {
+	case err != nil:
+		return nil, err //nolint
+	case desc.MediaType != ocispec.MediaTypeImageManifest &&
+		desc.MediaType != ocispec.MediaTypeImageIndex:
+		return rc, nil
+	default:
+		manifestBytes, err := io.ReadAll(rc)
+		if err != nil {
+			return nil, fmt.Errorf("reading manifest into memory: %w", err)
+		}
 
-	manifestBytes, err := io.ReadAll(rc)
-	if err != nil {
-		return nil, fmt.Errorf("reading manifest into memory: %w", err)
+		err = pc.addAsPredecessor(ctx, manifestBytes, desc)
+		if err != nil {
+			return nil, fmt.Errorf("adding potential predecessors: %w", err)
+		}
+		return io.NopCloser(bytes.NewReader(manifestBytes)), nil
 	}
-
-	err = pc.addAsPredecessor(ctx, manifestBytes, desc)
-	if err != nil {
-		return nil, fmt.Errorf("adding potential predecessors: %w", err)
-	}
-	return io.NopCloser(bytes.NewReader(manifestBytes)), nil
 }
 
+// Push will read the content into memory if the expected descriptor has an image manifest
+// or index mediatype, establish a predecessor if applicable, finally propagating the push
+// to the underlying content.Storage.
 func (pc *PredecessorCacher) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
 	if expected.MediaType != ocispec.MediaTypeImageManifest &&
 		expected.MediaType != ocispec.MediaTypeImageIndex {
