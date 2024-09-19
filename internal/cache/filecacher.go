@@ -8,11 +8,12 @@ import (
 	"path"
 	"path/filepath"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	orascontent "oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
+
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 // fileMounter wraps an oras content.Storage push func with file linking.
@@ -75,7 +76,7 @@ func (fm *fileMounter) Push(ctx context.Context, expected ocispec.Descriptor, co
 // Source: https://github.com/oras-project/oras-go/blob/v2.5.0/content/oci/readonlystorage.go#L93
 func blobPath(dgst digest.Digest) (string, error) {
 	if err := dgst.Validate(); err != nil {
-		return "", fmt.Errorf("cannot calculate blob path from invalid digest %s: %w: %v",
+		return "", fmt.Errorf("cannot calculate blob path from invalid digest %s: %w: %w",
 			dgst.String(), errdef.ErrInvalidDigest, err)
 	}
 	return path.Join(ocispec.ImageBlobsDir, dgst.Algorithm().String(), dgst.Encoded()), nil

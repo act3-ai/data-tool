@@ -8,16 +8,17 @@ import (
 	"io"
 	"sync"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	orascontent "oras.land/oras-go/v2/content"
+
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 // PredecessorCacher wraps an oras content.Storage to cache referrers included in manifests
 // during Fetch, Push, and Exists operations. Implements oras.GraphStorage.
 type PredecessorCacher struct {
-	// Storage is where fetches/existance checks originate from and pushes are forwarded to.
+	// Storage is where fetches/existence checks originate from and pushes are forwarded to.
 	orascontent.Storage
 
 	// predecessors is a map of subject to referring descriptors
@@ -102,7 +103,7 @@ func (pc *PredecessorCacher) Fetch(ctx context.Context, desc ocispec.Descriptor)
 func (pc *PredecessorCacher) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
 	if expected.MediaType != ocispec.MediaTypeImageManifest &&
 		expected.MediaType != ocispec.MediaTypeImageIndex {
-		return pc.Storage.Push(ctx, expected, content) // nolint
+		return pc.Storage.Push(ctx, expected, content) //nolint
 	}
 
 	manifestBytes, err := io.ReadAll(content)
@@ -114,7 +115,7 @@ func (pc *PredecessorCacher) Push(ctx context.Context, expected ocispec.Descript
 	if err != nil {
 		return fmt.Errorf("adding potential predecessors: %w", err)
 	}
-	return pc.Storage.Push(ctx, expected, bytes.NewReader(manifestBytes))
+	return pc.Storage.Push(ctx, expected, bytes.NewReader(manifestBytes)) //nolint
 }
 
 // Predecessors finds the nodes directly pointing to a given node of a directed acyclic graph. In other

@@ -9,9 +9,9 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 )
 
-// CachePruner removes files from a cache until the total size is less than
+// Pruner removes files from a cache until the total size is less than
 // or equal to maxSize.
-type CachePruner func(ctx context.Context, root string, maxSize int64) error
+type Pruner func(ctx context.Context, root string, maxSize int64) error
 
 // Prune implements CachePruner.
 func Prune(ctx context.Context, root string, maxSize int64) error {

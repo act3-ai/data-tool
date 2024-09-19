@@ -10,11 +10,12 @@ import (
 	"slices"
 	"strings"
 
-	"git.act3-ace.com/ace/go-common/pkg/fsutil"
 	"github.com/djherbis/atime"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/errdef"
+
+	"git.act3-ace.com/ace/go-common/pkg/fsutil"
 )
 
 // Prune removes files until the total size of the cache is less than or
@@ -69,7 +70,7 @@ Pruning:
 		}
 		sz := info.Size()
 
-		err = delete(root, digest.Digest(filepath.Base(filepath.Dir(info.path))+":"+info.Name()))
+		err = deleteBlob(root, digest.Digest(filepath.Base(filepath.Dir(info.path))+":"+info.Name()))
 		switch {
 		case errors.Is(err, fs.ErrPermission):
 			// permission denied occurs if file is locked, just skip to the next file
@@ -90,7 +91,7 @@ Pruning:
 	return nil
 }
 
-func delete(root string, dgst digest.Digest) error {
+func deleteBlob(root string, dgst digest.Digest) error {
 	path, err := blobPath(dgst)
 	if err != nil {
 		return fmt.Errorf("%s: %w", dgst, errdef.ErrInvalidDigest)
@@ -101,7 +102,7 @@ func delete(root string, dgst digest.Digest) error {
 		if errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("%s: %w", dgst, errdef.ErrNotFound)
 		}
-		return err
+		return fmt.Errorf("removing blob from cache: %w", err)
 	}
 	return nil
 }

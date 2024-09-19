@@ -89,7 +89,7 @@ func (c *CommandHelper) PopulateCache(num int) {
 
 		desc := ocispec.Descriptor{
 			Digest:    digest.FromBytes(data),
-			MediaType: "application/octet-stream", // irrelavant
+			MediaType: "application/octet-stream", // irrelevant
 			Size:      int64(len(data)),
 		}
 

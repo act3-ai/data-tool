@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
-	"oras.land/oras-go/v2/content"
+	orascontent "oras.land/oras-go/v2/content"
 	orasoci "oras.land/oras-go/v2/content/oci"
 
 	bottle "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io"
@@ -64,7 +64,7 @@ type Bottle struct {
 	// cachePath is the cache directory
 	cachePath string
 
-	cache                content.GraphStorage
+	cache                orascontent.GraphStorage
 	VirtualPartTracker   *VirtualParts
 	DisableCreateDestDir bool
 	disableCache         bool
@@ -434,7 +434,7 @@ func (btl *Bottle) GetConfigPath() string {
 
 // GetCache returns a oras content.GraphStorage interface for working with local
 // cache data.
-func (btl *Bottle) GetCache() content.GraphStorage {
+func (btl *Bottle) GetCache() orascontent.GraphStorage {
 	return btl.cache
 }
 
