@@ -10,8 +10,8 @@ import (
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content/memory"
+	"oras.land/oras-go/v2/content/oci"
 
-	"git.act3-ace.com/ace/data/tool/internal/cache"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	tlog "git.act3-ace.com/ace/go-common/pkg/test"
 )
@@ -47,7 +47,7 @@ func Test_push(t *testing.T) {
 	}
 
 	cacheRoot := t.TempDir()
-	fc, err := cache.NewFileCache(cacheRoot)
+	fc, err := oci.NewStorage(cacheRoot)
 	if err != nil {
 		t.Fatalf("initializing file cache, error = %v", err)
 	}
@@ -109,7 +109,7 @@ func Test_fetch(t *testing.T) {
 	}
 
 	cacheRoot := t.TempDir()
-	fc, err := cache.NewFileCache(cacheRoot)
+	fc, err := oci.NewStorage(cacheRoot)
 	if err != nil {
 		t.Fatalf("initializing file cache, error = %v", err)
 	}
