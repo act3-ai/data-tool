@@ -10,41 +10,41 @@ import (
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
-// ExtractTarFromReader unarchives a tar file.
+// ExtractTar unarchives a tar file.
 // Existing files are overwritten.
-func ExtractTarFromReader(ctx context.Context, rc io.ReadCloser, destPath string) error {
+func ExtractTar(ctx context.Context, rc io.ReadCloser, destPath string) error {
 	dec := &PipeIn{}
 	dec.ConnectIn(rc)
-	return extractWithPipeStreamFromReader(ctx, dec, destPath, false)
+	return extractWithPipeStream(ctx, dec, destPath, false)
 }
 
-// ExtractTarCompatFromReader unarchives a tar file.
+// ExtractTarCompat unarchives a tar file.
 // Existing files are overwritten. Parent directories are created as needed.
-func ExtractTarCompatFromReader(ctx context.Context, rc io.ReadCloser, destPath string) error {
+func ExtractTarCompat(ctx context.Context, rc io.ReadCloser, destPath string) error {
 	dec := &PipeIn{}
 	dec.ConnectIn(rc)
-	return extractWithPipeStreamFromReader(ctx, dec, destPath, true)
+	return extractWithPipeStream(ctx, dec, destPath, true)
 }
 
-// ExtractTarZstdFromReader decompresses and unarchives a tar+zst file.
+// ExtractTarZstd decompresses and unarchives a tar+zst file.
 // Existing files are overwritten.
-func ExtractTarZstdFromReader(ctx context.Context, rc io.ReadCloser, destPath string) error {
+func ExtractTarZstd(ctx context.Context, rc io.ReadCloser, destPath string) error {
 	dec := &PipeZstdDec{}
 	dec.ConnectIn(rc)
-	return extractWithPipeStreamFromReader(ctx, dec, destPath, false)
+	return extractWithPipeStream(ctx, dec, destPath, false)
 }
 
-// ExtractTarZstdCompatFromReader decompresses and unarchives a tar+zst file.
+// ExtractTarZstdCompat decompresses and unarchives a tar+zst file.
 // Existing files are overwritten. Parent directories are created as needed.
-func ExtractTarZstdCompatFromReader(ctx context.Context, rc io.ReadCloser, destPath string) error {
+func ExtractTarZstdCompat(ctx context.Context, rc io.ReadCloser, destPath string) error {
 	dec := &PipeZstdDec{}
 	dec.ConnectIn(rc)
-	return extractWithPipeStreamFromReader(ctx, dec, destPath, true)
+	return extractWithPipeStream(ctx, dec, destPath, true)
 }
 
-// ExtractZstdFromReader decompresses a .zst file.
+// ExtractZstd decompresses a .zst file.
 // Existing files are overwritten.
-func ExtractZstdFromReader(ctx context.Context, rc io.ReadCloser, destPath string) error {
+func ExtractZstd(ctx context.Context, rc io.ReadCloser, destPath string) error {
 	log := logger.FromContext(ctx)
 
 	log.DebugContext(ctx, "Decompressing with default zstd decompressor", "dest", destPath)
@@ -77,8 +77,8 @@ func ExtractZstdFromReader(ctx context.Context, rc io.ReadCloser, destPath strin
 	return nil
 }
 
-// extractWithPipeStreamFromReader unarchives from the provided reader.
-func extractWithPipeStreamFromReader(ctx context.Context, in io.ReadCloser, destPath string, makeParents bool) error {
+// extractWithPipeStream unarchives from the provided reader.
+func extractWithPipeStream(ctx context.Context, in io.ReadCloser, destPath string, makeParents bool) error {
 	log := logger.FromContext(ctx).With("dest", destPath)
 	log.DebugContext(ctx, "Extracting archive")
 
@@ -98,4 +98,13 @@ func extractWithPipeStreamFromReader(ctx context.Context, in io.ReadCloser, dest
 
 	log.DebugContext(ctx, "Extract completed")
 	return in.Close()
+}
+
+func makeOutfilePipestream(path string) (PipeWriter, error) {
+	fp, err := os.Create(path)
+	if err != nil {
+		return nil, fmt.Errorf("error creating file: %w", err)
+	}
+	out := &PipeOut{W: fp}
+	return out, nil
 }

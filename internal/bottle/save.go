@@ -151,15 +151,15 @@ func handlePartMedia(ctx context.Context, localPath string, fetcher content.Fetc
 
 	switch desc.MediaType {
 	case mediatype.MediaTypeLayerTar:
-		return archive.ExtractTarFromReader(ctx, rc, destPath)
+		return archive.ExtractTar(ctx, rc, destPath)
 	case mediatype.MediaTypeLayerTarOld, mediatype.MediaTypeLayerTarLegacy:
-		return archive.ExtractTarCompatFromReader(ctx, rc, localPath)
+		return archive.ExtractTarCompat(ctx, rc, localPath)
 	case mediatype.MediaTypeLayerTarZstd:
-		return archive.ExtractTarZstdFromReader(ctx, rc, destPath)
+		return archive.ExtractTarZstd(ctx, rc, destPath)
 	case mediatype.MediaTypeLayerTarZstdOld, mediatype.MediaTypeLayerTarZstdLegacy:
-		return archive.ExtractTarZstdCompatFromReader(ctx, rc, localPath)
+		return archive.ExtractTarZstdCompat(ctx, rc, localPath)
 	case mediatype.MediaTypeLayerZstd:
-		return archive.ExtractZstdFromReader(ctx, rc, destPath)
+		return archive.ExtractZstd(ctx, rc, destPath)
 	case mediatype.MediaTypeLayerTarGzip, mediatype.MediaTypeLayerTarGzipLegacy:
 		return errors.New("gzip is not implemented")
 	case mediatype.MediaTypeLayer, mediatype.MediaTypeLayerRawOld, mediatype.MediaTypeLayerRawLegacy:
