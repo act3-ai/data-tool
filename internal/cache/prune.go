@@ -48,7 +48,7 @@ func Prune(ctx context.Context, root string, maxSize int64) error {
 
 	// TODO: we could use other metrics to determine which cached files are more valuable than others;
 	// such as size, frequency of use, commonality of digest algorithm, etc. For now, we simply use
-	// a last access time, which is updated on Exists().
+	// a last access time.
 	slices.SortFunc(finfos, func(a, b fileInfoWithDir) int {
 		if atime.Get(a.FileInfo).Before(atime.Get(b.FileInfo)) {
 			return -1

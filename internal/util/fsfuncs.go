@@ -4,10 +4,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"sort"
 	"time"
-
-	"github.com/djherbis/atime"
 
 	"git.act3-ace.com/ace/go-common/pkg/fsutil"
 )
@@ -49,27 +46,6 @@ func DirSize(fsys fs.FS) (int64, error) {
 
 		return nil
 	})
-}
-
-// ReadDirSortedByAccessTime returns a sorted list of directory entries sorted by access time.
-func ReadDirSortedByAccessTime(fsys fs.FS, name string) ([]fs.FileInfo, error) {
-	entries, err := fs.ReadDir(fsys, name)
-	if err != nil {
-		return nil, fmt.Errorf("error reading dir: %w", err)
-	}
-	infos := make([]fs.FileInfo, 0, len(entries))
-	for _, entry := range entries {
-		info, err := entry.Info()
-		if err != nil {
-			return nil, fmt.Errorf("error getting file info: %w", err)
-		}
-		infos = append(infos, info)
-	}
-
-	sort.Slice(infos, func(i, j int) bool {
-		return atime.Get(infos[i]).Before(atime.Get(infos[j]))
-	})
-	return infos, nil
 }
 
 // GetDirLastUpdate returns the last update time of a directory.
