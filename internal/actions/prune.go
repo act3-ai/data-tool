@@ -38,11 +38,10 @@ func (action *Prune) Run(ctx context.Context, out io.Writer) error {
 	max = max * 1024 * 1024
 	log.InfoContext(ctx, "Max size selected", "size", max)
 
-	cacheManager := cache.NewBottleCachePruner(cfg.CachePath)
-
-	if err := cacheManager.Prune(ctx, max); err != nil {
+	if err := cache.Prune(ctx, cfg.CachePath, max); err != nil {
 		return fmt.Errorf("error pruning cache: %w", err)
 	}
+
 	_, err := fmt.Fprintf(out, "Cache pruned to maximum size: %d MiB\n", max/(1024*1024))
 	if err != nil {
 		return err

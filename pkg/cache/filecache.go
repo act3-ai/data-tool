@@ -9,13 +9,11 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 )
 
-// BottleCachePruner removes bottle items until the total size of the cache is less than or
-// equal to maxSize.
-type BottleCachePruner interface {
-	Prune(ctx context.Context, maxSize int64) error
-}
+// CachePruner removes files from a cache until the total size is less than
+// or equal to maxSize.
+type CachePruner func(ctx context.Context, root string, maxSize int64) error
 
-// NewBottleCachePruner accesses a BottleFileCache strictly for pruning purposes.
-func NewBottleCachePruner(cacheDir string) BottleCachePruner {
-	return cache.NewBottleFileCache(cacheDir)
+// Prune implements CachePruner.
+func Prune(ctx context.Context, root string, maxSize int64) error {
+	return cache.Prune(ctx, root, maxSize)
 }
