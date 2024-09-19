@@ -9,23 +9,23 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// NilFileCache implements oras content.GraphStorage with empty functionality for cases
+// NilCache implements oras content.GraphStorage with empty functionality for cases
 // when caching is disabled.
-type NilFileCache struct {
+type NilCache struct {
 }
 
 // Exists returns false.
-func (nc *NilFileCache) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
+func (nc *NilCache) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
 	return false, nil
 }
 
 // Fetch is not supported.
-func (nc *NilFileCache) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
+func (nc *NilCache) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
 	return nil, errors.ErrUnsupported
 }
 
 // Push prevents potential io blocking by discarding the provided reader.
-func (nc *NilFileCache) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
+func (nc *NilCache) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
 	_, err := io.Copy(io.Discard, content)
 	if err != nil {
 		return fmt.Errorf("discarding duplicate blob: %w", err)
@@ -34,6 +34,6 @@ func (nc *NilFileCache) Push(ctx context.Context, expected ocispec.Descriptor, c
 }
 
 // Predecessors always returns an empty set.
-func (nc *NilFileCache) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+func (nc *NilCache) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 	return []ocispec.Descriptor{}, nil
 }

@@ -977,7 +977,7 @@ func NewBottle(options ...BOption) (*Bottle, error) {
 			btl.cache = cache.NewPredecessorCacher(optStorage)
 		}
 	} else {
-		btl.cache = &cache.NilFileCache{}
+		btl.cache = &cache.NilCache{}
 	}
 
 	// if btl.VirtualPartTracker != nil {
