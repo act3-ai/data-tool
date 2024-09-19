@@ -14,18 +14,24 @@ import (
 	"oras.land/oras-go/v2/errdef"
 )
 
-// FileMounter wraps an oras content.Storage push func with file linking.
+// fileMounter wraps an oras content.Storage push func with file linking.
 // Must only be used with content.Storage interfaces that use the local
 // filesystem to store blobs.
-type FileMounter struct {
+type fileMounter struct {
 	orascontent.Storage
 
 	root string
 }
 
 // NewFileMounter returns a FileMounter as an oras content.Storage.
+//
+// fileMounter wraps an oras content.Storage push func with file linking.
+// Must only be used with content.Storage interfaces that use the local
+// filesystem to store blobs.
 func NewFileMounter(root string, storage orascontent.Storage) (orascontent.Storage, error) {
-	return &FileMounter{
+	// TODO: Type assert input storage. If an oci.Memory, remote.Repository, or
+	// the like then return an error.
+	return &fileMounter{
 		Storage: storage,
 		root:    root,
 	}, nil
@@ -33,7 +39,7 @@ func NewFileMounter(root string, storage orascontent.Storage) (orascontent.Stora
 
 // Push provides an optimization if the io.Reader is an open os.File, otherwise
 // it uses the underlying content.Storage Push func.
-func (fm *FileMounter) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
+func (fm *fileMounter) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
 	// optimization
 	fd, ok := content.(*os.File)
 	switch {
