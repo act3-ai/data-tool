@@ -9,7 +9,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// NilFileCache implements FileCacher with empty functionality for cases
+// NilFileCache implements oras content.GraphStorage with empty functionality for cases
 // when caching is disabled.
 type NilFileCache struct {
 }
@@ -36,9 +36,4 @@ func (nc *NilFileCache) Push(ctx context.Context, expected ocispec.Descriptor, c
 // Predecessors always returns an empty set.
 func (nc *NilFileCache) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 	return []ocispec.Descriptor{}, nil
-}
-
-// Mount is a noop.
-func (nc *NilFileCache) Mount(ctx context.Context, desc ocispec.Descriptor, path string, getContent func() (io.ReadCloser, error)) error {
-	return nil
 }
