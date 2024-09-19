@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"github.com/opencontainers/go-digest"
@@ -40,6 +41,7 @@ func NewFileMounter(root string, storage orascontent.Storage) (orascontent.Stora
 // Push provides an optimization if the io.Reader is an open os.File, otherwise
 // it uses the underlying content.Storage Push func.
 func (fm *fileMounter) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
+	log := logger.FromContext(ctx)
 	// optimization
 	fd, ok := content.(*os.File)
 	switch {
@@ -50,11 +52,19 @@ func (fm *fileMounter) Push(ctx context.Context, expected ocispec.Descriptor, co
 			return fmt.Errorf("determining blob path: %w", err)
 		}
 
-		err = os.Link(fd.Name(), newPath)
+		fullNewPath := filepath.Join(fm.root, newPath)
+
+		err = os.MkdirAll(filepath.Dir(fullNewPath), 0777)
+		if err != nil {
+			return fmt.Errorf("initializing blob path %s: %w", fullNewPath, err)
+		}
+
+		err = os.Link(fd.Name(), fullNewPath)
 		if err == nil {
 			return nil
 		}
-		logger.FromContext(ctx).ErrorContext(ctx, "mounting file into file storage", "error", err)
+		log.ErrorContext(ctx, "mounting file into file storage", "error", err)
+
 		fallthrough
 	default:
 		return fm.Storage.Push(ctx, expected, content) //nolint
