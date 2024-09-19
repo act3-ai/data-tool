@@ -14,6 +14,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	content "oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
@@ -158,7 +159,7 @@ func PrepareSigsGraph(ctx context.Context, btlPath string, storage content.Graph
 				return fmt.Errorf("opening signature file: %w", err)
 			}
 
-			if err := storage.Push(ctx, sigLayer, layerFile); err != nil {
+			if err := storage.Push(ctx, sigLayer, layerFile); err != nil && !errors.Is(err, errdef.ErrAlreadyExists) {
 				return errors.Join(fmt.Errorf("pushing signature to storage: %w", err), layerFile.Close())
 			}
 
@@ -174,7 +175,7 @@ func PrepareSigsGraph(ctx context.Context, btlPath string, storage content.Graph
 			MediaType: ocispec.MediaTypeImageManifest,
 			Size:      int64(len(manifestRaw)),
 		}
-		if err := storage.Push(ctx, manifestDesc, bytes.NewReader(manifestRaw)); err != nil {
+		if err := storage.Push(ctx, manifestDesc, bytes.NewReader(manifestRaw)); err != nil && !errors.Is(err, errdef.ErrAlreadyExists) {
 			return fmt.Errorf("pushing signature manifest to storage: %w", err)
 		}
 
