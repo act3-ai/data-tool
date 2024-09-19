@@ -32,6 +32,7 @@ func Prune(ctx context.Context, root string, maxSize int64) error {
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			return fmt.Errorf("removing entire cache: %w", err)
 		}
+		return nil
 	}
 
 	// walk the blobs dir
