@@ -16,16 +16,17 @@ import (
 	"strings"
 	"time"
 
-	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
-
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	"oras.land/oras-go/v2/content"
+	orasoci "oras.land/oras-go/v2/content/oci"
 
 	bottle "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io"
 	cfgdef "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
+	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
 	sutil "git.act3-ace.com/ace/data/schema/pkg/util"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
@@ -63,7 +64,7 @@ type Bottle struct {
 	// cachePath is the cache directory
 	cachePath string
 
-	cache                cache.FileCacher
+	cache                content.GraphStorage
 	VirtualPartTracker   *VirtualParts
 	DisableCreateDestDir bool
 	disableCache         bool
@@ -431,9 +432,9 @@ func (btl *Bottle) GetConfigPath() string {
 	return configFile(btl.GetPath())
 }
 
-// GetCache returns a cache.FileCacher interface for working with local
+// GetCache returns a oras content.GraphStorage interface for working with local
 // cache data.
-func (btl *Bottle) GetCache() cache.FileCacher {
+func (btl *Bottle) GetCache() content.GraphStorage {
 	return btl.cache
 }
 
@@ -961,10 +962,19 @@ func NewBottle(options ...BOption) (*Bottle, error) {
 		}
 	}
 	if !btl.disableCache {
-		var err error
-		btl.cache, err = cache.NewFileCache(btl.cachePath, cache.WithPredecessors())
+		storage, err := orasoci.NewStorage(btl.cachePath)
 		if err != nil {
-			return nil, fmt.Errorf("initializing cache: %w", err)
+			return nil, fmt.Errorf("initializing cache storage: %w", err)
+		}
+
+		// setup optimization
+		optStorage, err := cache.NewFileMounter(btl.cachePath, storage)
+		if err != nil {
+			// non-fatal, but this should never fail
+			btl.cache = cache.NewPredecessorCacher(storage)
+		} else {
+			// support handling of signatures and other predecessors
+			btl.cache = cache.NewPredecessorCacher(optStorage)
 		}
 	} else {
 		btl.cache = &cache.NilFileCache{}

@@ -446,18 +446,19 @@ func commitPart(ctx context.Context, btl *Bottle, part PartInfo, tmpFileMap *syn
 		return nil
 	}
 
-	log.InfoContext(ctx, "mounting archived file data to cache")
-	// getContent is a fallback if the initial mount fails
-	getContentFn := func() (io.ReadCloser, error) {
-		f, err := os.Open(fname)
-		if err != nil {
-			return nil, fmt.Errorf("retrieving content: %w", err)
-		}
-		return f, nil
+	log.InfoContext(ctx, "adding part file to cache")
+	f, err := os.Open(fname)
+	if err != nil {
+		return fmt.Errorf("opening part file: %w", err)
+	}
+	defer f.Close()
+
+	if err := btl.cache.Push(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest(), Size: part.GetLayerSize()}, f); err != nil {
+		return fmt.Errorf("pushing part file to cache: %w", err)
 	}
 
-	if err := btl.cache.Mount(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest()}, fname, getContentFn); err != nil {
-		return fmt.Errorf("mouting part file: %w", err)
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("closing part file: %w", err)
 	}
 
 	if tempExists && archivedOrCompressed {
