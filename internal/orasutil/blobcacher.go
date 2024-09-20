@@ -91,7 +91,7 @@ func fetch(ctx context.Context, storage orascontent.Storage, target ocispec.Desc
 		// we must first fully cache the blob, then return a reader; i.e. we cannot
 		// fully stream here.
 		err = storage.Push(ctx, target, remoterc)
-		if err != nil {
+		if err != nil && !errors.Is(err, errdef.ErrAlreadyExists) {
 			return nil, fmt.Errorf("caching fetched blob: %w", err)
 		}
 
