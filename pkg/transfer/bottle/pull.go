@@ -328,13 +328,9 @@ func postPull(progress *ui.Progress, btl *bottle.Bottle) func(ctx context.Contex
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
 		switch {
 		case desc.MediaType == ocispec.MediaTypeImageManifest:
-			// if err := handleBottleManifest(ctx, btl, btl.GetCache(), desc); err != nil {
-			// 	return fmt.Errorf("handling bottle manifest: %w", err)
-			// }
+			// noop
 		case mediatype.IsBottleConfig(desc.MediaType):
-			// if err := handleBottleConfig(ctx, btl, btl.GetCache(), desc); err != nil {
-			// 	return fmt.Errorf("handling bottle config: %w", err)
-			// }
+			// noop
 		case mediatype.IsLayer(desc.MediaType):
 			handled, err := bottle.CopyFromCache(ctx, btl, desc, btl.GetPartByLayerDescriptor(desc).GetName())
 			// update the progress after copy, even if the copy failed.
@@ -422,33 +418,3 @@ func selectPartSuccessors(btl *bottle.Bottle, selector bottle.PartSelectorFunc) 
 		return selected, nil
 	}
 }
-
-// onPullSkipped handles the extraction of cached parts to their destinations when they're skipped
-// during a copy to the cache. This funcion is triggered whenever the cache hits, i.e. returns true
-// on existence check.
-// func onPullSkipped(progress *ui.Progress, btl *bottle.Bottle, dataStore *storage.DataStore) func(ctx context.Context,
-// 	desc ocispec.Descriptor) error {
-// 	return func(ctx context.Context, desc ocispec.Descriptor) error {
-// 		switch {
-// 		case desc.MediaType == ocispec.MediaTypeImageManifest:
-// 			// noop
-// 		case mediatype.IsBottleConfig(desc.MediaType):
-// 			// noop
-// 		case mediatype.IsLayer(desc.MediaType):
-// 			handled, err := dataStore.CopyFromCache(ctx, desc, btl.GetPartByLayerDescriptor(desc).GetName())
-// 			progress.Update(desc.Size, desc.Size)
-// 			switch {
-// 			case err != nil:
-// 				return err
-// 			case !handled:
-// 				return fmt.Errorf("part not found in cache despite passing prior existence check %s", desc.Digest) // should be impossible
-// 			default:
-// 				logger.V(logger.FromContext(ctx), 1).InfoContext(ctx, "copied from cache")
-// 			}
-// 		default:
-// 			return fmt.Errorf("unsupported mediatype skipped '%s'", desc.MediaType)
-// 		}
-// 		// skip was safe
-// 		return nil
-// 	}
-// }
