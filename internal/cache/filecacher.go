@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -61,11 +62,11 @@ func (fm *fileMounter) Push(ctx context.Context, expected ocispec.Descriptor, co
 		}
 
 		err = os.Link(fd.Name(), fullNewPath)
-		if err == nil {
+		if err == nil || errors.Is(err, os.ErrExist) {
 			return nil
 		}
-		log.ErrorContext(ctx, "mounting file into file storage", "error", err)
 
+		log.ErrorContext(ctx, "mounting file into file storage", "error", err)
 		fallthrough
 	default:
 		return fm.Storage.Push(ctx, expected, content) //nolint
