@@ -178,8 +178,10 @@ func pull(ctx context.Context, target content.ReadOnlyStorage, desc ocispec.Desc
 	}
 
 	copyOptions := oras.CopyGraphOptions{
-		Concurrency:    pullOpts.concurrency(),
-		PreCopy:        prePullParts(progress),
+		Concurrency: pullOpts.concurrency(),
+		PreCopy:     prePullParts(progress),
+		// whether or not we copy/skip the part is irrelavent, in both cases
+		// we need to populate the bottle directory with the parts.
 		PostCopy:       postPull(progress, btl),
 		OnCopySkipped:  postPull(progress, btl),
 		FindSuccessors: selectPartSuccessors(btl, partSelector),
