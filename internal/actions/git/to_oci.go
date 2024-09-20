@@ -30,6 +30,10 @@ func (action *ToOCI) Run(ctx context.Context) error {
 	log := logger.FromContext(ctx)
 	rootUI := ui.FromContextOrNoop(ctx)
 
+	// action.Config.Repository ensures we don't use an OCI cache, which is created by
+	// action.Config.GraphTarget. In the case of git, it's more reasonable to cache
+	// git objects themselves rather than the higher-level bundles stored as OCI artifacts,
+	// as many bundles may contain the same git objects.
 	log.InfoContext(ctx, "Connecting to OCI repository", "repo", action.Repo)
 	repo, err := action.Config.Repository(ctx, action.Repo)
 	if err != nil {
