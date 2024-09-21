@@ -249,7 +249,7 @@ mattermost notification:
   rules:
     - if: '$CI_COMMIT_TAG =~ /^v([0-9]+)\.([0-9]+)\.([0-9]+)$|^v([0-9]+)\.([0-9]+)\.([0-9]+)-.*$/ && $DEP_CHECK != "true"'
   variables:
-    ICON_URL: https://git.act3-ace.com/uploads/-/system/group/avatar/168/Screen_Shot_2020-08-13_at_10.28.26_AM.png
+    ICON_URL: https://git.act3-ace.com/uploads/-/system/project/avatar/238/images-1.jpeg?width=96
     MM_USERNAME: ACE Releases
     MM_CHANNEL: ace-admins
   script:
