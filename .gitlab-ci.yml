@@ -250,8 +250,8 @@ mattermost notification:
     - if: '$CI_COMMIT_TAG =~ /^v([0-9]+)\.([0-9]+)\.([0-9]+)$|^v([0-9]+)\.([0-9]+)\.([0-9]+)-.*$/ && $DEP_CHECK != "true"'
   variables:
     ICON_URL: https://git.act3-ace.com/uploads/-/system/project/avatar/238/images-1.jpeg?width=96
-    MM_USERNAME: ACE Releases
-    MM_CHANNEL: ace-admins
+    MM_USERNAME: Ace Data Releases
+    MM_CHANNEL: ace-dt
   script:
     - while ! curl -I -s --header "JOB-TOKEN:$CI_JOB_TOKEN" "$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases/$CI_COMMIT_TAG" | grep "HTTP/2 200"; do
         echo "waiting for release..";
