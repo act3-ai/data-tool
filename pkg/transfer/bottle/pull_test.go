@@ -33,6 +33,7 @@ func (h *DestHelper) SetupPullDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to setup bottle destination: %w", err)
 	}
+	h.dirs = append(h.dirs, pullPath)
 	return pullPath, err
 }
 
@@ -46,11 +47,10 @@ func (h *DestHelper) Cleanup() error {
 	return errors.Join(errs...)
 }
 
-var (
-	ociReference   string
-	registryConfig v1alpha1.RegistryConfig
-	pullDirHelper  DestHelper
-)
+var ociReference string
+var registryConfig v1alpha1.RegistryConfig
+var pullDirHelper DestHelper
+var cachePath string
 
 func TestMain(m *testing.M) {
 	os.Exit(testMain(m))
@@ -91,9 +91,20 @@ func testMain(m *testing.M) int {
 	// setup pullDirHelper
 	pullDirHelper = DestHelper{dirs: make([]string, 2)} // alloc test count
 	defer func() {
-		log.InfoContext(ctx, "cleaning up pulled bottles")
 		if err := pullDirHelper.Cleanup(); err != nil {
 			panic(fmt.Sprintf("cleaning up bottle pull directories: %v", err))
+		}
+	}()
+
+	// setup cache, ensuring to
+	// ensure we don't default to the user's cache
+	cachePath, err = os.MkdirTemp("", "temp-cache-*")
+	if err != nil {
+		panic(fmt.Errorf("initializing temporary cache: %w", err))
+	}
+	defer func() {
+		if err := os.RemoveAll(cachePath); err != nil {
+			panic(fmt.Sprintf("cleaning up cache: %v", err))
 		}
 	}()
 
@@ -111,17 +122,11 @@ func ExamplePull() {
 		panic(fmt.Sprintf("Failed to set up bottle pull directory: %v", err))
 	}
 
-	// ensure we don't default to the user's cache
-	tempCache, err := os.MkdirTemp("", "temp-cache-*")
-	if err != nil {
-		panic(fmt.Errorf("initializing temporary cache: %w", err))
-	}
-
 	// define default configuration
 	// overrides are only necessary if the desired configuration is not
 	// available by default or loaded from a file with config.AddConfigFiles().
 	config := conf.New()
-	config.AddConfigOverride(conf.WithRegistryConfig(registryConfig), conf.WithCachePath(tempCache)) // configure testing registry for plain-http
+	config.AddConfigOverride(conf.WithRegistryConfig(registryConfig), conf.WithCachePath(cachePath)) // configure testing registry for plain-http
 
 	src, desc, err := Resolve(ctx, ociReference, config, TransferOptions{})
 	if err != nil {
@@ -129,7 +134,7 @@ func ExamplePull() {
 	}
 
 	// also fails on send telemetry event failure
-	err = Pull(ctx, src, desc, bottleDir, PullOptions{TransferOptions: TransferOptions{CachePath: tempCache}})
+	err = Pull(ctx, src, desc, bottleDir, PullOptions{TransferOptions: TransferOptions{CachePath: cachePath}})
 	if err != nil {
 		panic(fmt.Sprintf("Bottle pull failed: %v\n", err))
 	}
@@ -161,13 +166,6 @@ func ExamplePull_partselection() {
 
 	// define part selection
 	labelSelectors := []string{"foo=bar"}
-
-	// define a cache, keeping track of non-selected (virtual) parts
-	// while also allowing the bottle to be pushed later should we choose.
-	cachePath, err := os.MkdirTemp("", "cache-*")
-	if err != nil {
-		panic(fmt.Sprintf("Failed to initialize cache path: %v", err))
-	}
 
 	pullOpts := PullOptions{
 		TransferOptions: TransferOptions{

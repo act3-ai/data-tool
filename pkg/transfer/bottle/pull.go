@@ -210,10 +210,6 @@ func pull(ctx context.Context, target content.ReadOnlyStorage, desc ocispec.Desc
 	}
 
 	log.InfoContext(ctx, "pull complete")
-	// if err := dataCache.Close(); err != nil {
-	// 	return btl, fmt.Errorf("closing datastore: %w", err)
-	// }
-
 	return btl, nil
 }
 
