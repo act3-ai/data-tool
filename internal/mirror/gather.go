@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"slices"
+	"strings"
 	"sync"
 	"sync/atomic"
 
@@ -149,6 +151,22 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) err
 	opts.Annotations[encoding.AnnotationGatherVersion] = dataToolVersion
 	opts.Annotations[encoding.AnnotationLayerSizeTotal] = fmt.Sprint(bt.Total)
 	opts.Annotations[encoding.AnnotationLayerSizeDeduplicated] = fmt.Sprint(bt.Deduplicated)
+
+	// sort based on the 'vnd.act3-ace.manifest.source' annotation, an effort to
+	// improve readability by grouping registries together; e.g. all docker.io
+	// refs will exist in the index consecutively.
+	// if the annotation DNE, unlikely since we add this ourselves, put it at the end.
+	slices.SortFunc(manifests, func(a, b ocispec.Descriptor) int {
+		aAnnos, ok := a.Annotations[ref.AnnotationSrcRef]
+		if !ok {
+			aAnnos = "zz" // ensure "zot..."" < "zz"
+		}
+		bAnnos, ok := b.Annotations[ref.AnnotationSrcRef]
+		if !ok {
+			bAnnos = "zz"
+		}
+		return strings.Compare(aAnnos, bAnnos)
+	})
 
 	index := ocispec.Index{
 		Versioned: specs.Versioned{
