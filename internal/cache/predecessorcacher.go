@@ -1,7 +1,6 @@
 package cache
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -16,7 +15,8 @@ import (
 )
 
 // PredecessorCacher wraps an oras content.Storage to cache referrers included in manifests
-// during Fetch, Push, and Exists operations. Implements oras.GraphStorage.
+// during Fetch, Push, and Exists operations. It is not efficient for remote
+// storages, and is ideal for a local file-based implementation. Implements oras.GraphStorage.
 type PredecessorCacher struct {
 	// Storage is where fetches/existence checks originate from and pushes are forwarded to.
 	orascontent.Storage
@@ -46,30 +46,15 @@ func (pc *PredecessorCacher) Exists(ctx context.Context, target ocispec.Descript
 		return exists, err //nolint
 	case !exists:
 		return false, nil
-	default:
-		if target.MediaType != ocispec.MediaTypeImageManifest &&
-			target.MediaType != ocispec.MediaTypeImageIndex {
-			return true, nil
-		}
-
-		rc, err := pc.Storage.Fetch(ctx, target)
-		if err != nil {
-			return true, fmt.Errorf("fetching manifest from embedded storage: %w", err)
-		}
-		defer rc.Close()
-
-		manifestBytes, err := io.ReadAll(rc)
-		if err != nil {
-			return true, fmt.Errorf("reading manifest into memory: %w", err)
-		}
-
-		err = pc.addAsPredecessor(ctx, manifestBytes, target)
-		if err != nil {
+	case target.MediaType == ocispec.MediaTypeImageManifest ||
+		target.MediaType == ocispec.MediaTypeImageIndex:
+		if err := pc.addAsPredecessor(ctx, target); err != nil {
 			return true, fmt.Errorf("adding potential predecessors: %w", err)
 		}
 		return true, nil
+	default:
+		return true, nil
 	}
-
 }
 
 // Fetch first fetches the blob from the underlying content.Storage. If the descriptor has an
@@ -80,20 +65,16 @@ func (pc *PredecessorCacher) Fetch(ctx context.Context, desc ocispec.Descriptor)
 	switch {
 	case err != nil:
 		return nil, err //nolint
-	case desc.MediaType != ocispec.MediaTypeImageManifest &&
-		desc.MediaType != ocispec.MediaTypeImageIndex:
-		return rc, nil
-	default:
-		manifestBytes, err := io.ReadAll(rc)
-		if err != nil {
-			return nil, fmt.Errorf("reading manifest into memory: %w", err)
-		}
-
-		err = pc.addAsPredecessor(ctx, manifestBytes, desc)
+	case desc.MediaType == ocispec.MediaTypeImageManifest ||
+		desc.MediaType == ocispec.MediaTypeImageIndex:
+		err = pc.addAsPredecessor(ctx, desc)
 		if err != nil {
 			return nil, fmt.Errorf("adding potential predecessors: %w", err)
 		}
-		return io.NopCloser(bytes.NewReader(manifestBytes)), nil
+		return rc, nil
+	default:
+		// blobs
+		return rc, nil
 	}
 }
 
@@ -101,21 +82,19 @@ func (pc *PredecessorCacher) Fetch(ctx context.Context, desc ocispec.Descriptor)
 // or index mediatype, establish a predecessor if applicable, finally propagating the push
 // to the underlying content.Storage.
 func (pc *PredecessorCacher) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
-	if expected.MediaType != ocispec.MediaTypeImageManifest &&
-		expected.MediaType != ocispec.MediaTypeImageIndex {
-		return pc.Storage.Push(ctx, expected, content) //nolint
+	// push to the cache first, to avoid data race if pc.Predecessors() is called and we haven't completed
+	// the push to the underlying storage yet.
+	if err := pc.Storage.Push(ctx, expected, content); err != nil {
+		return fmt.Errorf("pushing to storage: %w", err)
 	}
 
-	manifestBytes, err := io.ReadAll(content)
-	if err != nil {
-		return fmt.Errorf("reading manifest into memory: %w", err)
+	if expected.MediaType == ocispec.MediaTypeImageManifest ||
+		expected.MediaType == ocispec.MediaTypeImageIndex {
+		if err := pc.addAsPredecessor(ctx, expected); err != nil {
+			return fmt.Errorf("adding potential predecessors: %w", err)
+		}
 	}
-
-	err = pc.addAsPredecessor(ctx, manifestBytes, expected)
-	if err != nil {
-		return fmt.Errorf("adding potential predecessors: %w", err)
-	}
-	return pc.Storage.Push(ctx, expected, bytes.NewReader(manifestBytes)) //nolint
+	return nil
 }
 
 // Predecessors finds the nodes directly pointing to a given node of a directed acyclic graph. In other
@@ -124,7 +103,6 @@ func (pc *PredecessorCacher) Push(ctx context.Context, expected ocispec.Descript
 //
 // Predecessors returns an error if the FileCache was not initialized with the WithPredecessors Option.
 func (pc *PredecessorCacher) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
-
 	pc.pMux.RLock()
 	predecessors, ok := pc.predecessors[node.Digest]
 	pc.pMux.RUnlock()
@@ -135,23 +113,27 @@ func (pc *PredecessorCacher) Predecessors(ctx context.Context, node ocispec.Desc
 
 }
 
-// addAsPredecessors attempts to add a blob as a predecessor of its subject, if set, in the
-// in-memory predecessor map. It is safe to call for all mediatypes, but only establishes
-// predecessors for mediatypes: ocispec.MediaTypeImageManifest and ocispec.MediaTypeImageIndex.
-func (pc *PredecessorCacher) addAsPredecessor(ctx context.Context, blob []byte, desc ocispec.Descriptor) error {
-	// addAsPredecessors could take a reader instead, allowing us to once again tee our reader stream.
-	// Since we end up storing the manifest in memery anyhow, we can slightly reduce complexity by reading
-	// it into memory earlier.
-	log := logger.FromContext(ctx).With("blobDigest", desc.Digest)
-
+// addAsPredecessors attempts to add a manifest as a predecessor of its subject, if set, in the
+// in-memory predecessor map.
+// It MUST only be used for mediatypes ocispec.MediaTypeImageManifest
+// and ocispec.MediaTypeImageIndex.
+// It expects the descriptor to already exist in the underlying storage. Such an expectation
+// helps to avoid potential data races.
+func (pc *PredecessorCacher) addAsPredecessor(ctx context.Context, desc ocispec.Descriptor) error {
+	log := logger.FromContext(ctx)
 	var subjectDigest digest.Digest
 	var subjectMediaType string
 	switch {
 	case desc.MediaType == ocispec.MediaTypeImageManifest:
-		var manifest ocispec.Manifest
-		err := json.Unmarshal(blob, &manifest)
+		manBytes, err := orascontent.FetchAll(ctx, pc.Storage, desc)
 		if err != nil {
-			return fmt.Errorf("failed to decode manifest blob: %w", err)
+			return fmt.Errorf("fetching manifest from storage: %w", err)
+		}
+
+		var manifest ocispec.Manifest
+		err = json.Unmarshal(manBytes, &manifest)
+		if err != nil {
+			return fmt.Errorf("failed to decode manifest: %w", err)
 		}
 
 		if manifest.Subject != nil {
@@ -159,10 +141,15 @@ func (pc *PredecessorCacher) addAsPredecessor(ctx context.Context, blob []byte, 
 			subjectMediaType = manifest.Subject.MediaType
 		}
 	case desc.MediaType == ocispec.MediaTypeImageIndex:
-		var index ocispec.Index
-		err := json.Unmarshal(blob, &index)
+		manBytes, err := orascontent.FetchAll(ctx, pc.Storage, desc)
 		if err != nil {
-			return fmt.Errorf("failed to decode index manifest blob: %w", err)
+			return fmt.Errorf("fetching manifest from storage: %w", err)
+		}
+
+		var index ocispec.Index
+		err = json.Unmarshal(manBytes, &index)
+		if err != nil {
+			return fmt.Errorf("failed to decode index manifest: %w", err)
 		}
 
 		if index.Subject != nil {
@@ -170,17 +157,16 @@ func (pc *PredecessorCacher) addAsPredecessor(ctx context.Context, blob []byte, 
 			subjectMediaType = index.Subject.MediaType
 		}
 	default:
-		log.InfoContext(ctx, "unknown mediatype, skipping evaluation of subject status", "mediatype", desc.MediaType)
-		return nil
+		return fmt.Errorf("unknown mediatype '%s', skipping evaluation of subject status for digest '%s'", desc.MediaType, desc.Digest)
 	}
 
 	if subjectDigest != "" {
 		pc.pMux.Lock()
+		defer pc.pMux.Unlock()
 		existingList, ok := pc.predecessors[subjectDigest]
 		if ok {
 			for _, desc := range existingList {
 				if desc.Digest == subjectDigest && desc.MediaType == subjectMediaType {
-					pc.pMux.Unlock()
 					return nil // blob is already known to be a predecessor
 				}
 			}
@@ -189,7 +175,6 @@ func (pc *PredecessorCacher) addAsPredecessor(ctx context.Context, blob []byte, 
 		} else {
 			pc.predecessors[subjectDigest] = []ocispec.Descriptor{desc}
 		}
-		pc.pMux.Unlock()
 		log.InfoContext(ctx, "adding blob manifest to subject's predecessors", "subjectDigest", subjectDigest)
 	}
 
