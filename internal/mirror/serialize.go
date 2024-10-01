@@ -111,6 +111,7 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 
 	defer serializer.Close() // this is closed at the end of the function and the error is checked.
 
+	// TODO: We can remove the opts.RepoFunc requirement if we perform the reference resolution ahead of time.
 	if err := processExisting(ctx, rootUI, opts.ExistingImages, serializer.SkipBlob, opts.RepoFunc); err != nil {
 		return err
 	}

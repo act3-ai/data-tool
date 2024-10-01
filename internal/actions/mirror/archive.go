@@ -51,6 +51,11 @@ func (action *Archive) Run(ctx context.Context, sourceFile, destFile string, exi
 	log := logger.FromContext(ctx)
 	cfg := action.Config.Get(ctx)
 
+	// wrapping the cache Storage with in-memory predecessors upgrades it to a
+	// GraphStorage. This aids in satisfying the requirement that our gather here
+	// does not push/gather to a remote but is limited to pulling the blobs locally.
+	// We cannot rely on the multiple remote sources in serialize, as it expects
+	// to serialize from a single source.
 	storage, err := oci.NewStorage(cfg.CachePath)
 	if err != nil {
 		return fmt.Errorf("initializing cache storage: %w", err)
