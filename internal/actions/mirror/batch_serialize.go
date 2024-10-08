@@ -135,6 +135,11 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 			return err
 		}
 
+		sourceDesc, err := gt.Resolve(ctx, image)
+		if err != nil {
+			return fmt.Errorf("resolving source image descriptor: %w", err)
+		}
+
 		// for each image, create the serialize options
 		opts := mirror.SerializeOptions{
 			BufferOpts:          mirror.BlockBufOptions{}, // I think this should be empty, this feature shouldn't be used with a tape drive right?
@@ -144,6 +149,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 			RepoFunc:            action.Config.Repository,
 			SourceStorage:       gt,
 			SourceReference:     image,
+			SourceDesc:          sourceDesc,
 			Compression:         action.Compression,
 			WithManifestJSON:    action.WithManifestJSON,
 		}
@@ -167,13 +173,9 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 		}
 		// iterate the counter if serialize is successful
 		counter++
-		// get the reference digest
-		desc, err := gt.Resolve(ctx, image)
-		if err != nil {
-			return fmt.Errorf("getting repository descriptor: %w", err)
-		}
+
 		// add it to the tracker file
-		if err = tw.Write([]string{filepath.Base(fileName), image, desc.Digest.String()}); err != nil {
+		if err = tw.Write([]string{filepath.Base(fileName), image, sourceDesc.Digest.String()}); err != nil {
 			return fmt.Errorf("writing to record keeping file: %w", err)
 		}
 	}
