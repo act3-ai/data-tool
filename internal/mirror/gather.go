@@ -78,7 +78,7 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) (oc
 			defer task.Complete()
 			task.Infof("Copying %s", src.Name)
 			log := logger.V(opts.Log, 1)
-			log.InfoContext(gctx, "copying", "srcReference", "dest reference", src.Name, opts.Dest)
+			log.InfoContext(gctx, "copying", "srcReference", src.Name, "dest reference", opts.Dest)
 			// TODO: add progress back in... use GraphCopyOptions pre and post manifest
 			numBytes := atomic.Int64{}
 
@@ -89,12 +89,12 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) (oc
 
 			desc, err := srcTarget.Resolve(ctx, src.Name)
 			if err != nil {
-				return fmt.Errorf("resolving source reference: %w", err)
+				return fmt.Errorf("resolving source descriptor '%s': %w", src.Name, err)
 			}
 
 			srcRef, err := registry.ParseReference(src.Name)
 			if err != nil {
-				return fmt.Errorf("parising destination reference: %w", err)
+				return fmt.Errorf("parsing source reference '%s': %w", src.Name, err)
 			}
 
 			copyOpts := oras.CopyGraphOptions{

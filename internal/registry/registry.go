@@ -37,7 +37,7 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 	// parse the reference
 	parsedRef, err := registry.ParseReference(ref)
 	if err != nil {
-		return nil, fmt.Errorf("invalid reference: %w", err)
+		return nil, fmt.Errorf("invalid reference %s: %w", ref, err)
 	}
 
 	// get the registry config and its existence
