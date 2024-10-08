@@ -86,6 +86,7 @@ func ScanArtifacts(ctx context.Context,
 
 	var results []*ArtifactDetails
 	log := logger.FromContext(ctx)
+
 	switch {
 	case sourceFile != "":
 		log.InfoContext(ctx, "scanning from sourcefile:", "file", sourceFile)
@@ -353,6 +354,9 @@ func getManifestDetails(ctx context.Context, reference string, repoFunction func
 			var platform ocispec.Platform
 			if err = json.NewDecoder(rc).Decode(&platform); err != nil && errors.Is(err, io.EOF) {
 				return nil, fmt.Errorf("decoding platform %+v: %w", &platform, err)
+			}
+			if err := rc.Close(); err != nil {
+				return nil, fmt.Errorf("closing blob reader: %w", err)
 			}
 			platformString := formatPlatformString(&platform)
 			platforms = append(platforms, platformString)
