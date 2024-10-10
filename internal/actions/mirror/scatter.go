@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"oras.land/oras-go/v2/registry"
-
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 )
@@ -37,7 +35,8 @@ func (action *Scatter) Run(ctx context.Context, sourceRepo, mappingSpec string) 
 		return fmt.Errorf("resolving source reference: %w", err)
 	}
 
-	srcRef, err := registry.ParseReference(sourceRepo)
+	// parse with endpoint resolution
+	srcRef, err := action.Config.ParseEndpointReference(sourceRepo)
 	if err != nil {
 		return fmt.Errorf("parsing destination reference: %w", err)
 	}

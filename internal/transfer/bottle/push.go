@@ -22,7 +22,7 @@ import (
 
 // PushBottle copies a bottle to a remote location via oras.ExtendedCopyGraph. ReferrerOptions are used
 // to include refferers of the bottle in the copy.
-func PushBottle(ctx context.Context, btl *bottle.Bottle, gt reg.GraphTargeter, reference string, pushCfg PushOptions, rOpts ...ReferrerOption) error {
+func PushBottle(ctx context.Context, btl *bottle.Bottle, gt reg.EndpointGraphTargeter, reference string, pushCfg PushOptions, rOpts ...ReferrerOption) error {
 	log := logger.FromContext(ctx)
 
 	// prepare referrers
@@ -66,7 +66,11 @@ func PushBottle(ctx context.Context, btl *bottle.Bottle, gt reg.GraphTargeter, r
 	}
 
 	log.InfoContext(ctx, "tagging bottle manifest")
-	if err := repo.Tag(ctx, manDesc, destRef.String()); err != nil {
+	rr, err := gt.ParseEndpointReference(destRef.String())
+	if err != nil {
+		return fmt.Errorf("parsing endpoint reference '%s': %w", destRef.String(), err)
+	}
+	if err := repo.Tag(ctx, manDesc, rr.String()); err != nil {
 		return fmt.Errorf("tagging bottle manifest: %w", err)
 	}
 
@@ -174,7 +178,7 @@ func pushMountFrom(btl *bottle.Bottle, dest ref.Ref) func(ctx context.Context, d
 // PreCopy handles the current descriptor before it is copied. PreCopy can
 // return a SkipNode to signal that desc should be skipped when it already
 // exists in the target.
-func prePush(btl *bottle.Bottle, dest ref.Ref, gt reg.GraphTargeter) func(ctx context.Context, desc ocispec.Descriptor) error {
+func prePush(btl *bottle.Bottle, dest ref.Ref, gt reg.EndpointGraphTargeter) func(ctx context.Context, desc ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
 		log := logger.FromContext(ctx).With("digest", desc.Digest)
 

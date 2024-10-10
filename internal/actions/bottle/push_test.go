@@ -23,6 +23,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
+	orasreg "oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
@@ -52,6 +53,11 @@ func (s *SrcStoreInfo) GraphTarget(ctx context.Context, ref string) (oras.GraphT
 	return s.Store.Target, nil
 }
 
+// ParseEndpointReference implements registry.EndpointParser.
+func (s *SrcStoreInfo) ParseEndpointReference(reference string) (orasreg.Reference, error) {
+	return orasreg.ParseReference(reference)
+}
+
 // ReadOnlyGraphTarget implements registry.GraphTargeter
 func (s *SrcStoreInfo) ReadOnlyGraphTarget(ctx context.Context, ref string) (oras.ReadOnlyGraphTarget, error) {
 	return s.Store.Target, nil
@@ -76,6 +82,11 @@ func (d *DestStoreInfo) GraphTarget(ctx context.Context, ref string) (oras.Graph
 	default:
 		return d.Store.Target, nil
 	}
+}
+
+// ParseEndpointReference implements registry.EndpointParser.
+func (d *DestStoreInfo) ParseEndpointReference(reference string) (orasreg.Reference, error) {
+	return orasreg.ParseReference(reference)
 }
 
 // ReadOnlyGraphTarget implements registry.GraphTargeter

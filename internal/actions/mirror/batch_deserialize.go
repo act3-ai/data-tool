@@ -11,8 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"oras.land/oras-go/v2/registry"
-
 	"git.act3-ace.com/ace/data/tool/internal/mirror"
 	"git.act3-ace.com/ace/data/tool/internal/ui"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
@@ -80,7 +78,9 @@ func (action *BatchDeserialize) Run(ctx context.Context, syncDir, destination st
 			if err != nil {
 				return err
 			}
-			destRef, err := registry.ParseReference(destinationWithReference)
+
+			// parse with endpoint resolution
+			destRef, err := action.Config.ParseEndpointReference(destinationWithReference)
 			if err != nil {
 				return fmt.Errorf("parsing destination reference: %w", err)
 			}

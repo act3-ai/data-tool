@@ -69,8 +69,7 @@ func NewAdapter(hosts []telemv1alpha1.Location, userName string) *Adapter {
 // Upon resolving a bottle reference, the bottle's version is validated for security purposes.
 // It is safe to provide a regular OCI reference, although telemetry will not be used.
 func (a *Adapter) ResolveWithTelemetry(ctx context.Context, reference string,
-	sourceTargeter reg.ReadOnlyGraphTargeter, transferOpts tbottle.TransferOptions,
-) (oras.ReadOnlyGraphTarget, ocispec.Descriptor, types.Event, error) {
+	sourceTargeter reg.ReadOnlyEndpointGraphTargeter, transferOpts tbottle.TransferOptions) (oras.ReadOnlyGraphTarget, ocispec.Descriptor, types.Event, error) {
 	// validate reference
 	r, err := ref.FromString(reference)
 	if err != nil {
@@ -258,9 +257,8 @@ func (a *Adapter) NewEvent(location string, rawManifest []byte, action types.Eve
 
 // resolveAndValidate resolves an OCI reference to an oras.ReadOnlyGraphTarget and a descriptor. It also validates the
 // bottle's version if the provided ref used to be the bottle scheme before it was resolved to an OCI reference.
-func (a *Adapter) resolveAndValidate(ctx context.Context, r ref.Ref, sourceTargeter reg.ReadOnlyGraphTargeter,
-	transferOpts tbottle.TransferOptions, validateVersion bool,
-) (oras.ReadOnlyGraphTarget, ocispec.Descriptor, error) {
+func (a *Adapter) resolveAndValidate(ctx context.Context, r ref.Ref, sourceTargeter reg.ReadOnlyEndpointGraphTargeter,
+	transferOpts tbottle.TransferOptions, validateVersion bool) (oras.ReadOnlyGraphTarget, ocispec.Descriptor, error) {
 	src, desc, err := tbottle.Resolve(ctx, r.String(), sourceTargeter, transferOpts)
 	if err != nil {
 		return nil, ocispec.Descriptor{}, fmt.Errorf("resolving reference: %w", err)

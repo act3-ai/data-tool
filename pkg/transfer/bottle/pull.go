@@ -25,7 +25,7 @@ import (
 
 // Resolve uses the source ReadOnlyGraphTargeter to resolve an OCI reference to a manifest descriptor.
 // At minimum the reference must include the "<registry>/<repository>" section of an OCI reference.
-func Resolve(ctx context.Context, reference string, src reg.ReadOnlyGraphTargeter, transferOpts TransferOptions) (oras.ReadOnlyGraphTarget, ocispec.Descriptor, error) {
+func Resolve(ctx context.Context, reference string, src reg.ReadOnlyEndpointGraphTargeter, transferOpts TransferOptions) (oras.ReadOnlyGraphTarget, ocispec.Descriptor, error) {
 	// resolve reference
 	target, err := src.ReadOnlyGraphTarget(ctx, reference)
 	if err != nil {

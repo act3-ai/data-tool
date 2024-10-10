@@ -194,7 +194,9 @@ func scanFromMirrorArtifact(ctx context.Context, //nolint:gocognit
 			log.InfoContext(ctx, "details fetched", "artifact", s, "details", artifactDetails)
 			switch {
 			case !dryRun && artifactDetails.SBOMDigest == "":
-				sboms, err := GenerateSBOM(ctx, source.Name, artifactDetails.repository)
+				// use the reference from the *remote.Repository created by getManifestDetails, ensuring our reference
+				// contains the correct endpoint if it was changed
+				sboms, err := GenerateSBOM(ctx, artifactDetails.repository.Reference.String(), artifactDetails.repository)
 				if err != nil {
 					return err
 				}
@@ -224,7 +226,9 @@ func scanFromMirrorArtifact(ctx context.Context, //nolint:gocognit
 				}
 
 			default:
-				result, err := grypeReference(gctx, source.Name)
+				// use the reference from the *remote.Repository created by getManifestDetails, ensuring our reference
+				// contains the correct endpoint if it was changed
+				result, err := grypeReference(gctx, artifactDetails.repository.Reference.String())
 				if err != nil {
 					return fmt.Errorf("gryping reference %s: %w", source.Name, err)
 				}
@@ -286,16 +290,12 @@ func getManifestDetails(ctx context.Context, reference string, repoFunction func
 	var platforms []string
 	var size int64
 	var predecessors []ocispec.Descriptor
-	r, err := registry.ParseReference(reference)
-	if err != nil {
-		return maniDetails, fmt.Errorf("error parsing ref %s: %w", reference, err)
-	}
 	repo, err := repoFunction(ctx, reference)
 	if err != nil {
 		return maniDetails, err
 	}
 	maniDetails.repository = repo
-	d, data, err := oras.FetchBytes(ctx, repo, r.ReferenceOrDefault(), oras.DefaultFetchBytesOptions)
+	d, data, err := oras.FetchBytes(ctx, repo, repo.Reference.ReferenceOrDefault(), oras.DefaultFetchBytesOptions)
 	if err != nil {
 		return maniDetails, fmt.Errorf("fetching the manifest bytes: %w", err)
 	}

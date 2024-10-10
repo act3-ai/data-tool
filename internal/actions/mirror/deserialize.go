@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2/registry"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
@@ -37,7 +36,8 @@ func (action *Deserialize) Run(ctx context.Context, sourceFile string, dest stri
 		return err
 	}
 
-	destRef, err := registry.ParseReference(dest)
+	// parse with endpoint resolution
+	destRef, err := action.Config.ParseEndpointReference(dest)
 	if err != nil {
 		return fmt.Errorf("parsing destination reference: %w", err)
 	}

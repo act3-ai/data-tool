@@ -10,7 +10,6 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -24,6 +23,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote/credentials"
 	"oras.land/oras-go/v2/registry/remote/retry"
 
+	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/httplogger"
 	regcache "gitlab.com/act3-ai/asce/data/tool/internal/registry/cache"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
@@ -32,9 +32,10 @@ import (
 // CreateRepoWithCustomConfig creates a remote.Repository object and sets it up based off
 // the custom parameters defined in registryConfig (inside ace-dt config file).
 func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig, ref string,
-	cache *regcache.RegistryCache, userAgent string, credStore credentials.Store,
-) (registry.Repository, error) {
-	// parse the reference
+	cache *regcache.RegistryCache, userAgent string, credStore credentials.Store) (registry.Repository, error) {
+	log := logger.FromContext(ctx)
+
+	// parse the original reference, without endpoint resolution
 	parsedRef, err := registry.ParseReference(ref)
 	if err != nil {
 		return nil, fmt.Errorf("invalid reference %s: %w", ref, err)
@@ -51,28 +52,19 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 		return createRegistryRepository(ctx, reg, parsedRef)
 	}
 
-	fullRegistryPath := "https://" + parsedRef.Registry
-	var endpoints []string
-	if len(r.Endpoints) != 0 {
-		endpoints = append(endpoints, r.Endpoints...)
-	}
-	endpoints = append(endpoints, fullRegistryPath)
-
-	// handle endpoints
-	// TODO support more than first endpoint when registry.Ping is better supported by registries (nvcr.io and quay.io)
-	endpoint := endpoints[0]
-
-	// get the http client config
-	endpointURL, err := url.Parse(endpoint)
+	endpointURL, err := ResolveEndpoint(rc, parsedRef)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing endpoint URL: %w", err)
+		return nil, fmt.Errorf("resolving endpoint: %w", err) // only potential failure is url parsing
+	}
+	if endpointURL.Host != parsedRef.Registry {
+		log.InfoContext(ctx, "using alternate endpoint defined by registry configuration", "original", parsedRef.Registry, "alternate", endpointURL.Host)
 	}
 
 	var referrersType string
 	var endpointTLS *v1alpha1.TLS
 
 	// get the endpoint's config
-	ecfg, ok := rc.EndpointConfig[endpoint]
+	ecfg, ok := rc.EndpointConfig[endpointURL.String()]
 	if ok {
 		referrersType = ecfg.ReferrersType
 		endpointTLS = ecfg.TLS

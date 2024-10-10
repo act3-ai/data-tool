@@ -110,6 +110,7 @@ func (cfg *Configuration) Get(ctx context.Context) *v1alpha1.Configuration {
 			cfg.config = &v1alpha1.Configuration{}
 			v1alpha1.ConfigurationDefault(cfg.config)
 		}
+		log.InfoContext(ctx, "Successfully loaded configuration")
 	} else {
 		log.InfoContext(ctx, "Using already loaded configuration")
 	}
@@ -135,7 +136,8 @@ func (cfg *Configuration) AddConfigOverride(overrideFunction ...ConfigOverrideFu
 }
 
 // Repository sets up a repository target based on a reference string, making use of registry configuration
-// settings.
+// settings. Since we return the Repository structure, it's troublesome to wrap the interface. In cases
+// where alternative endpoints are used, it may be necessary to use an EndpointResolver.
 func (cfg *Configuration) Repository(ctx context.Context, ref string) (*remote.Repository, error) {
 	log := logger.V(logger.FromContext(ctx), 1)
 	// if the config is not loaded, we should load it
@@ -164,23 +166,51 @@ func (cfg *Configuration) Repository(ctx context.Context, ref string) (*remote.R
 }
 
 // GraphTarget sets up a repository target based on a reference string, making use of registry configuration
-// settings. Implements oras.GraphTarget.
+// settings. Implements GraphTargeter.
 func (cfg *Configuration) GraphTarget(ctx context.Context, ref string) (oras.GraphTarget, error) {
 	repo, err := cfg.Repository(ctx, ref)
 	if err != nil {
 		return nil, err
 	}
+	gt := oras.GraphTarget(repo)
+
+	endpointURL, err := dtreg.ResolveEndpoint(&cfg.config.RegistryConfig, repo.Reference)
+	if err != nil {
+		return nil, fmt.Errorf("resolving alternate registry endpoint '%s': %w", repo.Reference.String(), err)
+	}
+
+	if endpointURL != nil {
+		gt = dtreg.NewEndpointResolver(gt, endpointURL.Host)
+	}
 
 	if cfg.blobCacher != nil {
-		return cfg.blobCacher.GraphTarget(repo), nil
+		return cfg.blobCacher.GraphTarget(gt), nil
 	}
-	return repo, nil
+	return gt, nil
 }
 
-// ReadOnlyGraphTarget sets up a read-only repository target based on a reference string, making use of registry configuration
-// settings. Implements oras.ReadOnlyGraphTarget.
+// ReadOnlyGraphTarget sets up a read-only repository target based on a reference string making
+// use of registry configuration settings. Implements ReadOnlyGraphTargeter.
 func (cfg *Configuration) ReadOnlyGraphTarget(ctx context.Context, ref string) (oras.ReadOnlyGraphTarget, error) {
 	return cfg.GraphTarget(ctx, ref)
+}
+
+// ParseEndpointReference is the same as the oras registry.ParseReference, except that it resolves
+// endpoints replacing the registry portion of the reference as defined by the configuration.
+// Implements EndpointReferenceParser.
+func (cfg *Configuration) ParseEndpointReference(reference string) (registry.Reference, error) {
+	ref, err := registry.ParseReference(reference)
+	if err != nil {
+		return registry.Reference{}, fmt.Errorf("parsing reference '%s': %w", reference, err)
+	}
+
+	endpointURL, err := dtreg.ResolveEndpoint(&cfg.config.RegistryConfig, ref)
+	if err != nil {
+		return registry.Reference{}, fmt.Errorf("resolving alternate registry endpoint '%s': %w", ref.String(), err)
+	}
+	ref.Registry = endpointURL.Host
+
+	return ref, nil
 }
 
 // NewRegistry creates a ORAS registry using the registry configuration.

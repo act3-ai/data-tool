@@ -41,7 +41,7 @@ type GatherOptions struct {
 	IndexFallback  bool
 	DestReference  registry.Reference
 	Recursive      bool
-	Targeter       reg.GraphTargeter
+	Targeter       reg.EndpointGraphTargeter
 }
 
 // Gather will take the references defined in a SourceFile and consolidate them to a destination target.
@@ -92,7 +92,8 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) (oc
 				return fmt.Errorf("resolving source descriptor '%s': %w", src.Name, err)
 			}
 
-			srcRef, err := registry.ParseReference(src.Name)
+			// parse with endpoint resolution
+			srcRef, err := opts.Targeter.ParseEndpointReference(src.Name)
 			if err != nil {
 				return fmt.Errorf("parsing source reference '%s': %w", src.Name, err)
 			}

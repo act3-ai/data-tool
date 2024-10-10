@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"oras.land/oras-go/v2/registry"
-
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
 )
 
@@ -29,13 +27,16 @@ func (action *Serialize) Run(ctx context.Context, ref string, destFile string, e
 		return err
 	}
 
-	rr, err := registry.ParseReference(ref)
+	// parse with endpoint resolution
+	rr, err := action.Config.ParseEndpointReference(ref)
 	if err != nil {
 		return fmt.Errorf("parsing registry reference: %w", err)
 	}
 
+	// ensure we pass the full reference in the case gt is an endpointResolver
 	sourceRef := rr.ReferenceOrDefault()
-	sourceDesc, err := gt.Resolve(ctx, sourceRef)
+	rr.Reference = sourceRef
+	sourceDesc, err := gt.Resolve(ctx, rr.String())
 	if err != nil {
 		return fmt.Errorf("getting remote descriptor for %s: %w", sourceRef, err)
 	}

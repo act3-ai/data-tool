@@ -9,7 +9,6 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/print"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
@@ -26,7 +25,7 @@ type CloneOptions struct {
 	Log            *slog.Logger
 	SourceFile     string
 	RootUI         *ui.Task
-	Targeter       reg.GraphTargeter
+	Targeter       reg.EndpointGraphTargeter
 	Recursive      bool
 	DryRun         bool
 }
@@ -73,14 +72,16 @@ func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 				return err
 			}
 
-			srcRef, err := registry.ParseReference(src.Name)
+			// parse with endpoint resolution
+			srcRef, err := opts.Targeter.ParseEndpointReference(src.Name)
 			if err != nil {
 				return fmt.Errorf("parising source reference: %w", err)
 			}
 
 			// we fetch the reference in case it is a multi-architecture index
-			// desc, rc, err := srcTarget.FetchReference(ctx, srcTarget.Reference.ReferenceOrDefault())
-			desc, err := srcTarget.Resolve(gctx, srcRef.ReferenceOrDefault())
+			// ensure we pass the full reference in the case srcTarget is an endpointResolver
+			srcRef.Reference = srcRef.ReferenceOrDefault()
+			desc, err := srcTarget.Resolve(gctx, srcRef.String())
 			if err != nil {
 				return fmt.Errorf("error resolving the source: %w", err)
 			}
@@ -109,7 +110,8 @@ func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 					return fmt.Errorf("initializing destination graph target: %w", err)
 				}
 
-				destRef, err := registry.ParseReference(destName)
+				// parse with endpoint resolution
+				destRef, err := opts.Targeter.ParseEndpointReference(destName)
 				if err != nil {
 					return fmt.Errorf("parising destination reference: %w", err)
 				}
