@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"sync"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -177,13 +178,15 @@ func pull(ctx context.Context, target content.ReadOnlyStorage, desc ocispec.Desc
 		return nil, fmt.Errorf("initializing part selector func: %w", err)
 	}
 
+	// protects btl.Parts, which is updated with the part modification times when finalized.
+	var btlPartMutex sync.Mutex
 	copyOptions := oras.CopyGraphOptions{
 		Concurrency: pullOpts.concurrency(),
 		PreCopy:     prePullParts(progress),
 		// whether or not we copy/skip the part is irrelevant, in both cases
 		// we need to populate the bottle directory with the parts.
-		PostCopy:       postPull(progress, btl),
-		OnCopySkipped:  postPull(progress, btl),
+		PostCopy:       postPull(progress, btl, &btlPartMutex),
+		OnCopySkipped:  postPull(progress, btl, &btlPartMutex),
 		FindSuccessors: selectPartSuccessors(btl, partSelector),
 	}
 
@@ -322,7 +325,7 @@ func prePullParts(progress *ui.Progress) func(ctx context.Context, desc ocispec.
 
 // postPull returns a func for the oras.CopyGraphOptions option PostCopy/OnCopySkipped func. It extracts a recently
 // cached part to its final destination or appropriately handles the manifest or config.
-func postPull(progress *ui.Progress, btl *bottle.Bottle) func(ctx context.Context, desc ocispec.Descriptor) error {
+func postPull(progress *ui.Progress, btl *bottle.Bottle, btlPartMutex *sync.Mutex) func(ctx context.Context, desc ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
 		switch {
 		case desc.MediaType == ocispec.MediaTypeImageManifest:
@@ -330,10 +333,12 @@ func postPull(progress *ui.Progress, btl *bottle.Bottle) func(ctx context.Contex
 		case mediatype.IsBottleConfig(desc.MediaType):
 			// noop
 		case mediatype.IsLayer(desc.MediaType):
-			handled, err := bottle.CopyFromCache(ctx, btl, desc, btl.GetPartByLayerDescriptor(desc).GetName())
+			btlPartMutex.Lock()
+			name := btl.GetPartByLayerDescriptor(desc).GetName()
+			btlPartMutex.Unlock()
+			handled, err := bottle.CopyFromCache(ctx, btl, desc, name, btlPartMutex)
 			// update the progress after copy, even if the copy failed.
-			// TODO: progress doesn't really seem to be working...
-			progress.Update(desc.Size, desc.Size)
+			progress.Update(desc.Size, 0)
 			// now check for copy errors/failures
 			if err != nil {
 				return fmt.Errorf("failed to finalize part with digest %s: %w", desc.Digest, err)

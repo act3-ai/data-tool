@@ -207,6 +207,11 @@ func (btl *Bottle) UpdatePartMetadata(name string,
 	changed := false
 	if contentSize >= 0 && part.Size != contentSize {
 		part.Size = contentSize
+		// if we change the content size we need to re-digest,
+		// unless we're provided the new ones which will be updated below.
+		part.Digest = ""
+		part.LayerSize = 0
+		part.LayerDigest = ""
 		changed = true
 	}
 	if contentDigest != "" && part.Digest != contentDigest {
@@ -381,7 +386,9 @@ func (btl *Bottle) SetManifest(manifest oci.ManifestHandler) {
 		btl.Parts[i].LayerDigest = desc.Digest
 		btl.Parts[i].LayerSize = desc.Size
 		btl.Parts[i].MediaType = desc.MediaType
-		btl.Parts[i].Modified = time.Now()
+		// mod time is updated later as it must align with the
+		// mod time of the file itself, otherwise all future evaluations
+		// would be false positives.
 	}
 }
 

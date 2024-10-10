@@ -11,11 +11,11 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
-	"time"
 
 	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
 	"git.act3-ace.com/ace/data/tool/internal/archive"
 	"git.act3-ace.com/ace/data/tool/internal/bottle/label"
+	"git.act3-ace.com/ace/data/tool/internal/util"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -84,14 +84,22 @@ func PrepareUpdatedParts(ctx context.Context, btl *Bottle) Visitor {
 			btl.RemovePartMetadata(name)
 		case StatusChanged:
 			log.InfoContext(ctx, "Changed part flagged for reprocessing")
-			// TODO why do we not reset the content size?
-			/// Seems like we need to be setting content size somewhere else (where we update everything else), not preserving it here.
+			// the only information we know for certain is the (immutable) part name
+			// and the content size.
+			// TODO: Can we override the mediatype as to determine the remaining
+			// information when we reprocess the part and to ensure we try to compress?
+			// TODO: add plumbing for compression type (zstd or gzip)
+			// mt := mediatype.MediaTypeLayerZstd
+			// if mediatype.IsArchived(info.GetMediaType()) {
+			// 	mt = mediatype.MediaTypeLayerTarZstd
+			// }
+			modTime := info.GetModTime()
 			btl.UpdatePartMetadata(name,
 				info.GetContentSize(), "",
 				nil, // preserve part labels
-				info.GetLayerSize(), "",
+				0, "",
 				"",
-				&time.Time{},
+				&modTime,
 			)
 		case StatusNew:
 			log.InfoContext(ctx, "New part flagged for processing")
@@ -120,7 +128,7 @@ func PrepareUpdatedParts(ctx context.Context, btl *Bottle) Visitor {
 
 // CopyFromCache copies a bottle part from the cache, handling extraction and decompression
 // based on part mediatypes.
-func CopyFromCache(ctx context.Context, btl *Bottle, desc ocispec.Descriptor, name string) (bool, error) {
+func CopyFromCache(ctx context.Context, btl *Bottle, desc ocispec.Descriptor, name string, btlPartMutex *sync.Mutex) (bool, error) {
 	exists, err := btl.cache.Exists(ctx, desc)
 	switch {
 	case err != nil:
@@ -131,6 +139,18 @@ func CopyFromCache(ctx context.Context, btl *Bottle, desc ocispec.Descriptor, na
 		if err := handlePartMedia(ctx, btl.localPath, btl.cache, desc, name); err != nil {
 			return false, fmt.Errorf("copying part from cache: %w", err)
 		}
+
+		// update part modification time, ensuring we base future evaluations of mod time are
+		// based off of the actual bottle part not the originally cached version
+		fi, err := os.Stat(btl.NativePath(name))
+		if err != nil {
+			return true, fmt.Errorf("determining part modification time: %w", err)
+		}
+
+		btlPartMutex.Lock()
+		btl.partByName(name).Modified = fi.ModTime()
+		btlPartMutex.Unlock()
+
 		return true, nil
 	}
 }
@@ -239,12 +259,17 @@ func addDirToBottle(ctx context.Context, fsys fs.FS, btl *Bottle, pth string, in
 		return nil
 	}
 
+	latestUpdate, err := util.GetDirLastUpdate(fsys)
+	if err != nil {
+		return err
+	}
+
 	log.InfoContext(ctx, "Adding archive metadata to data bottle")
 	btl.AddPartMetadata(pth+"/",
 		0, "",
 		0, "",
 		mediatype.MediaTypeLayerTarZstd,
-		time.Now(), // TODO why is this not the newest mod time of the files in this archive?
+		latestUpdate,
 	)
 	return nil
 }

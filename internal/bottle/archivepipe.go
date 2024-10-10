@@ -211,13 +211,15 @@ func archivePart(ctx context.Context, btlPartMutex sync.Locker, progress *ui.Pro
 	defer progress.Infof("%v completed", part.GetName())
 
 	// Skip if the part has a digest (has been archived and digested before), AND the digest matches the cache
-	exists, err := btl.cache.Exists(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest()})
-	if err != nil {
-		logger.V(log, 1).ErrorContext(ctx, "checking for part in cache", "error", err)
-	}
-	if exists {
-		logger.V(log, 1).InfoContext(ctx, "Skipping archive because it was found in cache", "filename", part.GetName(), "digest", part.GetLayerDigest())
-		return nil
+	if part.GetLayerDigest() != "" {
+		exists, err := btl.cache.Exists(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest()})
+		if err != nil {
+			logger.V(log, 1).ErrorContext(ctx, "checking for part in cache", "error", err)
+		}
+		if exists {
+			logger.V(log, 1).InfoContext(ctx, "Skipping archive because it was found in cache", "filename", part.GetName(), "digest", part.GetLayerDigest())
+			return nil
+		}
 	}
 
 	// Skip if the part is already archived / compressed or marked oci RAW
@@ -314,17 +316,14 @@ func digestParts(ctx context.Context, btl *Bottle) error {
 	defer progress.Complete()
 
 	numParts := btl.NumParts()
-
-	var total int64
 	for i := 0; i < numParts; i++ {
-		total += btl.Parts[i].GetContentSize()
+		progress.Update(0, btl.Parts[i].GetContentSize())
 
 		// Start a goroutine for each part
 		errGroup.Go(func() error {
 			return digestPart(ctx, &btlPartMutex, progress, &btl.Parts[i], btl)
 		})
 	}
-	progress.Update(0, total)
 
 	// check for any errors from the goroutines
 	return errGroup.Wait()
