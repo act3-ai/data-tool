@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os/exec"
 	"path"
 	"strings"
 	"sync"
@@ -479,6 +480,9 @@ func GenerateSBOM(ctx context.Context, reference string, repository oras.GraphTa
 		// exec out to syft to generate the SBOM
 		res, err := syftReference(ctx, reference)
 		if err != nil {
+			if errors.Is(err, exec.ErrNotFound) {
+				return nil, fmt.Errorf("running syft: %w", err)
+			}
 			// syft regularly fails if passed a signature, helmfile, or bottle manifest. Ignore but log the error.
 			log.InfoContext(ctx, "failed SBOM generation", "reference", reference, "error", err)
 			return nil, nil
