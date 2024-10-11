@@ -46,10 +46,13 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 	r := rc.Configs[parsedRef.Registry]
 
 	// does the registry exist in our cache?
-	reg, ok := cache.Exists(parsedRef.Registry)
+	cachedReg, ok := cache.Exists(parsedRef.Registry)
 	if ok {
 		// we need to pass reg to some repo function that handles the rest of the bits
-		return createRegistryRepository(ctx, reg, parsedRef)
+		if cachedReg.RemoteRegistry.Reference.Registry != parsedRef.Registry {
+			log.InfoContext(ctx, "using alternate endpoint defined by registry configuration", "original", parsedRef.Registry, "alternate", cachedReg.RemoteRegistry.Reference.Registry)
+		}
+		return createRegistryRepository(ctx, cachedReg, parsedRef)
 	}
 
 	endpointURL, err := ResolveEndpoint(rc, parsedRef)
@@ -98,13 +101,13 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 	}
 
 	// add the registry to the cache
-	cachedReg := regcache.Registry{
+	newReg := regcache.Registry{
 		RemoteRegistry: endpointReg,
 		ReferrersType:  referrersType,
 		RewritePull:    r.RewritePull,
 	}
-	cache.AddRegistryToCache(parsedRef.Registry, cachedReg)
-	return createRegistryRepository(ctx, cachedReg, parsedRef)
+	cache.AddRegistryToCache(parsedRef.Registry, newReg)
+	return createRegistryRepository(ctx, newReg, parsedRef)
 }
 
 // if a nil TLS is passed, return a client with a logging transport wrapped in a retry transport.

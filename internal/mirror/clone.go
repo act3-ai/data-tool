@@ -12,6 +12,7 @@ import (
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/print"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	dtreg "gitlab.com/act3-ai/asce/data/tool/internal/registry"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
 )
@@ -25,7 +26,7 @@ type CloneOptions struct {
 	Log            *slog.Logger
 	SourceFile     string
 	RootUI         *ui.Task
-	Targeter       reg.EndpointGraphTargeter
+	Targeter       reg.GraphTargeter
 	Recursive      bool
 	DryRun         bool
 }
@@ -72,15 +73,14 @@ func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 				return err
 			}
 
-			// parse with endpoint resolution
-			srcRef, err := opts.Targeter.ParseEndpointReference(src.Name)
+			// resolve the endpoint if necessary
+			srcRef, err := dtreg.ParseEndpointOrDefault(opts.Targeter, src.Name)
 			if err != nil {
-				return fmt.Errorf("parising source reference: %w", err)
+				return err
 			}
 
 			// we fetch the reference in case it is a multi-architecture index
 			// ensure we pass the full reference in the case srcTarget is an endpointResolver
-			srcRef.Reference = srcRef.ReferenceOrDefault()
 			desc, err := srcTarget.Resolve(gctx, srcRef.String())
 			if err != nil {
 				return fmt.Errorf("error resolving the source: %w", err)
@@ -110,10 +110,10 @@ func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 					return fmt.Errorf("initializing destination graph target: %w", err)
 				}
 
-				// parse with endpoint resolution
-				destRef, err := opts.Targeter.ParseEndpointReference(destName)
+				// resolve the endpoint if necessary
+				destRef, err := dtreg.ParseEndpointOrDefault(opts.Targeter, destName)
 				if err != nil {
-					return fmt.Errorf("parising destination reference: %w", err)
+					return err
 				}
 
 				copyOpts := oras.CopyGraphOptions{
@@ -138,6 +138,7 @@ func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 				}
 				if platforms == nil {
 					if err := Copy(gctx, c); err != nil {
+						destTask.Complete()
 						return err
 					}
 					tag := destRef.ReferenceOrDefault()
@@ -149,6 +150,7 @@ func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 				} else {
 					platformDescriptors, err := CopyFilterOnPlatform(gctx, c)
 					if err != nil {
+						destTask.Complete()
 						return err
 					}
 					for _, d := range platformDescriptors {

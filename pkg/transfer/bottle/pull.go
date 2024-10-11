@@ -25,8 +25,11 @@ import (
 
 // Resolve uses the source ReadOnlyGraphTargeter to resolve an OCI reference to a manifest descriptor.
 // At minimum the reference must include the "<registry>/<repository>" section of an OCI reference.
-func Resolve(ctx context.Context, reference string, src reg.ReadOnlyEndpointGraphTargeter, transferOpts TransferOptions) (oras.ReadOnlyGraphTarget, ocispec.Descriptor, error) {
-	// resolve reference
+func Resolve(ctx context.Context, reference string, src reg.ReadOnlyGraphTargeter, transferOpts TransferOptions) (oras.ReadOnlyGraphTarget, ocispec.Descriptor, error) {
+	// if the ReadOnlyGraphTargeter is an ReadOnlyEndpointGraphTargeter we'll perform
+	// endpoint resolution implicitly. However, reference remains the same as the original.
+	// If an oras registry.ParseReference is wanted for the resolved endpoint, use the
+	// ReadOnlyEndpointGraphTargeter interface instead.
 	target, err := src.ReadOnlyGraphTarget(ctx, reference)
 	if err != nil {
 		return nil, ocispec.Descriptor{}, fmt.Errorf("creating graph target for ref '%s': %w", reference, err)
@@ -45,6 +48,7 @@ func Resolve(ctx context.Context, reference string, src reg.ReadOnlyEndpointGrap
 		bic = cache.NewCache("")
 	}
 
+	// record the original source reference, not the potentially resolved endpoint
 	err = recordSource(ctx, bic, target, reference, desc)
 	if err != nil {
 		return nil, ocispec.Descriptor{}, fmt.Errorf("recoding bottle source: %w", err)

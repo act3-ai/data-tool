@@ -24,6 +24,7 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
 	"gitlab.com/act3-ai/asce/data/tool/internal/print"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	dtreg "gitlab.com/act3-ai/asce/data/tool/internal/registry"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
 )
@@ -41,7 +42,7 @@ type GatherOptions struct {
 	IndexFallback  bool
 	DestReference  registry.Reference
 	Recursive      bool
-	Targeter       reg.EndpointGraphTargeter
+	Targeter       reg.GraphTargeter
 }
 
 // Gather will take the references defined in a SourceFile and consolidate them to a destination target.
@@ -92,10 +93,10 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) (oc
 				return fmt.Errorf("resolving source descriptor '%s': %w", src.Name, err)
 			}
 
-			// parse with endpoint resolution
-			srcRef, err := opts.Targeter.ParseEndpointReference(src.Name)
+			// resolve the endpoint if necessary
+			srcRef, err := dtreg.ParseEndpointOrDefault(opts.Targeter, src.Name)
 			if err != nil {
-				return fmt.Errorf("parsing source reference '%s': %w", src.Name, err)
+				return err
 			}
 
 			copyOpts := oras.CopyGraphOptions{

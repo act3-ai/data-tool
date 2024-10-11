@@ -10,7 +10,47 @@ import (
 	"oras.land/oras-go/v2/registry"
 
 	"git.act3-ace.com/ace/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	reg "git.act3-ace.com/ace/data/tool/pkg/registry"
 )
+
+// EndpointReferenceParser provides a method for parsing OCI references
+// with alternate endpoint replacements.
+type EndpointReferenceParser interface {
+	ParseEndpointReference(reference string) (registry.Reference, error)
+}
+
+// EndpointGraphTargeter is a GraphTargeter that supports alternative reference endpoints.
+type EndpointGraphTargeter interface {
+	reg.GraphTargeter
+	EndpointReferenceParser
+}
+
+// ReadOnlyEndpointGraphTargeter is a ReadOnlyGraphTargeter that supports alternative reference endpoints.
+type ReadOnlyEndpointGraphTargeter interface {
+	reg.ReadOnlyGraphTargeter
+	EndpointReferenceParser
+}
+
+// ParseEndpointOrDefault checks a GraphTargeter to see if parsing with endpoint resolution is necessary,
+// defaulting to the oras registry.ParseReference.
+func ParseEndpointOrDefault(targeter reg.GraphTargeter, reference string) (registry.Reference, error) {
+	var ref registry.Reference
+	var err error
+	if endpointTargeter, ok := targeter.(EndpointGraphTargeter); ok {
+		ref, err = endpointTargeter.ParseEndpointReference(reference)
+		if err != nil {
+			return registry.Reference{}, fmt.Errorf("parsing endpoint reference '%s': %w", reference, err)
+		}
+	} else {
+		ref, err = registry.ParseReference(reference)
+		if err != nil {
+			return registry.Reference{}, fmt.Errorf("parsing reference '%s': %w", reference, err)
+		}
+	}
+
+	ref.Reference = ref.ReferenceOrDefault()
+	return ref, nil
+}
 
 // endpointResolver wraps an oras Resolve func to override references with
 // an alternative endpoint.
