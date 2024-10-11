@@ -1,12 +1,9 @@
-# git.act3-ace.com/ace/data/tool/pkg/cache
-## incompatible changes
-BottleCachePruner: removed
-NewBottleCachePruner: removed
+# git.act3-ace.com/ace/data/tool/pkg/conf
 ## compatible changes
-Prune: added
-Pruner: added
+(*Configuration).ParseEndpointReference: added
 
 # summary
-v1.13.1 is not a valid semantic version for this release.
-There are incompatible changes.
+v1.13.2 is not a valid semantic version for this release.
+There are compatible changes, but the minor version is not incremented
+over the base version (v1.13.1).
 
