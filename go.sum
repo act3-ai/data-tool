@@ -4,8 +4,8 @@ git.act3-ace.com/ace/data/schema v1.2.13 h1:F6u7KCF1WFrkO1zQuCA4PiYzIh6kamfX9XYn
 git.act3-ace.com/ace/data/schema v1.2.13/go.mod h1:6GJ5yd02my+Fx+TGfkgHDDKcC3ueMsSB0Et+FvKHbq4=
 git.act3-ace.com/ace/data/telemetry v1.0.1 h1:9MJ/bGC0bq8O/F1lv45mBf/ORBthaSB0+Tn1HAT0eIw=
 git.act3-ace.com/ace/data/telemetry v1.0.1/go.mod h1:Dd0SRCJK/HBo9Apz3loGt0I3bDpYSktNZYNaHOPOlJU=
-git.act3-ace.com/ace/go-common v0.0.0-20240319120227-e77a013aa92d h1:ou5/uM7NF6YEfArm3wnCMfZri6+lHYDjogKJNNTrfvs=
-git.act3-ace.com/ace/go-common v0.0.0-20240319120227-e77a013aa92d/go.mod h1:gVgXMJokXq/GAmW07OdzNDQvKHCiYnBvk0+seOBadHs=
+git.act3-ace.com/ace/go-common v0.0.0-20241029114748-ba3456041b7d h1:bKEBsDovxfmuFLSu0Gt1ewrzgY8eZaiCo7VF7DBftSA=
+git.act3-ace.com/ace/go-common v0.0.0-20241029114748-ba3456041b7d/go.mod h1:gVgXMJokXq/GAmW07OdzNDQvKHCiYnBvk0+seOBadHs=
 git.act3-ace.com/ace/hub/api/v6 v6.0.0-20240813105127-9a831192ed1f h1:wBrwWNI2Z/45zSSRTcX+rauycK3/Nb13h5qnY6pXKGA=
 git.act3-ace.com/ace/hub/api/v6 v6.0.0-20240813105127-9a831192ed1f/go.mod h1:opO8ojnMNH5N2e+JRb9OHFNbwoM5LtPG0n0YMHVMLfI=
 github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 h1:mFRzDkZVAjdal+s7s0MwaRv9igoPqLRdzOLzw/8Xvq8=
