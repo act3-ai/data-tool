@@ -70,8 +70,9 @@ func (action *Gather) Run(ctx context.Context, sourceFile string, dest string) e
 	if err != nil {
 		return fmt.Errorf("tagging gather index manifest: %w", err)
 	}
-
-	opts.RootUI.Infof("Gather index digest: %s", idxDesc.Digest)
+	referenceWithDigest := opts.DestReference
+	referenceWithDigest.Reference = idxDesc.Digest.String()
+	opts.RootUI.Infof("Gather index: %s", referenceWithDigest.String())
 	opts.RootUI.Infof("Pushed index to destination: %s", opts.Dest)
 
 	return nil

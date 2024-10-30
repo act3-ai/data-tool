@@ -221,7 +221,14 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) (oc
 	default:
 		// not deferring this log b/c it shouldn't display if gather fails
 		opts.RootUI.Infof("Gathered %s (representing %s)", print.Bytes(bt.Deduplicated), print.Bytes(bt.Total))
-		opts.RootUI.Infof("%s pushed for %d blobs", print.Bytes(wt.transferred.Load()), wt.blobs.Load())
+		// small helper function to print out the minimum number of bytes that were copied over
+		minBytesTransferred := func(a, b int64) int64 {
+			if a < b {
+				return a
+			}
+			return b
+		}
+		opts.RootUI.Infof("%s pushed for %d blobs", print.Bytes(minBytesTransferred(wt.transferred.Load(), bt.Deduplicated)), wt.blobs.Load())
 	}
 
 	return idxDesc, nil
