@@ -9,9 +9,6 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/opencontainers/go-digest"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-
 	latest "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
@@ -310,7 +307,7 @@ func FindBottleRootDir(inputPath string) (string, error) {
 var ErrDirNestedInBottle = errors.New("path is nested within bottle directory")
 
 // VerifyPullDir performs checks on the bottle destination path to ensure that it meets the expected criteria.
-func VerifyPullDir(destdir string, desc ocispec.Descriptor) error {
+func VerifyPullDir(destdir string) error {
 	// Before initiating pull options, we want to check if bottle output directory
 	// Expected behavior
 	//		if  root (parent) bottle is detected -> ErrDirNestedInBottle
@@ -325,24 +322,8 @@ func VerifyPullDir(destdir string, desc ocispec.Descriptor) error {
 		}
 	}
 
-	// test if the manifest digest of the bottle to be pulled matches what exists
-	// TODO: optionally test the bottle dir more rigirously, i.e.
-	// are we simply missing a few part?
 	if rootBtlDir != "" {
-		manBytes, err := os.ReadFile(manifestFile(rootBtlDir))
-		switch {
-		case errors.Is(err, os.ErrNotExist):
-			// unlikely case where the .dt dir exists, but not .manifest.json
-			return fmt.Errorf("bottle manifest file not found: %w", err)
-		case err != nil:
-			return fmt.Errorf("loading bottle manifest: %w", err)
-		default:
-			d := digest.FromBytes(manBytes)
-			if d != desc.Digest {
-				return fmt.Errorf("existing bottle does not match bottle to be pulled, have digest '%s', pulling digest '%s'", d, desc.Digest)
-			}
-			return nil // assume no changes to the bottle have been made since last pull
-		}
+		return fmt.Errorf("found root bottle directory %s: %w", rootBtlDir, ErrDirNestedInBottle)
 	}
 
 	empty, err := util.IsDirEmpty(destdir)

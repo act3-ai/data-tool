@@ -123,7 +123,7 @@ func Pull(ctx context.Context, src content.ReadOnlyStorage, desc ocispec.Descrip
 	log := logger.FromContext(ctx)
 
 	log.InfoContext(ctx, "verifying pull directory", "pullPath", pullPath)
-	if err := bottle.VerifyPullDir(pullPath, desc); err != nil {
+	if err := bottle.VerifyPullDir(pullPath); err != nil {
 		return fmt.Errorf("invalid pull directory: %w", err)
 	}
 
