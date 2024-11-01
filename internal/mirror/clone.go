@@ -35,7 +35,7 @@ type CloneOptions struct {
 func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 	mapper, err := newMapper(opts.MappingSpec)
 	if err != nil {
-		return fmt.Errorf("error creating the mapper: %w", err)
+		return fmt.Errorf("creating the mapper: %w", err)
 	}
 
 	filters, err := parseFilters(opts.Selectors)
@@ -51,7 +51,7 @@ func Clone(ctx context.Context, opts CloneOptions) error { //nolint:gocognit
 	if len(opts.Platforms) != 0 {
 		platforms, err = parsePlatforms(opts.Platforms)
 		if err != nil {
-			return fmt.Errorf("error parsing the platforms: %w", err)
+			return fmt.Errorf("parsing the platforms: %w", err)
 		}
 	}
 

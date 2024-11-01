@@ -31,6 +31,9 @@ var mappers = map[string]func(mapFile string) (mapperFunc, error){
 // newMapper returns a new mapping function for the given mapping directive.
 func newMapper(mappingSpec string) (mapperFunc, error) {
 	parts := strings.SplitN(mappingSpec, "=", 2)
+	if len(parts) != 2 || parts[1] == "" {
+		return nil, fmt.Errorf("invalid mapper, please use the format 'MAP-TYPE=MAP-ARG': got '%s'", mappingSpec)
+	}
 	mapType, mapArg := parts[0], parts[1]
 
 	if m, ok := mappers[mapType]; ok {
