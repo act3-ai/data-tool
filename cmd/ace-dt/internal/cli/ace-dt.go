@@ -29,6 +29,7 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/mirror"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/oci"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/pypi"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/sbom"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/security"
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
@@ -79,6 +80,7 @@ The first configuration file present is used.  Others are ignored.
 		oci.NewOciCmd(action),
 		git.NewGitCmd(action),
 		security.NewSecurityCmd(action),
+		sbom.NewSBOMCmd(action),
 		newRunRecipe(),
 	)
 

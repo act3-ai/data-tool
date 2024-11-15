@@ -7,20 +7,20 @@ import (
 	"io"
 	"os"
 	"os/exec"
-
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"regexp"
+	"strings"
 )
 
 func syftReference(ctx context.Context, reference string) ([]byte, error) {
-	log := logger.FromContext(ctx)
+	// log := logger.FromContext(ctx)
 	// exec out to syft to generate the SBOM
-	log.InfoContext(ctx, "creating sbom", "reference", reference)
+	// log.InfoContext(ctx, "creating sbom", "reference", reference)
 	cmd := exec.CommandContext(ctx, "syft", "scan", reference, "-o", "spdx-json")
 	res, err := cmd.CombinedOutput()
 	if err != nil {
 		return nil, fmt.Errorf("error executing command: %s\n %w\n output: %s", cmd, err, string(res))
 	}
-	log.InfoContext(ctx, "created SBOM", "reference", reference)
+	// log.InfoContext(ctx, "created SBOM", "reference", reference)
 	return res, nil
 }
 
@@ -32,7 +32,10 @@ func grypeReference(ctx context.Context, reference string) (*Results, error) {
 	)
 	res, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("error executing command: %s\n%w", cmd, err)
+		if strings.Contains(string(res), "oci-registry: unknown layer media type:") {
+			return &vulnerabilities, nil
+		}
+		return nil, fmt.Errorf("error executing command: %s\n%w\n%s", cmd, err, res)
 	}
 	if err := json.Unmarshal(res, &vulnerabilities); err != nil {
 		return nil, fmt.Errorf("parsing vulnerabilities: %w", err)
@@ -57,4 +60,16 @@ func grypeSBOM(ctx context.Context, sbom io.ReadCloser) (*Results, error) {
 	}
 
 	return &vulnerabilities, nil
+}
+
+func getGrypeDBChecksum(ctx context.Context) (string, error) {
+	cmd := exec.CommandContext(ctx, "grype", "db", "status")
+	res, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("getting the grype db checksum: %w", err)
+	}
+	pattern := `Checksum:\s*(sha256:[a-f0-9]+)`
+	re := regexp.MustCompile(pattern)
+	checksum := re.FindSubmatch(res)
+	return string(checksum[1]), nil
 }
