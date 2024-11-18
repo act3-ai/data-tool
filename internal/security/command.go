@@ -26,8 +26,26 @@ func syftReference(ctx context.Context, reference string) ([]byte, error) {
 	return res, nil
 }
 
-func grypeReference(ctx context.Context, reference string) (*Results, error) {
-	vulnerabilities := Results{}
+func clamavBytes(ctx context.Context, data io.ReadCloser) (*VirusScanResults, error) {
+	cmd := exec.CommandContext(ctx, "clamscan", "--no-summary", "--infected", "-")
+	cmd.Stdin = data
+	res, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("scanning data: %w", err)
+	}
+
+	if len(res) == 0 {
+		return nil, nil
+	} else {
+		lines := strings.Split(strings.TrimSpace(string(res)), ":")
+		return &VirusScanResults{
+			MalwareName: lines[1],
+		}, nil
+	}
+}
+
+func grypeReference(ctx context.Context, reference string) (*VulnerabilityScanResults, error) {
+	vulnerabilities := VulnerabilityScanResults{}
 	cmd := exec.CommandContext(ctx, "grype", reference, "-o", "json")
 	cmd.Env = append(os.Environ(),
 		"GRYPE_DB_AUTO_UPDATE=false",
@@ -56,8 +74,8 @@ func grypeReference(ctx context.Context, reference string) (*Results, error) {
 	return &vulnerabilities, nil
 }
 
-func grypeSBOM(ctx context.Context, sbom io.ReadCloser) (*Results, error) {
-	vulnerabilities := Results{}
+func grypeSBOM(ctx context.Context, sbom io.ReadCloser) (*VulnerabilityScanResults, error) {
+	vulnerabilities := VulnerabilityScanResults{}
 	cmd := exec.CommandContext(ctx, "grype", "-o", "json")
 	cmd.Env = append(os.Environ(),
 		"GRYPE_DB_AUTO_UPDATE=false",

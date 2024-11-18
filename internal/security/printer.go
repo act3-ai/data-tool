@@ -181,7 +181,7 @@ func PrintCSV(out io.Writer, results []*ArtifactDetails, vulnerabilityLevel stri
 }
 
 // PrintTable prints out the ArtifactDetails in a printed table format to the io.Writer defined.
-func PrintTable(out io.Writer, results []*ArtifactDetails, vulnerabilityLevel string, displayCVEs, displayPlatforms bool) error {
+func PrintTable(out io.Writer, results []*ArtifactDetails, vulnerabilityLevel string, displayCVEs, displayPlatforms, displayMalware bool) error {
 	table := [][]string{}
 	orderedSeverities := []string{"critical", "high", "medium", "low", "negligible", "unknown"}
 	minLevel := SeverityLevels[strings.ToLower(vulnerabilityLevel)]
@@ -208,6 +208,12 @@ func PrintTable(out io.Writer, results []*ArtifactDetails, vulnerabilityLevel st
 	if err := PrintCustomTable(out, table); err != nil {
 		return err
 	}
+	// use switch/fallthrough instead?
+	if displayMalware {
+		if err := printMalwareTable(out, results); err != nil {
+			return err
+		}
+	}
 	if displayCVEs {
 		if err := printCVETable(out, results, vulnerabilityLevel); err != nil {
 			return err
@@ -219,6 +225,28 @@ func PrintTable(out io.Writer, results []*ArtifactDetails, vulnerabilityLevel st
 		}
 	}
 	return nil
+}
+
+// printMalwareTable
+func printMalwareTable(out io.Writer, results []*ArtifactDetails) error {
+	table := [][]string{{}}
+	table[0] = []string{"reference", "layer", "malware ID"}
+	for _, res := range results {
+		if res.MalwareResults == nil {
+			table = append(table, []string{res.originatingReference, "", "No Malware Found"})
+		}
+		for _, malwareResult := range res.MalwareResults {
+			table = append(table, []string{res.originatingReference, malwareResult.File, malwareResult.MalwareName})
+		}
+	}
+	if len(table) == 1 {
+		_, err := out.Write([]byte("no malware vulnerabilities found\n\n"))
+		if err != nil {
+			return fmt.Errorf("writing to out: %w", err)
+		}
+		return nil
+	}
+	return PrintCustomTable(out, table)
 }
 
 // PrintTable prints out the ArtifactDetails in a printed table format to the io.Writer defined.

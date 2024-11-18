@@ -26,6 +26,8 @@ type ScanOptions struct {
 	VulnerabilityLevel      string
 	DryRun                  bool
 	PushReport              bool
+	ScanVirus               bool
+	OnlyScanVirus           bool
 }
 
 // ScanArtifacts will fetch the artifact details for each image in a source file or a mirror (gather) artifact.
@@ -76,7 +78,7 @@ func scan(ctx context.Context, //nolint:gocognit
 	for i, source := range m {
 		g.Go(func() error {
 
-			res := Results{
+			res := VulnerabilityScanResults{
 				Matches: []Matches{},
 			}
 
@@ -95,6 +97,19 @@ func scan(ctx context.Context, //nolint:gocognit
 				return fmt.Errorf("getting artifact details for %s: %w", source[0], err)
 			}
 
+			if opts.ScanVirus {
+				virusResults, err := scanManifestForViruses(ctx, artifactDetails.desc, repository)
+				if err != nil {
+					return fmt.Errorf("virus scanning for reference %s: %w", artifactDetails.originatingReference, err)
+				}
+				if virusResults != nil {
+					artifactDetails.MalwareResults = virusResults
+				}
+
+				if opts.OnlyScanVirus {
+					return nil
+				}
+			}
 			// skip helm charts and git artifacts
 			if artifactDetails.isNotScanSupported {
 				return nil

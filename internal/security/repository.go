@@ -36,9 +36,10 @@ type ArtifactDetails struct {
 	manifestDigestSBOM   string
 	SBOMs                map[string][]*ocispec.Descriptor
 	resultsReport        *ocispec.Descriptor
-	originatingReference string             // only needed for gather artifacts
-	shortenedName        string             // needed for graphing in mermaid
-	CalculatedResults    ArtifactScanReport `json:"results"`
+	originatingReference string              // only needed for gather artifacts
+	shortenedName        string              // needed for graphing in mermaid
+	CalculatedResults    ArtifactScanReport  `json:"results"`
+	MalwareResults       []*VirusScanResults `json:"malware-results"`
 }
 
 // GetArtifactDetails fetches the ArtifactDetails for a given reference.
@@ -128,7 +129,7 @@ func GetArtifactDetails( //nolint:gocognit
 			if err != nil {
 				return nil, fmt.Errorf("getting the config descriptor for %s: %w", reference, err)
 			}
-			// Is this an unsupported manifest for scan?
+			// Is this an unsupported manifest for vulnerability scanning?
 			if img.Config.MediaType == MediaTypeHelmChartConfig || img.Config.MediaType == gitoci.MediaTypeSyncConfig {
 				maniDetails.isNotScanSupported = true
 			}
@@ -250,4 +251,53 @@ func generateEmptyBlobDescriptor(mediatype string, algo digest.Algorithm) (ocisp
 		Size:      int64(len(emptyData)), // should be 2
 	}
 	return emptyBlobDescriptor, nil
+}
+
+func scanManifestForViruses(ctx context.Context, desc ocispec.Descriptor, repository oras.GraphTarget) ([]*VirusScanResults, error) {
+	var clamavResults []*VirusScanResults
+	if encoding.IsIndex(desc.MediaType) {
+		var idx ocispec.Index
+		rc, err := repository.Fetch(ctx, desc)
+		if err != nil {
+			return nil, fmt.Errorf("fetching index manifest: %w", err)
+		}
+		decoder := json.NewDecoder(rc)
+		if err := decoder.Decode(&idx); err != nil {
+			return nil, fmt.Errorf("parsing the image manifest: %w", err)
+		}
+		for _, man := range idx.Manifests {
+			r, err := scanManifestForViruses(ctx, man, repository)
+			if err != nil {
+				return nil, err
+			}
+			clamavResults = append(clamavResults, r...)
+		}
+	} else {
+		// pull the image manifest
+		rc, err := repository.Fetch(ctx, desc)
+		if err != nil {
+			return nil, fmt.Errorf("fetching manifest: %w", err)
+		}
+		var manifest ocispec.Manifest
+		decoder := json.NewDecoder(rc)
+		if err := decoder.Decode(&manifest); err != nil {
+			return nil, fmt.Errorf("parsing the image manifest: %w", err)
+		}
+		// pull each layer and pass through the virus scanner
+		for _, layer := range manifest.Layers {
+			lrc, err := repository.Fetch(ctx, layer)
+			if err != nil {
+				return nil, fmt.Errorf("fetching the image layer: %w", err)
+			}
+			r, err := clamavBytes(ctx, lrc)
+			if err != nil {
+				return nil, err
+			}
+			if r != nil {
+				r.File = layer.Digest.String()
+				clamavResults = append(clamavResults, r)
+			}
+		}
+	}
+	return clamavResults, nil
 }

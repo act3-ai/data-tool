@@ -22,6 +22,8 @@ type Scan struct {
 	DisplayCVE              bool
 	DisplayPlatforms        bool
 	PushReport              bool
+	ScanVirus               bool
+	OnlyScanVirus           bool
 }
 
 // Run executes the security scan Run() action.
@@ -37,6 +39,7 @@ func (action *Scan) Run(ctx context.Context) error {
 		VulnerabilityLevel:      action.VulnerabilityLevel,
 		DryRun:                  action.DryRun,
 		PushReport:              action.PushReport,
+		ScanVirus:               action.ScanVirus,
 	}
 
 	log.InfoContext(ctx, "Scanning Artifacts...")
@@ -88,7 +91,7 @@ func (action *Scan) Run(ctx context.Context) error {
 					return err
 				}
 			case "table":
-				if err := security.PrintTable(writer, results, action.VulnerabilityLevel, action.DisplayCVE, action.DisplayPlatforms); err != nil {
+				if err := security.PrintTable(writer, results, action.VulnerabilityLevel, action.DisplayCVE, action.DisplayPlatforms, action.ScanVirus); err != nil {
 					return err
 				}
 			default:

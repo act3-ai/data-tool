@@ -19,9 +19,9 @@ import (
 	"github.com/act3-ai/data-tool/internal/mirror/encoding"
 )
 
-func extractAndGrypeSBOMs(ctx context.Context, subjectDescriptor ocispec.Descriptor, target oras.GraphTarget, digestSBOM, grypeDBChecksum string, pushReport bool) ([]Results, error) {
+func extractAndGrypeSBOMs(ctx context.Context, subjectDescriptor ocispec.Descriptor, target oras.GraphTarget, digestSBOM, grypeDBChecksum string, pushReport bool) ([]VulnerabilityScanResults, error) {
 	log := logger.FromContext(ctx)
-	results := []Results{}
+	results := []VulnerabilityScanResults{}
 	// try and extract sbom
 	_, manifestBytesSBOM, err := oras.FetchBytes(ctx, target, digestSBOM, oras.DefaultFetchBytesOptions)
 	if err != nil {
@@ -72,8 +72,8 @@ func GenerateSBOM( //nolint:gocognit
 	reference,
 	grypeDBChecksum string,
 	repository oras.GraphTarget,
-	pushReport bool) (map[*ocispec.Descriptor]*Results, error) {
-	results := map[*ocispec.Descriptor]*Results{}
+	pushReport bool) (map[*ocispec.Descriptor]*VulnerabilityScanResults, error) {
+	results := map[*ocispec.Descriptor]*VulnerabilityScanResults{}
 	log := logger.FromContext(ctx)
 	// fetch the main descriptor
 	desc, err := repository.Resolve(ctx, reference)

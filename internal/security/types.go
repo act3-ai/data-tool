@@ -13,8 +13,8 @@ const (
 	MediaTypeHelmChartConfig = "application/vnd.cncf.helm.config.v1+json"
 )
 
-// Results holds the vulnerability data for all given artifacts.
-type Results struct {
+// VulnerabilityScanResults holds the vulnerability data for all given artifacts.
+type VulnerabilityScanResults struct {
 	Matches []Matches `json:"matches"`
 }
 
@@ -58,4 +58,11 @@ var SeverityLevels = map[string]int{
 	"low":        2,
 	"negligible": 1,
 	"unknown":    0,
+}
+
+// Virus scanning
+
+type VirusScanResults struct {
+	File        string `json:"File"`
+	MalwareName string `json:"MalwareName"`
 }

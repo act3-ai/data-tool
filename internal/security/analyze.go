@@ -5,7 +5,7 @@ import (
 	"strings"
 )
 
-func calculateResults(results *Results) (*ArtifactScanReport, error) {
+func calculateResults(results *VulnerabilityScanResults) (*ArtifactScanReport, error) {
 	var securityResults ArtifactScanReport
 	for _, res := range results.Matches {
 		// maybe move the filter logic in here?
@@ -86,7 +86,7 @@ func (cr *ArtifactScanReport) GetVulnerabilityCVEs(severity string) []string {
 }
 
 // filterResults returns a map of the CVE matches for a given minimum vulnerabilityLevel and higher.
-func filterResults(grypeResults *Results, vulnerabilityLevel string) (map[string]Matches, error) {
+func filterResults(grypeResults *VulnerabilityScanResults, vulnerabilityLevel string) (map[string]Matches, error) {
 	matches := map[string]Matches{}
 	minLevel, exists := SeverityLevels[strings.ToLower(vulnerabilityLevel)]
 	if !exists {
