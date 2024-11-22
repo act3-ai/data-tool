@@ -26,10 +26,10 @@ require (
 	github.com/spf13/pflag v1.0.5
 	go.etcd.io/bbolt v1.3.11
 	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
-	golang.org/x/net v0.28.0
+	golang.org/x/net v0.31.0
 	golang.org/x/sync v0.9.0
-	golang.org/x/term v0.23.0
-	golang.org/x/text v0.17.0
+	golang.org/x/term v0.26.0
+	golang.org/x/text v0.20.0
 	k8s.io/apimachinery v0.31.2
 	k8s.io/utils v0.0.0-20241104163129-6fe5fd82f078
 	oras.land/oras-go/v2 v2.5.0
@@ -62,7 +62,7 @@ require (
 	github.com/veraison/go-cose v1.1.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.26.0 // indirect
+	golang.org/x/crypto v0.29.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	k8s.io/api v0.31.0 // indirect
 	sigs.k8s.io/controller-runtime v0.18.4 // indirect
@@ -114,7 +114,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
-	golang.org/x/sys v0.26.0 // indirect
+	golang.org/x/sys v0.27.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
