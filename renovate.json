@@ -2,5 +2,6 @@
   "assignees": [
     "njoslin"
   ],
-  "ignorePaths": ["**/testdata/**"]
+  "ignorePaths": ["**/testdata/**"],
+  "postUpdateOptions":["gomodTidy"]
 }
