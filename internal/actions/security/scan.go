@@ -28,9 +28,7 @@ type Scan struct {
 func (action *Scan) Run(ctx context.Context) error {
 	cfg := action.Config.Get(ctx)
 	log := logger.FromContext(ctx)
-	if action.SourceFile == "" && action.GatherArtifactReference == "" {
-		return fmt.Errorf("either sourcefile or gather artifact must be chosen but not both")
-	}
+
 	// Build the scan options
 	opts := security.ScanOptions{
 		SourceFile:              action.SourceFile,

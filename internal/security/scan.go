@@ -37,6 +37,9 @@ func ScanArtifacts(ctx context.Context,
 	repoFunction func(context.Context, string) (*remote.Repository, error),
 	concurrency int) ([]*ArtifactDetails, error) {
 
+	if opts.SourceFile == "" && opts.GatherArtifactReference == "" {
+		return nil, fmt.Errorf("either sourcefile or gather artifact must be chosen but not both")
+	}
 	return scan(ctx, opts, repoFunction, concurrency)
 }
 
@@ -77,7 +80,7 @@ func scan(ctx context.Context, //nolint:gocognit
 				Matches: []Matches{},
 			}
 
-			if repository == nil {
+			if repository == nil || opts.SourceFile != "" {
 				repo, err := repoFunction(ctx, source[1])
 				if err != nil {
 					return err
