@@ -30,7 +30,7 @@ require (
 	golang.org/x/sync v0.9.0
 	golang.org/x/term v0.26.0
 	golang.org/x/text v0.20.0
-	k8s.io/apimachinery v0.31.2
+	k8s.io/apimachinery v0.31.3
 	k8s.io/utils v0.0.0-20241104163129-6fe5fd82f078
 	oras.land/oras-go/v2 v2.5.0
 	sigs.k8s.io/yaml v1.4.0
