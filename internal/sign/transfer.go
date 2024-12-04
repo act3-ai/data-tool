@@ -142,7 +142,7 @@ func PrepareSigsGraph(ctx context.Context, btlPath string, storage content.Graph
 		case notationreg.ArtifactTypeNotation: // notation sig manifest
 			if !addedNotationCfg {
 				err := storage.Push(ctx, ocispec.DescriptorEmptyJSON, bytes.NewReader([]byte("{}")))
-				if err != nil {
+				if err != nil && !errors.Is(err, errdef.ErrAlreadyExists) {
 					return fmt.Errorf("adding notation config to file store: %w", err)
 				}
 				addedNotationCfg = true
