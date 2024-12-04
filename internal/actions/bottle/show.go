@@ -38,7 +38,7 @@ func (action *Show) Run(ctx context.Context, out io.Writer) error {
 	var btl *bottle.Bottle
 	if action.Ref != "" {
 
-		telemAdapt := telem.NewAdapter(cfg.Telemetry, cfg.TelemetryUserName)
+		telemAdapt := telem.NewAdapter(ctx, cfg.Telemetry, cfg.TelemetryUserName, telem.WithCredStore(action.Config.CredStore()))
 
 		log.InfoContext(ctx, "resolving reference with telemetry", "ref", action.Ref)
 		transferOpts := tbottle.TransferOptions{

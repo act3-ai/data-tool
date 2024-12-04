@@ -7,7 +7,7 @@ import (
 
 	"oras.land/oras-go/v2/errdef"
 
-	"git.act3-ace.com/ace/data/telemetry/pkg/types"
+	"git.act3-ace.com/ace/data/telemetry/v2/pkg/types"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
@@ -93,7 +93,7 @@ func (action *Push) Run(ctx context.Context) error {
 		return fmt.Errorf("getting bottle manifest: %w", err)
 	}
 
-	telemAdapt := telem.NewAdapter(cfg.Telemetry, cfg.TelemetryUserName)
+	telemAdapt := telem.NewAdapter(ctx, cfg.Telemetry, cfg.TelemetryUserName, telem.WithCredStore(action.Config.CredStore()))
 	event := telemAdapt.NewEvent(r.String(), rawManifest, types.EventPush)
 
 	telemUrls, err := telemAdapt.NotifyTelemetry(ctx, btl.GetCache(), btl.Manifest.GetManifestDescriptor(), action.Dir, event)

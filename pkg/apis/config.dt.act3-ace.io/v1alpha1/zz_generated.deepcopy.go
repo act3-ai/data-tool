@@ -5,7 +5,7 @@
 package v1alpha1
 
 import (
-	config_telemetry_act3_ace_iov1alpha1 "git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	"git.act3-ace.com/ace/data/telemetry/v2/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -50,7 +50,7 @@ func (in *ConfigurationSpec) DeepCopyInto(out *ConfigurationSpec) {
 	in.RegistryConfig.DeepCopyInto(&out.RegistryConfig)
 	if in.Telemetry != nil {
 		in, out := &in.Telemetry, &out.Telemetry
-		*out = make([]config_telemetry_act3_ace_iov1alpha1.Location, len(*in))
+		*out = make([]v1alpha2.Location, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}

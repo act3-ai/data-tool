@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -18,15 +19,18 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/errdef"
+	"oras.land/oras-go/v2/registry/remote/credentials"
 
 	latest "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
 	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
-	telemv1alpha1 "git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
-	"git.act3-ace.com/ace/data/telemetry/pkg/client"
-	"git.act3-ace.com/ace/data/telemetry/pkg/types"
+	telemv1alpha2 "git.act3-ace.com/ace/data/telemetry/v2/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
+	"git.act3-ace.com/ace/data/telemetry/v2/pkg/client"
+	"git.act3-ace.com/ace/data/telemetry/v2/pkg/types"
+	"git.act3-ace.com/ace/go-auth/pkg/oauth2/device"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
 	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
 )
@@ -46,22 +50,105 @@ type Adapter struct {
 	userName string
 
 	// cache holds bottle manifests and configs
-	cache *memory.Store
+	cache content.Storage
+
+	// credStore holds credentials used for oauth refresh tokens
+	credStore credentials.Store
+}
+
+// AdapterOption defines a functional option when initializing a telemetry adapter
+// for one or more telemetry clients.
+type AdapterOption func(adapter *Adapter)
+
+// WithCache overrides the default memory-based storage used for caching OCI manifests
+// and configs.
+func WithCache(storage content.Storage) AdapterOption {
+	return func(adapter *Adapter) {
+		adapter.cache = storage
+	}
+}
+
+// WithCredStore overrides the default memory-based credentials store for
+// discovering authorization refresh tokens.
+func WithCredStore(credStore credentials.Store) AdapterOption {
+	return func(adapter *Adapter) {
+		adapter.credStore = credStore
+	}
+}
+
+// promptFn implements device.AuthPromtFn.
+func promptFn(ctx context.Context, uri, userCode string) error {
+	rootUI := ui.FromContextOrNoop(ctx) // TODO: Noop is a bit fatal here...
+	rootUI.Info(fmt.Sprintf("On the device you would like to authenticate, please visit %s?user_code=%s", uri, userCode))
+	return nil
 }
 
 // NewAdapter creates the MultiClient for telemetry from the global configuration.
-func NewAdapter(hosts []telemv1alpha1.Location, userName string) *Adapter {
-	mc := client.NewMultiClientConfig(hosts)
-	urls := make([]string, len(hosts))
-	for i, loc := range hosts {
-		urls[i] = string(loc.URL)
-	}
-	return &Adapter{
-		client:   mc,
-		urls:     urls,
+func NewAdapter(ctx context.Context, hosts []telemv1alpha2.Location, userName string, opts ...AdapterOption) *Adapter {
+	log := logger.FromContext(ctx)
+
+	adapt := &Adapter{
+		urls:     make([]string, 0, len(hosts)),
 		userName: userName,
-		cache:    memory.New(),
 	}
+	for _, option := range opts {
+		option(adapt)
+	}
+
+	if adapt.cache == nil {
+		adapt.cache = memory.New()
+	}
+	if adapt.credStore == nil {
+		adapt.credStore = credentials.NewMemoryStore()
+	}
+
+	// deduplicate clients, slices are used since we don't expect many telemetry hosts
+	clients := make([]*http.Client, len(hosts))
+	telemClients := make([]client.Client, 0, len(hosts))
+	for i, host := range hosts {
+		hostURLStr := string(host.URL)
+		clients[i] = http.DefaultClient
+
+		if host.OAuth.Issuer != "" && host.OAuth.ClientID != "" {
+			// try to use an existing oauth client
+			var exists bool
+			for j := 0; j < i; j++ {
+				if hosts[j].OAuth.Issuer == host.OAuth.Issuer &&
+					hosts[j].OAuth.ClientID == host.OAuth.ClientID {
+					clients[i] = clients[j]
+					exists = true
+					break
+				}
+			}
+
+			if !exists {
+				issuerURL, err := url.Parse(host.OAuth.Issuer)
+				if err != nil {
+					log.ErrorContext(ctx, "parsing host oauth issuer", "host", hostURLStr, "issuer", host.OAuth.Issuer, "clientID", host.OAuth.ClientID, "error", err) //nolint:sloglint
+					goto CreateClient
+				}
+
+				authClient, err := device.NewOAuthClient(ctx, issuerURL, string(host.OAuth.ClientID), adapt.credStore, promptFn)
+				if err != nil {
+					log.ErrorContext(ctx, "initializing oauth client", "host", hostURLStr, "issuer", host.OAuth.Issuer, "clientID", host.OAuth.ClientID, "error", err) //nolint:sloglint
+					goto CreateClient
+				}
+				clients[i] = authClient
+			}
+		}
+
+	CreateClient:
+		sc, err := client.NewSingleClient(clients[i], hostURLStr, "")
+		if err != nil {
+			log.ErrorContext(ctx, "creating telemetry client", "server", hostURLStr)
+			continue
+		}
+		telemClients = append(telemClients, sc)
+		adapt.urls = append(adapt.urls, string(host.URL))
+	}
+
+	adapt.client = client.NewMultiClient(telemClients)
+	return adapt
 }
 
 // ResolveWithTelemetry resolves a bottle reference to an oras.GraphTarget and an OCI descriptor.

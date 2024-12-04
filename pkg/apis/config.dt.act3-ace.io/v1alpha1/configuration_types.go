@@ -6,7 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	telemv1alpha1 "git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	telemv1alpha2 "git.act3-ace.com/ace/data/telemetry/v2/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
 )
 
 // +kubebuilder:object:root=true
@@ -48,7 +48,7 @@ type ConfigurationSpec struct {
 	HideProgress bool `json:"hideProgress"` // TODO this should be a flag
 
 	// Telemetry is a list of telemetry server locations
-	Telemetry []telemv1alpha1.Location `json:"telemetry,omitempty"`
+	Telemetry []telemv1alpha2.Location `json:"telemetry,omitempty"`
 
 	// TelemetryUserName is the name of this user for reporting to telemetry
 	TelemetryUserName string `json:"telemetryUserName,omitempty"`

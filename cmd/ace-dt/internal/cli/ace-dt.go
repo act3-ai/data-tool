@@ -20,7 +20,7 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	telemv1alpha1 "git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	telemv1alpha2 "git.act3-ace.com/ace/data/telemetry/v2/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
 	"git.act3-ace.com/ace/go-common/pkg/config"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"git.act3-ace.com/ace/go-common/pkg/redact"
@@ -157,7 +157,7 @@ func envOverrides(ctx context.Context, c *v1alpha1.Configuration) error {
 	name = "ACE_DT_TELEMETRY_URL"
 	if value, exists := os.LookupEnv(name); exists {
 		log.InfoContext(ctx, "Using environment variable", "name", name)
-		c.Telemetry = []telemv1alpha1.Location{
+		c.Telemetry = []telemv1alpha2.Location{
 			{URL: redact.SecretURL(value)},
 		}
 	}

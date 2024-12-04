@@ -14,7 +14,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/credentials"
 
-	telemv1alpha1 "git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	telemv1alpha2 "git.act3-ace.com/ace/data/telemetry/v2/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
 	"git.act3-ace.com/ace/go-common/pkg/config"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
@@ -58,12 +58,17 @@ func New(credOpts ...Option) *Configuration {
 	cfg := &Configuration{
 		scheme:    scheme,
 		userAgent: "ace-dt", // default
-		credStore: credentials.NewMemoryStore(),
 	}
 
 	for _, o := range credOpts {
 		o(cfg)
 	}
+
+	// avoid unnecessary sync.Map alloc
+	if cfg.credStore == nil {
+		cfg.credStore = credentials.NewMemoryStore()
+	}
+
 	return cfg
 }
 
@@ -237,6 +242,11 @@ func (cfg *Configuration) UserAgent() string {
 	return cfg.userAgent
 }
 
+// CredStore returns a docker credentials store.
+func (cfg *Configuration) CredStore() credentials.Store {
+	return cfg.credStore
+}
+
 // WithRegistryConfig overwrites the loaded registry configuration, appending new
 // registry configurations if they do not already exist.
 func WithRegistryConfig(regCfg v1alpha1.RegistryConfig) ConfigOverrideFunction {
@@ -281,11 +291,11 @@ func WithCachePath(path string) ConfigOverrideFunction {
 
 // WithTelemetry overwrites the telemetry username while appending telemetry hosts to the
 // loaded telemetry configuration.
-func WithTelemetry(hosts []telemv1alpha1.Location, userName string) ConfigOverrideFunction {
+func WithTelemetry(hosts []telemv1alpha2.Location, userName string) ConfigOverrideFunction {
 	return func(ctx context.Context, c *v1alpha1.Configuration) error {
 		// sanity check
 		if c.Telemetry == nil {
-			c.Telemetry = make([]telemv1alpha1.Location, 1)
+			c.Telemetry = make([]telemv1alpha2.Location, 1)
 		}
 		c.Telemetry = append(c.Telemetry, hosts...)
 
