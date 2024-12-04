@@ -1,9 +1,26 @@
+# git.act3-ace.com/ace/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1
+## incompatible changes
+Configuration.Telemetry: changed from []git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1.Location to []git.act3-ace.com/ace/data/telemetry/v2/pkg/apis/config.telemetry.act3-ace.io/v1alpha2.Location
+ConfigurationSpec.Telemetry: changed from []git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1.Location to []git.act3-ace.com/ace/data/telemetry/v2/pkg/apis/config.telemetry.act3-ace.io/v1alpha2.Location
+
 # git.act3-ace.com/ace/data/tool/pkg/conf
+## incompatible changes
+WithTelemetry: changed from func([]git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1.Location, string) ConfigOverrideFunction to func([]git.act3-ace.com/ace/data/telemetry/v2/pkg/apis/config.telemetry.act3-ace.io/v1alpha2.Location, string) ConfigOverrideFunction
 ## compatible changes
-(*Configuration).ParseEndpointReference: added
+(*Configuration).CredStore: added
+
+# git.act3-ace.com/ace/data/tool/pkg/telemetry
+## incompatible changes
+(*Adapter).NewEvent: changed from func(string, []byte, git.act3-ace.com/ace/data/telemetry/pkg/types.EventAction) git.act3-ace.com/ace/data/telemetry/pkg/types.Event to func(string, []byte, git.act3-ace.com/ace/data/telemetry/v2/pkg/types.EventAction) git.act3-ace.com/ace/data/telemetry/v2/pkg/types.Event
+(*Adapter).NotifyTelemetry: changed from func(context.Context, oras.land/oras-go/v2/content.ReadOnlyGraphStorage, github.com/opencontainers/image-spec/specs-go/v1.Descriptor, string, git.act3-ace.com/ace/data/telemetry/pkg/types.Event) ([]string, error) to func(context.Context, oras.land/oras-go/v2/content.ReadOnlyGraphStorage, github.com/opencontainers/image-spec/specs-go/v1.Descriptor, string, git.act3-ace.com/ace/data/telemetry/v2/pkg/types.Event) ([]string, error)
+(*Adapter).ResolveWithTelemetry: changed from func(context.Context, string, git.act3-ace.com/ace/data/tool/pkg/registry.ReadOnlyGraphTargeter, git.act3-ace.com/ace/data/tool/pkg/transfer/bottle.TransferOptions) (oras.land/oras-go/v2.ReadOnlyGraphTarget, github.com/opencontainers/image-spec/specs-go/v1.Descriptor, git.act3-ace.com/ace/data/telemetry/pkg/types.Event, error) to func(context.Context, string, git.act3-ace.com/ace/data/tool/pkg/registry.ReadOnlyGraphTargeter, git.act3-ace.com/ace/data/tool/pkg/transfer/bottle.TransferOptions) (oras.land/oras-go/v2.ReadOnlyGraphTarget, github.com/opencontainers/image-spec/specs-go/v1.Descriptor, git.act3-ace.com/ace/data/telemetry/v2/pkg/types.Event, error)
+NewAdapter: changed from func([]git.act3-ace.com/ace/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1.Location, string) *Adapter to func(context.Context, []git.act3-ace.com/ace/data/telemetry/v2/pkg/apis/config.telemetry.act3-ace.io/v1alpha2.Location, string, ...AdapterOption) *Adapter
+## compatible changes
+AdapterOption: added
+WithCache: added
+WithCredStore: added
 
 # summary
-v1.13.2 is not a valid semantic version for this release.
-There are compatible changes, but the minor version is not incremented
-over the base version (v1.13.1).
+v1.14.0 is not a valid semantic version for this release.
+There are incompatible changes.
 
