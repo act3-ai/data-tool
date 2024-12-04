@@ -29,7 +29,7 @@ To initialize the current working directory:
 	ace-dt bottle init
 
 Given a directory TESTSET:
-	ace-dt bottle init TESTSET
+	ace-dt bottle init --bottle-dir TESTSET
 
 Next steps:
   - add metadata, ace-dt bottle [annotate, artifact, author, label, metric, part, source]
