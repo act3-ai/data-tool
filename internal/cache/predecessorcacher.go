@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -10,6 +11,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	orascontent "oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/errdef"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
@@ -84,7 +86,8 @@ func (pc *PredecessorCacher) Fetch(ctx context.Context, desc ocispec.Descriptor)
 func (pc *PredecessorCacher) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
 	// push to the cache first, to avoid data race if pc.Predecessors() is called and we haven't completed
 	// the push to the underlying storage yet.
-	if err := pc.Storage.Push(ctx, expected, content); err != nil {
+	err := pc.Storage.Push(ctx, expected, content)
+	if err != nil && !errors.Is(err, errdef.ErrAlreadyExists) {
 		return fmt.Errorf("pushing to storage: %w", err)
 	}
 
@@ -94,7 +97,7 @@ func (pc *PredecessorCacher) Push(ctx context.Context, expected ocispec.Descript
 			return fmt.Errorf("adding potential predecessors: %w", err)
 		}
 	}
-	return nil
+	return err // propagate potential ErrAlreadyExists
 }
 
 // Predecessors finds the nodes directly pointing to a given node of a directed acyclic graph. In other
