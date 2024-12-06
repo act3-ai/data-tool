@@ -97,7 +97,8 @@ func (pc *PredecessorCacher) Push(ctx context.Context, expected ocispec.Descript
 			return fmt.Errorf("adding potential predecessors: %w", err)
 		}
 	}
-	return err // propagate potential ErrAlreadyExists
+	// propagate potential ErrAlreadyExists
+	return err //nolint
 }
 
 // Predecessors finds the nodes directly pointing to a given node of a directed acyclic graph. In other

@@ -217,8 +217,6 @@ func (pp prettyPrinter) printPredecessors(ctx context.Context, storage content.R
 }
 
 // entry returns a new printer that prints primary items.  Last must be true for the last item in the list.
-//
-//nolint:revive
 func (pp prettyPrinter) entry(last bool) prettyPrinter {
 	prefix := pp.prefix
 	if last {
@@ -233,7 +231,7 @@ func (pp prettyPrinter) entry(last bool) prettyPrinter {
 
 // info returns a new printer that prints info items.  Last must be true for the last item in the list.
 //
-//nolint:unused,revive
+//nolint:unused
 func (pp prettyPrinter) info(last bool) prettyPrinter {
 	prefix := pp.prefix
 	if last {
@@ -247,8 +245,6 @@ func (pp prettyPrinter) info(last bool) prettyPrinter {
 }
 
 // nest returns a new printer that prints nested one level deeper with the addition prefix appended.
-//
-//nolint:revive
 func (pp prettyPrinter) nest(prefix string) prettyPrinter {
 	pp.prefix = pp.prefixRest + prefix
 	pp.prefixRest += prefix

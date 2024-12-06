@@ -18,7 +18,8 @@ import (
 )
 
 const (
-	SignatureFileExt string = ".sig" // SignatureFileExt is the file extension for a signature manifest.
+	// SignatureFileExt is the file extension for a signature manifest.
+	SignatureFileExt string = ".sig"
 )
 
 // LoadLocalSignatures loads a signature image manifest at a local path, returning a handler for the signature collection.
