@@ -28,10 +28,10 @@ require (
 	github.com/spf13/pflag v1.0.5
 	go.etcd.io/bbolt v1.3.11
 	golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
-	golang.org/x/net v0.31.0
+	golang.org/x/net v0.32.0
 	golang.org/x/sync v0.10.0
 	golang.org/x/term v0.27.0
-	golang.org/x/text v0.20.0
+	golang.org/x/text v0.21.0
 	k8s.io/apimachinery v0.31.3
 	k8s.io/utils v0.0.0-20241104163129-6fe5fd82f078
 	oras.land/oras-go/v2 v2.5.0
@@ -74,7 +74,7 @@ require (
 	go.opentelemetry.io/otel/metric v1.29.0 // indirect
 	go.opentelemetry.io/otel/trace v1.29.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.29.0 // indirect
+	golang.org/x/crypto v0.30.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/oauth2 v0.23.0 // indirect
 	k8s.io/api v0.31.2 // indirect
