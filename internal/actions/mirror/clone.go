@@ -20,6 +20,9 @@ type Clone struct {
 
 	// Platforms defines the platform(s) for the images to be gathered. (Default behavior is to gather all available platforms.)
 	Platforms []string
+
+	// ContinueOnError will cause Clone to push through Copy errors and report any errors at the end.
+	ContinueOnError bool
 }
 
 // Run runs the mirror clone action.
@@ -31,16 +34,17 @@ func (action *Clone) Run(ctx context.Context, sourceFile, mappingSpec string) er
 
 	// create clone opts
 	opts := mirror.CloneOptions{
-		MappingSpec:    mappingSpec,
-		Selectors:      action.Selectors,
-		ConcurrentHTTP: cfg.ConcurrentHTTP,
-		Platforms:      action.Platforms,
-		Log:            log,
-		SourceFile:     sourceFile,
-		RootUI:         rootUI,
-		Targeter:       action.Config,
-		Recursive:      action.Recursive,
-		DryRun:         action.Check,
+		MappingSpec:     mappingSpec,
+		Selectors:       action.Selectors,
+		ConcurrentHTTP:  cfg.ConcurrentHTTP,
+		Platforms:       action.Platforms,
+		Log:             log,
+		SourceFile:      sourceFile,
+		RootUI:          rootUI,
+		Targeter:        action.Config,
+		Recursive:       action.Recursive,
+		DryRun:          action.Check,
+		ContinueOnError: action.ContinueOnError,
 	}
 
 	// run mirror clone
