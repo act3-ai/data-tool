@@ -1,4 +1,4 @@
-package actions
+package secret
 
 import (
 	"context"
@@ -19,13 +19,15 @@ func Test_resolveSecret(t *testing.T) {
 	var pass = "MyC001P4SSW0RD"
 
 	t.Run("Plaintext", func(t *testing.T) {
-		got, err := resolveSecret(ctx, pass)
-		if err != nil {
-			t.Errorf("resolveSecret() error = %v", err)
+		v := &Value{}
+		if err := v.Set(pass); err != nil {
+			t.Errorf("setting secret, error = %v", err)
 			return
 		}
-		if got != pass {
-			t.Errorf("resolveSecret() got = %s, want = %s", got, pass)
+
+		_, err := v.resolveSecret(ctx)
+		if err == nil {
+			t.Errorf("resolveSecret() expected error, got nil error")
 			return
 		}
 	})
@@ -34,12 +36,18 @@ func Test_resolveSecret(t *testing.T) {
 		key := "TEST_PASSWORD"
 		t.Setenv(key, pass)
 
-		got, err := resolveSecret(ctx, fmt.Sprintf("env:%s", key))
+		v := &Value{}
+		if err := v.Set(fmt.Sprintf("env:%s", key)); err != nil {
+			t.Errorf("setting secret, error = %v", err)
+			return
+		}
+
+		got, err := v.resolveSecret(ctx)
 		if err != nil {
 			t.Errorf("resolveSecret() error = %v", err)
 			return
 		}
-		if got != pass {
+		if string(got) != pass {
 			t.Errorf("resolveSecret() got = %s, want = %s", got, pass)
 			return
 		}
@@ -56,24 +64,36 @@ func Test_resolveSecret(t *testing.T) {
 			return
 		}
 
-		got, err := resolveSecret(ctx, fmt.Sprintf("file:%s", passFile))
+		v := &Value{}
+		if err := v.Set(fmt.Sprintf("file:%s", passFile)); err != nil {
+			t.Errorf("setting secret, error = %v", err)
+			return
+		}
+
+		got, err := v.resolveSecret(ctx)
 		if err != nil {
 			t.Errorf("resolveSecret() error = %v", err)
 			return
 		}
-		if got != pass {
+		if string(got) != pass {
 			t.Errorf("resolveSecret() got = %s, want = %s", got, pass)
 			return
 		}
 	})
 
 	t.Run("Command", func(t *testing.T) {
-		got, err := resolveSecret(ctx, fmt.Sprintf("cmd:echo -n %s", pass))
+		v := &Value{}
+		if err := v.Set(fmt.Sprintf("cmd:echo -n %s", pass)); err != nil {
+			t.Errorf("setting secret, error = %v", err)
+			return
+		}
+
+		got, err := v.resolveSecret(ctx)
 		if err != nil {
 			t.Errorf("resolveSecret() error = %v", err)
 			return
 		}
-		if got != pass {
+		if string(got) != pass {
 			t.Errorf("resolveSecret() got = %s, want = %s", got, pass)
 			return
 		}
