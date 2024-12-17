@@ -4,6 +4,7 @@ package cache
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 
 	"oras.land/oras-go/v2/content/file"
 
@@ -22,6 +23,12 @@ type Cache struct {
 // for initialization.
 // TODO: Should we have a default cache path? If so, this should be added to the flag not here.
 func NewCache(ctx context.Context, cachePath, fstorePath string, fstore *file.Store, cmdOpts *cmd.Options) (*Cache, error) {
+
+	cachePath, err := filepath.Abs(cachePath)
+	if err != nil {
+		return nil, fmt.Errorf("resolving absolute cache path: %w", err)
+	}
+
 	// these variables are shared among all cache connections
 	c := &Cache{
 		fstore,
