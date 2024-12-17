@@ -9,6 +9,8 @@ const (
 	ArtifactTypeVulnerabilityReport = "application/vnd.act3-ace.data.cve.results+json"
 	// AnnotationGrypeDatabaseChecksum is the checksum of the grype database that is attached to the vulnerability results.
 	AnnotationGrypeDatabaseChecksum = "vnd.act3-ace.scan.database.checksum"
+	// AnnotationVirusDatabaseChecksum holds a json-formatted list of clamav databases and their checksums for the virus scanning results.
+	AnnotationVirusDatabaseChecksum = "vnd.act3-ace.scan.virus.database.checksum"
 	// MediaTypeHelmChartConfig defines the expected media type of a helm chart config manifest.
 	MediaTypeHelmChartConfig = "application/vnd.cncf.helm.config.v1+json"
 )
@@ -60,9 +62,19 @@ var SeverityLevels = map[string]int{
 	"unknown":    0,
 }
 
-// Virus scanning
+// holds the results of one manifest
+type VirusScanManifestReport struct {
+	ManifestDigest string             `json:"Manifest"`
+	Results        []VirusScanResults `json:"VirusScanResults"`
+}
 
+// Virus scanning
 type VirusScanResults struct {
 	File        string `json:"File"`
 	MalwareName string `json:"MalwareName"`
+}
+
+type ClamavDatabase struct {
+	File     string `json:"filepath"`
+	Checksum string `json:"checksum"`
 }

@@ -31,7 +31,7 @@ func clamavBytes(ctx context.Context, data io.ReadCloser) (*VirusScanResults, er
 	cmd.Stdin = data
 	res, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("scanning data: %w", err)
+		return nil, fmt.Errorf("scanning data: %s %w", res, err)
 	}
 
 	if len(res) == 0 {
@@ -167,4 +167,37 @@ func (g *grypeDBChecksum) value() (string, error) {
 		// theoretically impossible as 'grype db status' should throw an error first
 		return "", fmt.Errorf("both checksum and from fields are empty, please run 'grype db status' to validate")
 	}
+}
+
+func getClamAVChecksum(ctx context.Context) ([]ClamavDatabase, error) {
+	clamavDBChecksums := []ClamavDatabase{}
+	// initialize the regex pattern for checksum parsing
+	pattern := `Digital signature:\s*([a-zA-Z0-9+\/=]+)`
+	re := regexp.MustCompile(pattern)
+	// find all clamav database files in the default location
+	cmd := exec.CommandContext(ctx, "sh", "-c", "ls /var/lib/clamav/*.cvd")
+	res, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("looking for clamav databases in /var/lib/clamav/: %s %w", string(res), err)
+	}
+	dbFiles := strings.Fields(string(res))
+	// iterate through the db files and get the checksum using sigtool, a clamav-installed tool
+	for _, file := range dbFiles {
+		// get the checksum on the db
+		cmd := exec.CommandContext(ctx, "sigtool", "--info", file)
+		res, err := cmd.CombinedOutput()
+		if err != nil {
+			return nil, fmt.Errorf("getting checksum for clamav db file %s: %w", file, err)
+		}
+		fmt.Println(string(res))
+		checksum := re.FindSubmatch(res)
+		if len(checksum) != 0 {
+			// clamavDBChecksums[file] = string(checksum[1])
+			clamavDBChecksums = append(clamavDBChecksums, ClamavDatabase{
+				File:     file,
+				Checksum: string(checksum[1]),
+			})
+		}
+	}
+	return clamavDBChecksums, nil
 }

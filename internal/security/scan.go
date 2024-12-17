@@ -74,6 +74,15 @@ func scan(ctx context.Context, //nolint:gocognit
 	if err != nil {
 		return nil, err
 	}
+	var clamavDBChecksums []ClamavDatabase
+	// get the clamav checksums (if enabled)
+	if opts.ScanVirus {
+		cs, err := getClamAVChecksum(ctx)
+		if err != nil {
+			return nil, err
+		}
+		clamavDBChecksums = cs
+	}
 
 	for i, source := range m {
 		g.Go(func() error {
@@ -98,7 +107,7 @@ func scan(ctx context.Context, //nolint:gocognit
 			}
 
 			if opts.ScanVirus {
-				virusResults, err := scanManifestForViruses(ctx, artifactDetails.desc, repository)
+				virusResults, err := VirusScan(ctx, artifactDetails.desc, repository, clamavDBChecksums)
 				if err != nil {
 					return fmt.Errorf("virus scanning for reference %s: %w", artifactDetails.originatingReference, err)
 				}
