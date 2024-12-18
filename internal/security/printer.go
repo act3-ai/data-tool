@@ -235,8 +235,11 @@ func printMalwareTable(out io.Writer, results []*ArtifactDetails) error {
 		if res.MalwareResults == nil {
 			table = append(table, []string{res.originatingReference, "", "No Malware Found"})
 		}
-		for _, malwareResult := range res.MalwareResults {
-			table = append(table, []string{res.originatingReference, malwareResult.File, malwareResult.MalwareName})
+		for _, manifestResult := range res.MalwareResults {
+			for _, result := range manifestResult.Results {
+				table = append(table, []string{res.originatingReference, result.File, result.MalwareName})
+			}
+
 		}
 	}
 	if len(table) == 1 {

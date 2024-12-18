@@ -27,15 +27,26 @@ func syftReference(ctx context.Context, reference string) ([]byte, error) {
 }
 
 func clamavBytes(ctx context.Context, data io.ReadCloser) (*VirusScanResults, error) {
-	cmd := exec.CommandContext(ctx, "clamscan", "--no-summary", "--infected", "-")
+	cmd := exec.CommandContext(ctx, "clamscan", "--no-summary", "--infected", "--stdout", "-")
 	cmd.Stdin = data
 	res, err := cmd.CombinedOutput()
+	foundPattern := regexp.MustCompile(`FOUND\b`) // \b ensures a word boundary
+	output := string(res)
+
+	if foundPattern.MatchString(output) {
+		lines := strings.Split(strings.TrimSpace(string(res)), ":")
+		return &VirusScanResults{
+			MalwareName: lines[1],
+		}, nil
+	}
 	if err != nil {
 		return nil, fmt.Errorf("scanning data: %s %w", res, err)
 	}
 
 	if len(res) == 0 {
-		return nil, nil
+		return &VirusScanResults{
+			MalwareName: "",
+		}, nil
 	} else {
 		lines := strings.Split(strings.TrimSpace(string(res)), ":")
 		return &VirusScanResults{

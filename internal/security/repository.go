@@ -1,6 +1,7 @@
 package security
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"crypto/sha512"
@@ -263,6 +264,20 @@ func VirusScan(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	cfgExists, err := repository.Exists(ctx, descCfg)
+	if err != nil {
+		return nil, fmt.Errorf("checking existence of config: %w", err)
+	}
+	if !cfgExists {
+		imgcfg := ocispec.ImageConfig{}
+		cfg, err := json.Marshal(imgcfg)
+		if err != nil {
+			return nil, fmt.Errorf("marshalling empty config: %w", err)
+		}
+		if err := repository.Push(ctx, descCfg, bytes.NewReader(cfg)); err != nil {
+			return nil, fmt.Errorf("pushing empty config. Do you have push permissions? If not, use --check: %w", err)
+		}
+	}
 	if encoding.IsIndex(desc.MediaType) {
 		var idx ocispec.Index
 		rc, err := repository.Fetch(ctx, desc)
@@ -274,7 +289,7 @@ func VirusScan(ctx context.Context,
 			return nil, fmt.Errorf("parsing the image manifest: %w", err)
 		}
 		for _, man := range idx.Manifests {
-			var report *VirusScanManifestReport
+			report := VirusScanManifestReport{}
 			rl, err := scanManifestForViruses(ctx, man, repository, clamavChecksums, descCfg)
 			if err != nil {
 				return nil, err
@@ -283,16 +298,17 @@ func VirusScan(ctx context.Context,
 				report.Results = append(report.Results, *r)
 
 			}
-			reports = append(reports, report)
+			reports = append(reports, &report)
 		}
 	} else {
-		var report *VirusScanManifestReport
+		report := VirusScanManifestReport{}
 		rl, err := scanManifestForViruses(ctx, desc, repository, clamavChecksums, descCfg)
 		if err != nil {
 			return nil, err
 		}
 		report.Results = []VirusScanResults{*rl[0]}
 		report.ManifestDigest = desc.Digest.String()
+		reports = append(reports, &report)
 	}
 	return reports, nil
 
@@ -346,8 +362,9 @@ func scanManifestForViruses(ctx context.Context,
 			return nil, fmt.Errorf("pushing the virus scanning results: %w", err)
 		}
 		layers = append(layers, blobDesc)
+		fmt.Println("layer: ", blobDesc.Digest.String())
 	}
-
+	fmt.Println("Subject manifest: ", desc.Digest.String())
 	// we need to create a manifest for the virus report
 	packOpts := oras.PackManifestOptions{
 		Subject:          &desc,
