@@ -200,7 +200,6 @@ func getClamAVChecksum(ctx context.Context) ([]ClamavDatabase, error) {
 		if err != nil {
 			return nil, fmt.Errorf("getting checksum for clamav db file %s: %w", file, err)
 		}
-		fmt.Println(string(res))
 		checksum := re.FindSubmatch(res)
 		if len(checksum) != 0 {
 			// clamavDBChecksums[file] = string(checksum[1])

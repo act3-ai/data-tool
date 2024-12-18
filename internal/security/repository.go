@@ -350,6 +350,9 @@ func scanManifestForViruses(ctx context.Context,
 		if r != nil {
 			r.File = layer.Digest.String()
 			clamavResults = append(clamavResults, r)
+		} else {
+			r.File = layer.Digest.String()
+			clamavResults = append(clamavResults, r)
 		}
 
 		data, err := json.Marshal(r)
@@ -362,9 +365,7 @@ func scanManifestForViruses(ctx context.Context,
 			return nil, fmt.Errorf("pushing the virus scanning results: %w", err)
 		}
 		layers = append(layers, blobDesc)
-		fmt.Println("layer: ", blobDesc.Digest.String())
 	}
-	fmt.Println("Subject manifest: ", desc.Digest.String())
 	// we need to create a manifest for the virus report
 	packOpts := oras.PackManifestOptions{
 		Subject:          &desc,
