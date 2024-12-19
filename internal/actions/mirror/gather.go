@@ -9,6 +9,7 @@ import (
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
+	dtreg "gitlab.com/act3-ai/asce/data/tool/internal/registry"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 )
 
@@ -39,9 +40,14 @@ func (action *Gather) Run(ctx context.Context, sourceFile string, dest string) e
 		action.ExtraAnnotations = make(map[string]string)
 	}
 
-	destTarget, err := action.Config.Repository(ctx, dest)
+	destTarget, err := action.Config.GraphTarget(ctx, dest)
 	if err != nil {
 		return err
+	}
+
+	destRef, err := dtreg.ParseEndpointOrDefault(action.Config, dest)
+	if err != nil {
+		return fmt.Errorf("resolving destination reference with endpoint resolution: %w", err)
 	}
 
 	// create the gather opts
@@ -55,7 +61,7 @@ func (action *Gather) Run(ctx context.Context, sourceFile string, dest string) e
 		Dest:           dest,
 		Annotations:    action.ExtraAnnotations,
 		IndexFallback:  action.IndexFallback,
-		DestReference:  destTarget.Reference,
+		DestReference:  destRef,
 		Recursive:      action.Recursive,
 		Targeter:       action.Config,
 	}
@@ -66,14 +72,14 @@ func (action *Gather) Run(ctx context.Context, sourceFile string, dest string) e
 		return fmt.Errorf("gathering artifacts: %w", err)
 	}
 
-	err = destTarget.Tag(ctx, idxDesc, destTarget.Reference.ReferenceOrDefault())
+	err = destTarget.Tag(ctx, idxDesc, destRef.Reference)
 	if err != nil {
 		return fmt.Errorf("tagging gather index manifest: %w", err)
 	}
 	referenceWithDigest := opts.DestReference
 	referenceWithDigest.Reference = idxDesc.Digest.String()
 	opts.RootUI.Infof("Gather index: %s", referenceWithDigest.String())
-	opts.RootUI.Infof("Pushed index to destination: %s", opts.Dest)
+	opts.RootUI.Infof("Pushed index to destination: %s", destRef)
 
 	return nil
 }
