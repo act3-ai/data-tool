@@ -114,7 +114,7 @@ func createTestRepo(ctx context.Context, ch *cmd.Helper) error {
 }
 
 // updateTestRepo updates a specially crafted git repository made with createTestRepo used for testing toOCI and fromOCI.
-// see ./testdata/testing.md for a visual representation of this "script".
+// see ./testing.md for a visual representation of this "script".
 func updateTestRepo(ctx context.Context, ch *cmd.Helper) error {
 	cmdList := []subCmd{
 		// update head of Feature2
@@ -126,6 +126,90 @@ func updateTestRepo(ctx context.Context, ch *cmd.Helper) error {
 		// update v1.2.0 tag
 		{"checkout", []string{mainBranchName}},
 		{"update-ref", []string{"refs/tags/v1.2.0", "HEAD"}},
+	}
+
+	return runCmdList(ctx, ch, cmdList)
+}
+
+// createTestRepoRewrite initializes a repository for testing on rewritten git history.
+// see ./testing.md for a visual representation of this "script".
+func createTestRepoRewrite(ctx context.Context, ch *cmd.Helper) error {
+	dir := ch.Dir()
+
+	cmdList := []subCmd{
+		// initialize repo
+		{"init", []string{"--initial-branch", mainBranchName}},
+		{"config", []string{"user.email", testEmail}},
+		{"config", []string{"user.name", testUser}},
+
+		// two commits on main
+		{"modifyFile", []string{filepath.Join(dir, mainUpdateFileName), modifyFileText}},
+		{"add", []string{"--all"}},
+		{"commit", []string{"initial commit"}},
+		{"modifyFile", []string{filepath.Join(dir, mainUpdateFileName), modifyFileText}},
+		{"add", []string{"--all"}},
+		{"commit", []string{"second commit"}},
+
+		// make it easier to branch off of earlier history
+		{"tag", []string{"Feat1-Branch-Point", "HEAD"}},
+
+		// two more commits on main
+		{"modifyFile", []string{filepath.Join(dir, mainUpdateFileName), modifyFileText}},
+		{"add", []string{"--all"}},
+		{"commit", []string{"second commit"}},
+		{"modifyFile", []string{filepath.Join(dir, mainUpdateFileName), modifyFileText}},
+		{"add", []string{"--all"}},
+		{"commit", []string{"second commit"}},
+
+		// create Feature1 branch
+		{"createBranch", []string{"Feat1-Branch-Point", "Feature1"}},
+		{"checkout", []string{"Feature1"}},
+
+		// extend Feature1
+		{"modifyFile", []string{filepath.Join(dir, feature1UpdateFileName), modifyFileText}},
+		{"add", []string{"--all"}},
+		{"commit", []string{"first commit for feature1 branch"}},
+		{"modifyFile", []string{filepath.Join(dir, feature1UpdateFileName), modifyFileText}},
+		{"add", []string{"--all"}},
+		{"commit", []string{"second commit for feature1 branch"}},
+	}
+
+	return runCmdList(ctx, ch, cmdList)
+}
+
+// updateTestRepoDiverge rewrites git history by resetting history for two branches and adding additional commits.
+// see ./testing.md for a visual representation of this "script".
+func updateTestRepoDiverge(ctx context.Context, ch *cmd.Helper) error {
+	dir := ch.Dir()
+
+	cmdList := []subCmd{
+		// reset main by one commit, and diverge the history
+		{"checkout", []string{"main"}},
+		{"reset", []string{"--hard", "HEAD~1"}},
+		{"modifyFile", []string{filepath.Join(dir, mainUpdateFileName), modifyFileText}},
+		{"add", []string{"--all"}},
+		{"commit", []string{"divergent commit for main branch"}},
+
+		// reset Feature1 by one commit, and diverge the history
+		{"checkout", []string{"Feature1"}},
+		{"reset", []string{"--hard", "HEAD~1"}},
+		{"modifyFile", []string{filepath.Join(dir, feature1UpdateFileName), modifyFileText}},
+		{"add", []string{"--all"}},
+		{"commit", []string{"divergent commit for feature1 branch"}},
+		{"modifyFile", []string{filepath.Join(dir, feature1UpdateFileName), modifyFileText}},
+		{"add", []string{"--all"}},
+		{"commit", []string{"divergent commit for feature1 branch"}},
+	}
+
+	return runCmdList(ctx, ch, cmdList)
+}
+
+// updateTestRepoRevert rewrites git history by resetting one branch by one commit.
+// see ./testing.md for a visual representation of this "script".
+func updateTestRepoRevert(ctx context.Context, ch *cmd.Helper) error {
+	cmdList := []subCmd{
+		{"checkout", []string{"Feature1"}},
+		{"reset", []string{"--hard", "HEAD~1"}},
 	}
 
 	return runCmdList(ctx, ch, cmdList)
@@ -158,13 +242,6 @@ func createLFSRepo(ctx context.Context, ch *cmd.Helper) error {
 		{"modifyFile", []string{filepath.Join(dir, feature1UpdateFileName), modifyFileText + " add uniqueness for 1"}},
 		{"add", []string{"--all"}},
 		{"commit", []string{"commit for feature1 branch"}},
-
-		// add lfs file on another branch
-		{"createBranch", []string{mainBranchName, "Feature2"}},
-		{"checkout", []string{"Feature2"}},
-		{"modifyFile", []string{filepath.Join(dir, feature2UpdateFileName), modifyFileText + " add uniqueness for 2"}},
-		{"add", []string{"--all"}},
-		{"commit", []string{"commit for feature2 branch"}},
 	}
 
 	return runCmdList(ctx, ch, cmdList)
@@ -194,7 +271,7 @@ func runAction(ctx context.Context, ch *cmd.Helper, action subCmd) error {
 			return err
 		}
 	case "tag":
-		if err := tag(ctx, ch, action.args[0], action.args[1]); err != nil {
+		if _, err := ch.Tag(ctx, action.args[0], action.args[1]); err != nil {
 			return err
 		}
 	case "checkout":
@@ -223,6 +300,10 @@ func runAction(ctx context.Context, ch *cmd.Helper, action subCmd) error {
 		}
 	case "track":
 		if err := track(ctx, ch, action.args[0]); err != nil {
+			return err
+		}
+	case "reset":
+		if err := reset(ctx, ch, action.args...); err != nil {
 			return err
 		}
 	default:
@@ -303,11 +384,6 @@ func stage(ctx context.Context, ch *cmd.Helper, args ...string) error {
 	return err
 }
 
-func tag(ctx context.Context, ch *cmd.Helper, name, commit string) error {
-	_, err := ch.Git.Run(ctx, "tag", name, commit)
-	return err
-}
-
 func merge(ctx context.Context, ch *cmd.Helper, mergeTarget string) error {
 	_, err := ch.Git.Run(ctx, "merge", mergeTarget, "-m", "merging")
 	return err
@@ -352,5 +428,10 @@ func track(ctx context.Context, ch *cmd.Helper, pattern string) error {
 // Used for supporting git-lfs tracked files.
 func addAttributes(ctx context.Context, ch *cmd.Helper) error {
 	_, err := ch.Git.Run(ctx, "add", ".gitattributes")
+	return err
+}
+
+func reset(ctx context.Context, ch *cmd.Helper, args ...string) error {
+	_, err := ch.Git.Run(ctx, "reset", args...)
 	return err
 }

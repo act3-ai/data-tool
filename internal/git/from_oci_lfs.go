@@ -64,11 +64,6 @@ func (f *FromOCI) pushLFSRemote(ctx context.Context, gitRemote string, refList .
 		return fmt.Errorf("pushing git lfs files to remote: %w", err)
 	}
 
-	// regular git push
-	if err := f.pushRemote(ctx, gitRemote, refList, f.cmdHelper.Force); err != nil {
-		return fmt.Errorf("pushing commits and refs to remote: %w", err)
-	}
-
 	return nil
 }
 

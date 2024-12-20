@@ -32,6 +32,7 @@ func PostCopyLFS(fstorePath, destRepoPath string) func(ctx context.Context, desc
 		if desc.MediaType == MediaTypeLFSLayer {
 			oid := desc.Annotations[ocispec.AnnotationTitle] // oid filename
 			destPath := filepath.Join(destRepoPath, cmd.ResolveLFSOIDPath(oid))
+			logger.V(logger.FromContext(ctx), 1).InfoContext(ctx, "linking LFS file to intermediate dir", "objectID", oid, "destPath", destPath) //nolint:sloglint
 
 			// init nested dirs
 			err := os.MkdirAll(filepath.Dir(destPath), 0777)
@@ -98,7 +99,7 @@ func FindSuccessorsLFS(lfsLayers []ocispec.Descriptor) func(ctx context.Context,
 
 // FindSuccessorsBundles limits the bundle layers copied to the provided set.
 // Returns the default oras FindSuccessors result if no layers are provided.
-// Assumes any iamge manifest encounters is a base git manifest.
+// Assumes any image manifest encounters is a base git manifest.
 func FindSuccessorsBundles(manDesc ocispec.Descriptor, bundleLayers []ocispec.Descriptor) func(ctx context.Context, fetcher content.Fetcher,
 	desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
 	return func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {

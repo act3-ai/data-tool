@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os/exec"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 )
@@ -114,4 +115,21 @@ func (c *Helper) RemoteCommitsRefs(ctx context.Context, remote string, argRevLis
 
 	commits, fullRefs := parseOIDRefs(refsCommits...)
 	return commits, fullRefs, nil
+}
+
+// IsAncestor returns nil if the parent commit is an ancestor of the child commit, ErrNotAncestor
+// if not, and the original git error if one occurs.
+func (c *Helper) IsAncestor(ctx context.Context, parent, child Commit) error {
+	out, err := c.Git.MergeBase(ctx, "--is-ancestor", string(parent), string(child))
+	var exitErr *exec.ExitError
+	switch {
+	case errors.As(err, &exitErr) && exitErr.ExitCode() == 1:
+		return ErrNotAncestor
+	case err != nil:
+		// exit code > 1
+		return fmt.Errorf("running git merge-base: output: %s: %w", out, err)
+	default:
+		// exit code = 0
+		return nil
+	}
 }

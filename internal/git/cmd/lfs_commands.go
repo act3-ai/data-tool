@@ -43,7 +43,7 @@ func (lfs *gitLFSCmd) Run(ctx context.Context, subCmd string, args ...string) ([
 	cmd.Dir = lfs.dir
 
 	out, err := cmd.Output()
-	log.InfoContext(ctx, "Ran git-lfs Command", "command", args, "output", string(out))
+	log.InfoContext(ctx, "Ran git-lfs Command", "command", cmd.Args, "output", string(out))
 	parsedOut := parseGitOutput(out)
 	if err != nil {
 		exitError := &exec.ExitError{}

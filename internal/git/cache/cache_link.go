@@ -264,7 +264,7 @@ func (c *Link) resolveUncachedBundles(ctx context.Context, layers []ocispec.Desc
 			// }
 
 			// split := strings.Fields(refCommits[0])
-			// remoteCommit := oci.Commit(split[0]) // not technically the remote, but our intermediate repo should be identical at this point
+			// remoteCommit := cmd.Commit(split[0]) // not technically the remote, but our intermediate repo should be identical at this point
 			// if refInfo.Commit != remoteCommit {
 			// 	layerCutoff = layerNumResolver[refInfo.Layer]
 			// }

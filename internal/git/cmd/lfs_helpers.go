@@ -52,7 +52,7 @@ func CreateFakeLFSFiles(gitDir string, oids map[string]int64) error {
 // a slice of lfs OIDs.
 //
 // TODO: This is a very expensive operation.
-func (c *Helper) ListReachableLFSFiles(ctx context.Context, argRevList ...string) ([]string, error) {
+func (c *Helper) ListReachableLFSFiles(ctx context.Context, argRevList []string) ([]string, error) {
 	// none are reachable in an empty repo
 	r, err := c.ShowRefs(ctx)
 	if err != nil || len(r) < 1 { // either try to recover from error, or the repo is actually empty

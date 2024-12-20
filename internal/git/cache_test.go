@@ -162,7 +162,7 @@ func reachableOIDs(t *testing.T, ctx context.Context, argRevList []string, lfsSr
 		t.Errorf("resolving reachable git objects: %v", err)
 	}
 
-	reachableLFSOids, err := lfsSrcCmdHelper.ListReachableLFSFiles(ctx, argRevList...)
+	reachableLFSOids, err := lfsSrcCmdHelper.ListReachableLFSFiles(ctx, argRevList)
 	if err != nil {
 		t.Errorf("resolving reachable lfs files: %v", err)
 	}

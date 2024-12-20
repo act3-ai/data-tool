@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -116,7 +117,7 @@ func (t *ToOCI) Run(ctx context.Context) (ocispec.Descriptor, error) {
 	}
 
 	log.InfoContext(ctx, "Bundling changes")
-	newBundlePath, err := t.bundleChanges(ctx, t.argRevList...)
+	newBundlePath, err := t.bundleChanges(ctx)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("bundling changes: %w", err)
 	}
@@ -236,9 +237,9 @@ func (t *ToOCI) updateBaseConfig(ctx context.Context) error {
 
 // sortRefsByLayer organizes the refs in the current config by layer,
 // returning a map of layer digests to a slice of commits contained in that layer.
-func (t *ToOCI) sortRefsByLayer() map[digest.Digest][]oci.Commit {
+func (t *ToOCI) sortRefsByLayer() map[digest.Digest][]cmd.Commit {
 
-	layerResolver := make(map[digest.Digest][]oci.Commit) // layer digest : []commits
+	layerResolver := make(map[digest.Digest][]cmd.Commit) // layer digest : []commits
 	for _, info := range t.base.config.Refs.Heads {
 		layerResolver[info.Layer] = append(layerResolver[info.Layer], info.Commit)
 	}
@@ -251,13 +252,13 @@ func (t *ToOCI) sortRefsByLayer() map[digest.Digest][]oci.Commit {
 
 // resolveLayer returns the oldest layer in the current manifest containing a commit. Should be called
 // after layer updates.
-func (t *ToOCI) resolveLayer(ctx context.Context, layerResolver map[digest.Digest][]oci.Commit, targetCommit oci.Commit) (digest.Digest, error) {
+func (t *ToOCI) resolveLayer(ctx context.Context, layerResolver map[digest.Digest][]cmd.Commit, targetCommit cmd.Commit) (digest.Digest, error) {
 	for i, layer := range t.base.manifest.Layers {
 		if i == len(t.base.manifest.Layers)-1 { // we have reached the final layer, so it must be here.
 			return layer.Digest, nil
 		}
 		for _, commit := range layerResolver[layer.Digest] {
-			err := t.cmdHelper.MergeBase(ctx, "--is-ancestor", string(targetCommit), string(commit)) // is the targetCommit an ancestor of commit?
+			err := t.cmdHelper.IsAncestor(ctx, targetCommit, commit)
 			switch {
 			case errors.Is(err, cmd.ErrNotAncestor):
 				continue
@@ -337,26 +338,35 @@ func (t *ToOCI) sendBaseSync(ctx context.Context, newBundleDesc ocispec.Descript
 // bundleChanges creates a bundle of changes from the prior sync to the commits referenced by argRevList, returning
 // the path of the bundle. An empty bundle path alongside a nil error indicates that a bundle of objects is not needed
 // but reference updates should still occur.
-func (t *ToOCI) bundleChanges(ctx context.Context, argRevList ...string) (string, error) {
-
-	// make new bundle rev-list
-	excludeCommits := make([]string, 0, len(t.base.config.Refs.Tags)+len(t.base.config.Refs.Heads)+len(argRevList))
+func (t *ToOCI) bundleChanges(ctx context.Context) (string, error) { //nolint:gocognit
+	log := logger.FromContext(ctx)
+	// make new bundle rev-list, prepending exclusions makes subsequent slice operations more performant
+	// e.g. in the case of rewritten git history.
+	excludeCommits := make([]string, 0, len(t.base.config.Refs.Tags)+len(t.base.config.Refs.Heads)+len(t.argRevList))
 	for _, refInfo := range t.base.config.Refs.Tags {
 		excludeCommits = append(excludeCommits, "^"+string(refInfo.Commit))
 	}
 	for _, refInfo := range t.base.config.Refs.Heads {
 		excludeCommits = append(excludeCommits, "^"+string(refInfo.Commit))
 	}
-	revList := append(excludeCommits, argRevList...) //nolint
+	// Changing this order will break how we recover from rewritten history.
+	// revList := append(excludeCommits, argRevList...) //nolint
 	newBundlePath := filepath.Join(t.ociHelper.FStorePath, "changes"+fmt.Sprintf("%d", len(t.base.manifest.Layers)+1)+".bundle")
 
-	err := t.cmdHelper.BundleCreate(ctx, newBundlePath, revList)
-EmptyBundleCheck:
+	replaced := 0
+	existingRepo := ""
+	ociExists := true // assume until otherwise
+CreateBundle:
+	log.InfoContext(ctx, "creating bundle")
+	err := t.cmdHelper.BundleCreate(ctx, newBundlePath, append(excludeCommits, t.argRevList...))
+	badObj := &cmd.BadObjectError{}
+StatusCheck:
 	switch {
 	case errors.Is(err, cmd.ErrEmptyBundle):
+		log.InfoContext(ctx, "created empty bundle, determining status of references")
 		newBundlePath = "" // a "" bundle path indicates we're only updating refs
 
-		newCommits, newRefs, err := t.localCommitsRefs(ctx, argRevList...)
+		newCommits, newRefs, err := t.localCommitsRefs(ctx, t.argRevList...)
 		if err != nil {
 			return "", fmt.Errorf("resolving references and new commits: %w", err)
 		}
@@ -367,17 +377,85 @@ EmptyBundleCheck:
 			case strings.HasPrefix(fullRef, cmd.TagRefPrefix):
 				oldTaggedInfo, inTags := t.base.config.Refs.Tags[strings.TrimPrefix(fullRef, cmd.TagRefPrefix)]
 				if !inTags || newCommits[i] != oldTaggedInfo.Commit {
-					break EmptyBundleCheck
+					break StatusCheck
 				}
 			case strings.HasPrefix(fullRef, cmd.HeadRefPrefix):
 				oldHeadInfo, inHeads := t.base.config.Refs.Heads[strings.TrimPrefix(fullRef, cmd.HeadRefPrefix)]
 				if !inHeads || newCommits[i] != oldHeadInfo.Commit {
-					break EmptyBundleCheck
+					break StatusCheck
+				}
+			}
+		}
+		return "", nil // update not discovered
+
+	case errors.As(err, &badObj):
+		// history rewritten, recover...
+		log.InfoContext(ctx, "bad object found, replacing bad object with common ancestor", "object", badObj.Object())
+
+		var refsToBadObj, replacements []string
+		switch {
+		case existingRepo == "" && ociExists:
+			// do once
+			exists, err := t.ociHelper.Target.Exists(ctx, t.base.manDesc)
+			if !exists || err != nil {
+				ociExists = false
+				break
+			} else {
+				remote, err := t.reconsructExisting(ctx, t.sync.base.manDesc)
+				if err != nil {
+					return "", fmt.Errorf("reconstructing existing repository state from OCI: %w", err)
+				}
+				existingRepo = "oldversion"
+
+				if err := t.cmdHelper.RemoteAdd(ctx, existingRepo, "file://"+remote); err != nil {
+					return "", fmt.Errorf("adding reconstructed existing repository as remote to new version: %w", err)
+				}
+
+				if err := t.cmdHelper.Git.Fetch(ctx, existingRepo); err != nil {
+					return "", fmt.Errorf("fetching old remotes: %w", err)
+				}
+			}
+			fallthrough
+		case existingRepo != "":
+			refsToBadObj = t.sync.headRefsFromCommit(badObj.Object())
+			replacements = make([]string, 0, len(refsToBadObj))
+			for _, ref := range refsToBadObj {
+				out, err := t.cmdHelper.MergeBase(ctx, ref, filepath.Join(existingRepo, ref))
+				switch {
+				case err != nil:
+					return "", fmt.Errorf("resolving merge base for bad object: %w", err)
+				case len(out) != 1:
+					return "", fmt.Errorf("expected single merge base for bad object, got %d", len(out))
+				default:
+					replacements = append(replacements, out[0])
 				}
 			}
 		}
 
-		return "", nil // update not discovered
+		r := 0
+		for i := range excludeCommits {
+			// for i, obj := range revList[replaced:] {
+			if strings.TrimPrefix(excludeCommits[i], "^") == string(badObj.Object()) {
+				// skip this fixed object if another bad object needs replacing
+				excludeCommits[i] = "^" + replacements[r]
+				excludeCommits[replaced], excludeCommits[i] = excludeCommits[i], excludeCommits[replaced]
+				r++
+				replaced++
+			}
+			if r > len(replacements) {
+				break
+			}
+		}
+
+		for i := range t.argRevList {
+			if t.argRevList[i] == string(badObj.Object()) {
+				t.argRevList[i], t.argRevList[len(t.argRevList)-1] = t.argRevList[len(t.argRevList)-1], t.argRevList[i]
+				t.argRevList = t.argRevList[:len(t.argRevList)-1]
+			}
+		}
+
+		t.removeFromConfig(cmd.Commit(badObj.Object()))
+		goto CreateBundle
 
 	case err != nil:
 		return "", err
@@ -388,15 +466,15 @@ EmptyBundleCheck:
 // localCommitsRefs returns the local references and the commits they reference
 // split into two slices, with indicies matching the pairs. If argRevList is empty
 // all references will be returned.
-func (t *ToOCI) localCommitsRefs(ctx context.Context, argRevList ...string) ([]oci.Commit, []string, error) {
+func (t *ToOCI) localCommitsRefs(ctx context.Context, argRevList ...string) ([]cmd.Commit, []string, error) {
 	commitStr, fullRefs, err := t.cmdHelper.LocalCommitsRefs(ctx, argRevList...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	commits := make([]oci.Commit, 0, len(commitStr))
+	commits := make([]cmd.Commit, 0, len(commitStr))
 	for _, commit := range commitStr {
-		commits = append(commits, oci.Commit(commit))
+		commits = append(commits, cmd.Commit(commit))
 	}
 
 	return commits, fullRefs, nil
@@ -405,16 +483,92 @@ func (t *ToOCI) localCommitsRefs(ctx context.Context, argRevList ...string) ([]o
 // remoteCommitsRefs returns the remote references and the commits they reference
 // split into two slices, with indicies matching the pairs. If argRevList is empty
 // all references will be returned.
-func (t *ToOCI) remoteCommitsRefs(ctx context.Context, argRevList ...string) ([]oci.Commit, []string, error) {
+func (t *ToOCI) remoteCommitsRefs(ctx context.Context, argRevList ...string) ([]cmd.Commit, []string, error) {
 	commitStr, fullRefs, err := t.cmdHelper.RemoteCommitsRefs(ctx, t.srcGitRemote, argRevList...)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	commits := make([]oci.Commit, 0, len(commitStr))
+	commits := make([]cmd.Commit, 0, len(commitStr))
 	for _, commit := range commitStr {
-		commits = append(commits, oci.Commit(commit))
+		commits = append(commits, cmd.Commit(commit))
 	}
 
 	return commits, fullRefs, nil
+}
+
+// reconstructExisting rebuilds the git repo based on the existing OCI data, without lfs.
+// It returns the path to the rebuild repository.
+// Essentially a lightweight implementation of FromOCI.updateFromOCI.
+func (t *ToOCI) reconsructExisting(ctx context.Context, manDesc ocispec.Descriptor) (string, error) {
+	log := logger.V(logger.FromContext(ctx), 1)
+
+	// new git cmd helper, ensuring we don't conflict with the actual remote
+	rebuildDir := filepath.Join(t.syncOpts.IntermediateDir, "rebuild") // cleaned with t.Cleanup
+	if err := os.Mkdir(rebuildDir, 0777); err != nil {
+		return "", fmt.Errorf("initializing rebuild directory: %w", err)
+	}
+
+	ch, err := cmd.NewHelper(ctx, rebuildDir, &t.cmdHelper.Options)
+	if err != nil {
+		return "", fmt.Errorf("initializing git command helper for rebuild dir: %w", err)
+	}
+
+	if err := ch.Init(ctx, "--bare"); err != nil {
+		return "", fmt.Errorf("initializing rebuild git repository: %w", err)
+	}
+
+	copyOpts := oras.CopyGraphOptions{
+		// PreCopy func simply logs
+		PreCopy: func(ctx context.Context, desc ocispec.Descriptor) error {
+			if desc.MediaType == oci.MediaTypeBundleLayer {
+				log.InfoContext(ctx, "Retrieving bundle layer", "bundle", desc.Annotations[ocispec.AnnotationTitle])
+			}
+			return nil
+		},
+	}
+
+	err = oras.CopyGraph(ctx, t.ociHelper.Target, t.ociHelper.FStore, manDesc, copyOpts)
+	if err != nil {
+		return "", fmt.Errorf("copying bundles: %w", err)
+	}
+
+	// fetch from copied bundles
+	log.InfoContext(ctx, "adding bundles as remotes")
+	shortnames := make([]string, 0, len(t.base.manifest.Layers))
+	for _, desc := range t.base.manifest.Layers {
+		// resolve bundle path
+		bundleName := desc.Annotations[ocispec.AnnotationTitle]
+		bundlePath := filepath.Join(t.ociHelper.FStorePath, bundleName)
+
+		// add bundle as a remote
+		shortname := strings.TrimSuffix(bundleName, ".bundle")
+		err := ch.RemoteAdd(ctx, shortname, bundlePath)
+		if err != nil {
+			return "", fmt.Errorf("adding bundle '%s' as remote: %w", bundlePath, err)
+		}
+		shortnames = append(shortnames, shortname)
+	}
+
+	args := append(shortnames, "--tags", "--multiple", "--force") //nolint
+	if err := ch.Git.Fetch(ctx, args...); err != nil {
+		return "", fmt.Errorf("fetching from bundles: %w", err)
+	}
+
+	for ref, refInfo := range t.base.config.Refs.Heads {
+		if err := ch.UpdateRef(ctx, cmd.HeadRefPrefix+ref, string(refInfo.Commit)); err != nil {
+			return "", fmt.Errorf("updating reference %s for commit %s: %w", ref, refInfo.Commit, err)
+		}
+	}
+
+	// remove remotes
+	log.InfoContext(ctx, "removing bundles from remotes")
+	for _, shortname := range shortnames {
+		err := ch.RemoteRemove(ctx, shortname)
+		if err != nil {
+			return "", fmt.Errorf("removing remote bundle: %w", err)
+		}
+	}
+
+	return rebuildDir, nil
 }

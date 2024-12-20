@@ -99,7 +99,7 @@ func (f *FromOCI) Run(ctx context.Context) ([]string, error) {
 		_, refs, err := f.cmdHelper.LocalCommitsRefs(ctx)
 		// if err, try to recover by assuming no reachable LFS files
 		if err == nil {
-			remoteLFSFiles, err = f.cmdHelper.ListReachableLFSFiles(ctx, refs...)
+			remoteLFSFiles, err = f.cmdHelper.ListReachableLFSFiles(ctx, refs)
 			if err != nil {
 				return nil, fmt.Errorf("resolving reachable LFS files at remote: %w", err)
 			}
@@ -110,6 +110,7 @@ func (f *FromOCI) Run(ctx context.Context) ([]string, error) {
 	case f.syncOpts.Cache != nil:
 		err := f.syncOpts.Cache.UpdateFromOCI(ctx, f.ociHelper.Target, manifestDesc)
 		if err == nil {
+			log.InfoContext(ctx, "utilizing cache", "path", f.syncOpts.Cache)
 			break
 		}
 		log.DebugContext(ctx, "Cache failed to update git objects from bundles", "error", err)
@@ -117,6 +118,7 @@ func (f *FromOCI) Run(ctx context.Context) ([]string, error) {
 		fallthrough // recover to default if cache fails
 
 	default:
+		log.InfoContext(ctx, "no cache specified")
 		err := f.updateFromOCI(ctx, manifestDesc)
 		if err != nil {
 			return nil, fmt.Errorf("updating intermediate repo from OCI: %w", err)
@@ -167,12 +169,12 @@ func (f *FromOCI) updateAllRefs(ctx context.Context, gitRemote string) ([]string
 		return nil, err
 	}
 
-	remoteTags := make(map[string]oci.Commit, len(rt))
+	remoteTags := make(map[string]cmd.Commit, len(rt))
 	if len(rt) > 0 { // split result of remote ls
 		for _, existingRef := range rt {
 			split := strings.Fields(existingRef)
 			oldCommit, fullRef := split[0], split[1]
-			remoteTags[fullRef] = oci.Commit(oldCommit)
+			remoteTags[fullRef] = cmd.Commit(oldCommit)
 		}
 	}
 
@@ -185,12 +187,12 @@ func (f *FromOCI) updateAllRefs(ctx context.Context, gitRemote string) ([]string
 		return nil, err
 	}
 
-	remoteHeads := make(map[string]oci.Commit, len(rh))
+	remoteHeads := make(map[string]cmd.Commit, len(rh))
 	if len(rh) > 0 { // split result of remote ls
 		for _, existingRef := range rh {
 			split := strings.Fields(existingRef)
 			oldCommit, fullRef := split[0], split[1]
-			remoteHeads[fullRef] = oci.Commit(oldCommit)
+			remoteHeads[fullRef] = cmd.Commit(oldCommit)
 		}
 	}
 
@@ -199,14 +201,15 @@ func (f *FromOCI) updateAllRefs(ctx context.Context, gitRemote string) ([]string
 	if len(f.base.config.Refs.Tags) > 0 {
 		tagUpdates, err := f.updateRefList(ctx, cmd.TagRefPrefix, f.base.config.Refs.Tags, remoteTags)
 		if err != nil {
-			return nil, fmt.Errorf("updating tag references: %w", err)
+			return nil, fmt.Errorf("updating tag references in intermediate repo: %w", err)
 		}
 		updated = append(updated, tagUpdates...)
+
 	}
 	if len(f.base.config.Refs.Heads) > 0 {
 		headUpdates, err := f.updateRefList(ctx, cmd.HeadRefPrefix, f.base.config.Refs.Heads, remoteHeads)
 		if err != nil {
-			return nil, fmt.Errorf("updating head references: %w", err)
+			return nil, fmt.Errorf("updating head referencesin intermediate repo: %w", err)
 		}
 		updated = append(updated, headUpdates...)
 	}
@@ -219,9 +222,11 @@ func (f *FromOCI) updateAllRefs(ctx context.Context, gitRemote string) ([]string
 	return updated, nil
 }
 
-// updateRefList updates references, returning a slice of the references and their corresponding
-// updated commits that will ultimately be updated at the remote destination.
-func (f *FromOCI) updateRefList(ctx context.Context, prefixType string, refs map[string]oci.ReferenceInfo, remoteRefs map[string]oci.Commit) ([]string, error) {
+// updateRefList updates references in the intermediate repository, returning a
+// slice of the references and their corresponding updated commits that will
+// ultimately be updated at the remote destination.
+func (f *FromOCI) updateRefList(ctx context.Context, prefixType string,
+	refs map[string]oci.ReferenceInfo, remoteRefs map[string]cmd.Commit) ([]string, error) {
 	var updated []string
 	for ref, refInfo := range refs {
 		fullRef := prefixType + ref
@@ -261,7 +266,7 @@ func (f *FromOCI) resolveLayersNeeded(ctx context.Context) ([]ocispec.Descriptor
 			}
 
 			split := strings.Fields(refCommits[0])
-			remoteCommit := oci.Commit(split[0]) // not technically the remote, but our intermediate repo should be identical at this point
+			remoteCommit := cmd.Commit(split[0]) // not technically the remote, but our intermediate repo should be identical at this point
 			if refInfo.Commit != remoteCommit {
 				layerCutoff = layerNumResolver[refInfo.Layer]
 			}
@@ -280,7 +285,7 @@ func (f *FromOCI) resolveLayersNeeded(ctx context.Context) ([]ocispec.Descriptor
 			}
 
 			split := strings.Fields(refCommits[0])
-			remoteCommit := oci.Commit(split[0]) // not technically the remote, but our intermediate repo should be identical at this point
+			remoteCommit := cmd.Commit(split[0]) // not technically the remote, but our intermediate repo should be identical at this point
 			if refInfo.Commit != remoteCommit {
 				layerCutoff = layerNumResolver[refInfo.Layer]
 			}
@@ -315,6 +320,10 @@ func (f *FromOCI) updateFromOCI(ctx context.Context, manDesc ocispec.Descriptor)
 	bundleDescs, err := f.resolveLayersNeeded(ctx)
 	if err != nil {
 		return fmt.Errorf("resolving bundle layers containing missing objects: %w", err)
+	}
+	if len(bundleDescs) < 1 {
+		// nothing to update
+		return nil
 	}
 
 	copyOpts := oras.CopyGraphOptions{

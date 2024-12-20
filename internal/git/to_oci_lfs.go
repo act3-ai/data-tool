@@ -24,7 +24,7 @@ import (
 func (t *ToOCI) runLFS(ctx context.Context, oldCommitManDesc, newCommitManDesc ocispec.Descriptor) (ocispec.Descriptor, error) {
 	log := logger.FromContext(ctx)
 
-	reachableLFSObjs, err := t.cmdHelper.ListReachableLFSFiles(ctx, t.argRevList...)
+	reachableLFSObjs, err := t.cmdHelper.ListReachableLFSFiles(ctx, t.argRevList)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("resolving status of LFS files: %w", err)
 	}

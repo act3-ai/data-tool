@@ -82,7 +82,7 @@ func Test_ToFromOCILFS(t *testing.T) { //nolint
 	for _, tt := range lfsTests {
 
 		// build a map of expectations which corresponds to argRevList
-		reachableLFSFiles, err := lfsSrcHandler.cmdHelper.ListReachableLFSFiles(ctx, tt.t.args.argRevList...)
+		reachableLFSFiles, err := lfsSrcHandler.cmdHelper.ListReachableLFSFiles(ctx, tt.t.args.argRevList)
 		if err != nil {
 			t.Errorf("resolving reachable lfs files: %v", err)
 		}

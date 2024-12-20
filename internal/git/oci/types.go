@@ -2,6 +2,8 @@ package oci
 
 import (
 	"github.com/opencontainers/go-digest"
+
+	"git.act3-ace.com/ace/data/tool/internal/git/cmd"
 )
 
 const (
@@ -53,14 +55,11 @@ type References struct {
 	Heads map[string]ReferenceInfo `json:"heads"` // head reference : (commit, layer)
 }
 
-// Commit represents a git commit OID.
-type Commit string
-
 // ReferenceInfo holds informations about git references stored in bundle layers.
 type ReferenceInfo struct {
 	// The additional layer information allows for optimizations on the rebuild (FromOCI) side,
 	// such that one may determine the least number of bundle layers to fetch (from OCI) and git pull from.
 
-	Commit Commit        `json:"commit"` // commit pointed to by reference
+	Commit cmd.Commit    `json:"commit"` // commit pointed to by reference
 	Layer  digest.Digest `json:"layer"`  // OCI layer, the bundle with the commit
 }

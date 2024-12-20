@@ -23,9 +23,10 @@ type Git interface {
 	RemoteAdd(ctx context.Context, shortname, remoteTarget string) error
 	RemoteRemove(ctx context.Context, shortname string) error
 	LSRemote(ctx context.Context, args ...string) ([]string, error)
-	MergeBase(ctx context.Context, args ...string) error
+	MergeBase(ctx context.Context, args ...string) ([]string, error)
 	CatFile(ctx context.Context, args ...string) error
 	Run(ctx context.Context, subCmd string, args ...string) ([]string, error)
+	Tag(ctx context.Context, args ...string) ([]string, error)
 }
 
 // gitCmd contains a logger and directory of execution for a git command.
@@ -54,18 +55,22 @@ func (gc *gitCmd) Run(ctx context.Context, subCmd string, args ...string) ([]str
 
 	// We only want stdout for processing but we want stderr for errors
 	out, err := cmd.Output()
-	log.InfoContext(ctx, "Ran git command", "command", args, "directory", gc.dir, "output", string(out))
+	log.InfoContext(ctx, "Ran git command", "command", cmd.Args, "directory", gc.dir, "output", string(out))
 	parsedOut := parseGitOutput(out)
 	if err != nil {
 		exitError := &exec.ExitError{}
 		if errors.As(err, &exitError) {
-			log.InfoContext(ctx, "Command exit error", "err", exitError.Stderr)
 			errStr := string(exitError.Stderr)
+			log.InfoContext(ctx, "Command exit error", "err", errStr)
 			switch {
 			case strings.Contains(errStr, "fatal: Refusing to create empty bundle."):
 				return parsedOut, errors.Join(err, ErrEmptyBundle)
 			case strings.Contains(errStr, "fatal: Could not read from remote repository."):
 				return parsedOut, errors.Join(err, ErrRepoNotExistOrPermDenied)
+			case strings.Contains(errStr, "fatal: bad object"):
+				i := strings.LastIndex(errStr, "fatal: bad object")
+				obj := strings.TrimSpace(errStr[i+len("fatal: bad object"):])
+				return parsedOut, &BadObjectError{err, Commit(obj)}
 			default:
 				// extract git's error, join incase of future unwrapping (e.g. used by git merge-base)
 				return parsedOut, errors.Join(err, fmt.Errorf("git %q produced an error: %s", cmd.Args, exitError.Stderr))
@@ -113,7 +118,7 @@ func (gc *gitCmd) Fetch(ctx context.Context, args ...string) error {
 	return err
 }
 
-// Push calls `git push <gitRef> --tags` within the gitCmd's  directory.
+// Push calls `git push <gitRemote>, <refs>...` within the gitCmd's  directory.
 //
 // i.e. pushes a local git repository to the local/remote reference, with tags.
 func (gc *gitCmd) Push(ctx context.Context, gitRemote string, refs ...string) error {
@@ -123,13 +128,13 @@ func (gc *gitCmd) Push(ctx context.Context, gitRemote string, refs ...string) er
 	return err
 }
 
-// Init calls `git init` within the gitCmd's  directory.
+// Init calls `git init <args>...` within the gitCmd's  directory.
 func (gc *gitCmd) Init(ctx context.Context, args ...string) error {
 	_, err := gc.Run(ctx, "init", args...)
 	return err
 }
 
-// CloneWithShared calls `git clone --shared --reference-if-able <reference> --bare <gitRef> <gc.dir>`.
+// CloneWithShared calls `git clone --shared --reference-if-able <reference> --bare <gitRemote> <gc.dir>`.
 //
 // Cloning with the shared option prevents copying objects to the clone. This is a safe operation
 // as long as the cache is not pRuned between cloning and managing the clone.
@@ -151,18 +156,8 @@ func (gc *gitCmd) BundleCreate(ctx context.Context, destFile string, revList []s
 }
 
 // MergeBase calls `git merge-base <args>...` within the gitCmd's directory.
-func (gc *gitCmd) MergeBase(ctx context.Context, args ...string) error {
-	out, err := gc.Run(ctx, "merge-base", args...)
-
-	var exitErr *exec.ExitError
-	switch {
-	case errors.As(err, &exitErr) && exitErr.ExitCode() == 1: // exit code 1 = false, if an actual err occurs then code > 1.
-		return ErrNotAncestor
-	case err != nil:
-		return fmt.Errorf("running git merge-base \nOutput: %s: %w", out, err)
-	default:
-		return nil
-	}
+func (gc *gitCmd) MergeBase(ctx context.Context, args ...string) ([]string, error) {
+	return gc.Run(ctx, "merge-base", args...)
 }
 
 // Config calls `git config <args>...`
@@ -176,4 +171,8 @@ func (gc *gitCmd) Config(ctx context.Context, args ...string) error {
 func (gc *gitCmd) CatFile(ctx context.Context, args ...string) error {
 	_, err := gc.Run(ctx, "cat-file", args...)
 	return err
+}
+
+func (gc *gitCmd) Tag(ctx context.Context, args ...string) ([]string, error) {
+	return gc.Run(ctx, "tag", args...)
 }
