@@ -30,13 +30,13 @@ func clamavBytes(ctx context.Context, data io.ReadCloser) (*VirusScanResults, er
 	cmd := exec.CommandContext(ctx, "clamscan", "--no-summary", "--infected", "--stdout", "-")
 	cmd.Stdin = data
 	res, err := cmd.CombinedOutput()
-	foundPattern := regexp.MustCompile(`FOUND\b`) // \b ensures a word boundary
+	foundPattern := regexp.MustCompile(`^\s*(.+?)\s+FOUND\b`)
 	output := string(res)
-
-	if foundPattern.MatchString(output) {
-		lines := strings.Split(strings.TrimSpace(string(res)), ":")
+	if match := foundPattern.FindStringSubmatch(output); len(match) > 1 {
+		lines := strings.Split(strings.TrimSpace(match[1]), ":")
 		return &VirusScanResults{
-			MalwareName: lines[1],
+			File:    match[0],
+			Finding: lines[1],
 		}, nil
 	}
 	if err != nil {
@@ -45,12 +45,12 @@ func clamavBytes(ctx context.Context, data io.ReadCloser) (*VirusScanResults, er
 
 	if len(res) == 0 {
 		return &VirusScanResults{
-			MalwareName: "",
+			Finding: "",
 		}, nil
 	} else {
 		lines := strings.Split(strings.TrimSpace(string(res)), ":")
 		return &VirusScanResults{
-			MalwareName: lines[1],
+			Finding: lines[1],
 		}, nil
 	}
 }

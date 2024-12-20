@@ -237,7 +237,7 @@ func printMalwareTable(out io.Writer, results []*ArtifactDetails) error {
 		}
 		for _, manifestResult := range res.MalwareResults {
 			for _, result := range manifestResult.Results {
-				table = append(table, []string{res.originatingReference, result.File, result.MalwareName})
+				table = append(table, []string{res.originatingReference, result.File, result.Finding})
 			}
 
 		}

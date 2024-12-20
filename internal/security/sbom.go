@@ -52,7 +52,7 @@ func extractAndGrypeSBOMs(ctx context.Context, subjectDescriptor ocispec.Descrip
 			return nil, err
 		}
 		if pushReport {
-			reports, err := attachCVEResults(ctx, subjectDescriptor, descCfg, *calculatedResults, target, grypeDBChecksum)
+			reports, err := attachResultsReport(ctx, subjectDescriptor, descCfg, *calculatedResults, target, map[string]string{AnnotationGrypeDatabaseChecksum: grypeDBChecksum})
 			if err != nil {
 				return nil, fmt.Errorf("failed to attach results: %w\n Do you have push permissions to the repository?", err)
 			}
@@ -173,7 +173,7 @@ func GenerateSBOM( //nolint:gocognit
 			return nil, err
 		}
 		if pushReport {
-			reports, err := attachCVEResults(ctx, desc, descCfg, *calculatedResults, repository, grypeDBChecksum)
+			reports, err := attachResultsReport(ctx, desc, descCfg, *calculatedResults, repository, map[string]string{AnnotationGrypeDatabaseChecksum: grypeDBChecksum})
 			if err != nil {
 				return nil, err
 			}

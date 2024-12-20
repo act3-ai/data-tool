@@ -7,6 +7,8 @@ const (
 	ArtifactTypeHarborSBOM = "application/vnd.goharbor.harbor.sbom.v1"
 	// ArtifactTypeVulnerabilityReport is the artifact type given to ASCE vulnerability results.
 	ArtifactTypeVulnerabilityReport = "application/vnd.act3-ace.data.cve.results+json"
+	// ArtifactTypeVirusScanReport is the artifact type given to ASCE Virus Scanning results.
+	ArtifactTypeVirusScanReport = "application/vnd.act3-ace.data.virus.scan.results+json"
 	// AnnotationGrypeDatabaseChecksum is the checksum of the grype database that is attached to the vulnerability results.
 	AnnotationGrypeDatabaseChecksum = "vnd.act3-ace.scan.database.checksum"
 	// AnnotationVirusDatabaseChecksum holds a json-formatted list of clamav databases and their checksums for the virus scanning results.
@@ -64,14 +66,15 @@ var SeverityLevels = map[string]int{
 
 // holds the results of one manifest
 type VirusScanManifestReport struct {
-	ManifestDigest string             `json:"Manifest"`
-	Results        []VirusScanResults `json:"VirusScanResults"`
+	ManifestDigest string              `json:"Manifest"`
+	Results        []*VirusScanResults `json:"VirusScanResults"`
 }
 
 // Virus scanning
 type VirusScanResults struct {
 	File        string `json:"File"`
-	MalwareName string `json:"MalwareName"`
+	LayerDigest string `json:"Layer"`
+	Finding     string `json:"Finding"`
 }
 
 type ClamavDatabase struct {

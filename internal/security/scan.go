@@ -107,14 +107,14 @@ func scan(ctx context.Context, //nolint:gocognit
 			}
 
 			if opts.ScanVirus {
-				virusResults, err := VirusScan(ctx, artifactDetails.desc, repository, clamavDBChecksums)
+				virusResults, err := VirusScan(ctx, artifactDetails.desc, repository, clamavDBChecksums, opts.PushReport)
 				if err != nil {
 					return fmt.Errorf("virus scanning for reference %s: %w", artifactDetails.originatingReference, err)
 				}
 				if virusResults != nil {
 					artifactDetails.MalwareResults = virusResults
 				}
-
+				// TODO
 				if opts.OnlyScanVirus {
 					return nil
 				}

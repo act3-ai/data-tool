@@ -99,6 +99,7 @@ func (action *Scan) Run(ctx context.Context) error {
 			}
 		}
 	}
+	// if the virus scanning results are not emtpy, we need to send a non-0/ non-1 exit code
 
 	return nil
 }
