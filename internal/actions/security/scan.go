@@ -27,7 +27,7 @@ type Scan struct {
 }
 
 // Run executes the security scan Run() action.
-func (action *Scan) Run(ctx context.Context) error {
+func (action *Scan) Run(ctx context.Context) (int, error) {
 	cfg := action.Config.Get(ctx)
 	log := logger.FromContext(ctx)
 
@@ -44,17 +44,17 @@ func (action *Scan) Run(ctx context.Context) error {
 
 	log.InfoContext(ctx, "Scanning Artifacts...")
 	// iterate through artifactDetails in sourceFile or in a gathered object
-	results, err := security.ScanArtifacts(ctx, opts, action.Config.Repository, cfg.ConcurrentHTTP)
+	results, exitCode, err := security.ScanArtifacts(ctx, opts, action.Config.Repository, cfg.ConcurrentHTTP)
 	if err != nil {
-		return err
+		return 3, err
 	}
 
 	if len(results) == 0 {
 		_, err := fmt.Fprintf(os.Stdout, "No supported images were found to be scanned.\n")
 		if err != nil {
-			return fmt.Errorf("printing to standard out that no scan-supported images were found: %w", err)
+			return 3, fmt.Errorf("printing to standard out that no scan-supported images were found: %w", err)
 		}
-		return nil
+		return 3, nil
 	}
 
 	outputMethods := map[string][]io.Writer{}
@@ -68,7 +68,7 @@ func (action *Scan) Run(ctx context.Context) error {
 		} else {
 			outfile, err = os.OpenFile(output[1], os.O_CREATE|os.O_WRONLY, 0666)
 			if err != nil {
-				return fmt.Errorf("creating/opening output file: %w", err)
+				return 3, fmt.Errorf("creating/opening output file: %w", err)
 			}
 		}
 		outputMethods[output[0]] = append(outputMethods[output[0]], outfile)
@@ -80,26 +80,25 @@ func (action *Scan) Run(ctx context.Context) error {
 			switch method {
 			case "json":
 				if err := security.PrintJSON(writer, results); err != nil {
-					return err
+					return 3, err
 				}
 			case "markdown":
 				if err := security.PrintMarkdown(writer, results, action.VulnerabilityLevel); err != nil {
-					return err
+					return 3, err
 				}
 			case "csv":
 				if err := security.PrintCSV(writer, results, action.VulnerabilityLevel); err != nil {
-					return err
+					return 3, err
 				}
 			case "table":
 				if err := security.PrintTable(writer, results, action.VulnerabilityLevel, action.DisplayCVE, action.DisplayPlatforms, action.ScanVirus); err != nil {
-					return err
+					return 3, err
 				}
 			default:
-				return fmt.Errorf("unknown printing directive: %s", action.Output)
+				return 3, fmt.Errorf("unknown printing directive: %s", action.Output)
 			}
 		}
 	}
 	// if the virus scanning results are not emtpy, we need to send a non-0/ non-1 exit code
-
-	return nil
+	return exitCode, nil
 }

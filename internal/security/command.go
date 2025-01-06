@@ -43,16 +43,13 @@ func clamavBytes(ctx context.Context, data io.ReadCloser) (*VirusScanResults, er
 		return nil, fmt.Errorf("scanning data: %s %w", res, err)
 	}
 
-	if len(res) == 0 {
-		return &VirusScanResults{
-			Finding: "",
-		}, nil
-	} else {
+	if len(res) != 0 {
 		lines := strings.Split(strings.TrimSpace(string(res)), ":")
 		return &VirusScanResults{
 			Finding: lines[1],
 		}, nil
 	}
+	return nil, nil
 }
 
 func grypeReference(ctx context.Context, reference string) (*VulnerabilityScanResults, error) {

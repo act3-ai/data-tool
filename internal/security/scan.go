@@ -37,10 +37,10 @@ type ScanOptions struct {
 func ScanArtifacts(ctx context.Context,
 	opts ScanOptions,
 	repoFunction func(context.Context, string) (*remote.Repository, error),
-	concurrency int) ([]*ArtifactDetails, error) {
+	concurrency int) ([]*ArtifactDetails, int, error) {
 
 	if opts.SourceFile == "" && opts.GatherArtifactReference == "" {
-		return nil, fmt.Errorf("either sourcefile or gather artifact must be chosen but not both")
+		return nil, 3, fmt.Errorf("either sourcefile or gather artifact must be chosen but not both")
 	}
 	return scan(ctx, opts, repoFunction, concurrency)
 }
@@ -48,38 +48,41 @@ func ScanArtifacts(ctx context.Context,
 func scan(ctx context.Context, //nolint:gocognit
 	opts ScanOptions,
 	repoFunction func(context.Context, string) (*remote.Repository, error),
-	concurrency int) ([]*ArtifactDetails, error) {
+	concurrency int) ([]*ArtifactDetails, int, error) {
 
 	log := logger.FromContext(ctx)
 	mu := sync.Mutex{}
 	var repository *remote.Repository
 
+	// exitCode is set to 0 if clear, 2 if there are viruses found in the artifacts, and 3 for program errors.
+	exitCode := 0
+
 	if opts.GatherArtifactReference != "" {
 		repo, err := repoFunction(ctx, opts.GatherArtifactReference)
 		if err != nil {
-			return nil, err
+			return nil, 3, err
 		}
 		repository = repo
 	}
 	m, err := FormatSources(ctx, opts.SourceFile, opts.GatherArtifactReference, repository, concurrency)
 	if err != nil {
-		return nil, fmt.Errorf("extracting sources from artifact: %w", err)
+		return nil, 3, fmt.Errorf("extracting sources from artifact: %w", err)
 	}
 	results := make([]*ArtifactDetails, len(m))
 	g, gctx := errgroup.WithContext(ctx)
 	g.SetLimit(concurrency)
 
-	// get the grype db checksum
-	checksum, err := getGrypeDBChecksum(ctx)
+	// get the grype db grypeChecksumDB
+	grypeChecksumDB, err := getGrypeDBChecksum(ctx)
 	if err != nil {
-		return nil, err
+		return nil, 3, err
 	}
 	var clamavDBChecksums []ClamavDatabase
 	// get the clamav checksums (if enabled)
 	if opts.ScanVirus {
 		cs, err := getClamAVChecksum(ctx)
 		if err != nil {
-			return nil, err
+			return nil, 3, err
 		}
 		clamavDBChecksums = cs
 	}
@@ -105,14 +108,41 @@ func scan(ctx context.Context, //nolint:gocognit
 			if err != nil {
 				return fmt.Errorf("getting artifact details for %s: %w", source[0], err)
 			}
+			// load the predecessor digests
+			artifactDetails.handlePredecessors(grypeChecksumDB, clamavDBChecksums)
 
 			if opts.ScanVirus {
-				virusResults, err := VirusScan(ctx, artifactDetails.desc, repository, clamavDBChecksums, opts.PushReport)
-				if err != nil {
-					return fmt.Errorf("virus scanning for reference %s: %w", artifactDetails.originatingReference, err)
-				}
-				if virusResults != nil {
+				if artifactDetails.virusScanReport != nil {
+					// there is an existing report, we should pull it and compare checksums
+					existingVirusScanReportManifest, err := artifactDetails.FetchExistingVirusScanningReportManifest(ctx)
+					if err != nil {
+						return err
+					}
+					log.InfoContext(ctx, "Found an existing and current virus scanning report", "reference", artifactDetails.originatingReference)
+					blob := existingVirusScanReportManifest.Layers[0]
+
+					var vr []*VirusScanManifestReport
+					rc, err := artifactDetails.repository.Fetch(ctx, blob)
+					if err != nil {
+						return fmt.Errorf("fetching the results for %s: %w", artifactDetails.originatingReference, err)
+					}
+					decoder := json.NewDecoder(rc)
+					if err := decoder.Decode(&vr); err != nil {
+						return fmt.Errorf("decoding the scan report for %s: %w", artifactDetails.originatingReference, err)
+					}
+					artifactDetails.MalwareResults = vr
+				} else {
+					virusResults, err := VirusScan(ctx, artifactDetails.desc, repository, clamavDBChecksums, opts.PushReport)
+					if err != nil {
+						return fmt.Errorf("virus scanning for reference %s: %w", artifactDetails.originatingReference, err)
+					}
 					artifactDetails.MalwareResults = virusResults
+				}
+				for _, report := range artifactDetails.MalwareResults {
+					if len(report.Results) != 0 {
+						// we need to set the exit code
+						exitCode = 2
+					}
 				}
 				// TODO
 				if opts.OnlyScanVirus {
@@ -125,8 +155,6 @@ func scan(ctx context.Context, //nolint:gocognit
 			}
 
 			artifactDetails.originatingReference = source[0]
-			// load the predecessor digests
-			artifactDetails.handlePredecessors(checksum)
 			if artifactDetails.resultsReport != nil {
 				// there is an existing report, we should pull it and compare checksums
 				existingReportManifest, err := artifactDetails.FetchExistingResultsReportManifest(ctx)
@@ -160,7 +188,7 @@ func scan(ctx context.Context, //nolint:gocognit
 			switch {
 			case !opts.DryRun && artifactDetails.manifestDigestSBOM == "":
 				log.InfoContext(ctx, "Generating SBOM(s)...", "reference", artifactDetails.originatingReference)
-				grypeResults, err := GenerateSBOM(ctx, source[1], checksum, artifactDetails.repository, opts.PushReport)
+				grypeResults, err := GenerateSBOM(ctx, source[1], grypeChecksumDB, artifactDetails.repository, opts.PushReport)
 				if err != nil {
 					return err
 				}
@@ -177,7 +205,7 @@ func scan(ctx context.Context, //nolint:gocognit
 
 			case artifactDetails.manifestDigestSBOM != "":
 				log.Info("SBOM Manifest found", "reference", artifactDetails.originatingReference, "digest", artifactDetails.manifestDigestSBOM)
-				grypeRes, err := extractAndGrypeSBOMs(gctx, artifactDetails.desc, artifactDetails.repository, artifactDetails.manifestDigestSBOM, checksum, opts.PushReport)
+				grypeRes, err := extractAndGrypeSBOMs(gctx, artifactDetails.desc, artifactDetails.repository, artifactDetails.manifestDigestSBOM, grypeChecksumDB, opts.PushReport)
 				if err != nil {
 					return err
 				}
@@ -220,7 +248,7 @@ func scan(ctx context.Context, //nolint:gocognit
 	}
 
 	if err := g.Wait(); err != nil {
-		return nil, err
+		return nil, 3, err
 	}
 
 	// filter out any nil values (caused by artifacts that are unsupported like helm charts and git bundle artifacts)
@@ -230,7 +258,7 @@ func scan(ctx context.Context, //nolint:gocognit
 			filteredResults = append(filteredResults, v)
 		}
 	}
-	return filteredResults, nil
+	return filteredResults, exitCode, nil
 
 }
 
@@ -256,6 +284,20 @@ func extractSourcesFromMirrorArtifact(ctx context.Context, reference string, rep
 func (ad *ArtifactDetails) FetchExistingResultsReportManifest(ctx context.Context) (*ocispec.Manifest, error) {
 	report := ocispec.Manifest{}
 	rc, err := ad.repository.Fetch(ctx, *ad.resultsReport)
+	if err != nil {
+		return nil, fmt.Errorf("fetching existing results for %s: %w", ad.originatingReference, err)
+	}
+	decoder := json.NewDecoder(rc)
+	if err := decoder.Decode(&report); err != nil {
+		return nil, fmt.Errorf("decoding results report for %s: %w", ad.originatingReference, err)
+	}
+	return &report, nil
+}
+
+// FetchExistingVirusScanningReportManifest fetches the artifact's existing scan report.
+func (ad *ArtifactDetails) FetchExistingVirusScanningReportManifest(ctx context.Context) (*ocispec.Manifest, error) {
+	report := ocispec.Manifest{}
+	rc, err := ad.repository.Fetch(ctx, *ad.virusScanReport)
 	if err != nil {
 		return nil, fmt.Errorf("fetching existing results for %s: %w", ad.originatingReference, err)
 	}

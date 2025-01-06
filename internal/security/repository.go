@@ -36,6 +36,7 @@ type ArtifactDetails struct {
 	manifestDigestSBOM   string
 	SBOMs                map[string][]*ocispec.Descriptor
 	resultsReport        *ocispec.Descriptor
+	virusScanReport      *ocispec.Descriptor
 	originatingReference string                     // only needed for gather artifacts
 	shortenedName        string                     // needed for graphing in mermaid
 	CalculatedResults    ArtifactScanReport         `json:"results"`
@@ -148,7 +149,7 @@ func GetArtifactDetails( //nolint:gocognit
 	return maniDetails, nil
 }
 
-func (ad *ArtifactDetails) handlePredecessors(checksum string) {
+func (ad *ArtifactDetails) handlePredecessors(grypeChecksumDB string, clamavChecksums []ClamavDatabase) error {
 	for _, p := range ad.predecessors {
 		switch p.ArtifactType {
 		case notationreg.ArtifactTypeNotation:
@@ -156,19 +157,29 @@ func (ad *ArtifactDetails) handlePredecessors(checksum string) {
 		case ArtifactTypeSPDX, ArtifactTypeHarborSBOM:
 			ad.manifestDigestSBOM = p.Digest.String()
 		case ArtifactTypeVulnerabilityReport:
-			if p.Annotations[AnnotationGrypeDatabaseChecksum] == checksum {
+			if p.Annotations[AnnotationGrypeDatabaseChecksum] == grypeChecksumDB {
 				ad.resultsReport = &p
+			}
+		case ArtifactTypeVirusScanReport:
+			b, err := json.Marshal(clamavChecksums)
+			if err != nil {
+				return fmt.Errorf("marshalling the clamav checksums: %w", err)
+			}
+			if p.Annotations[AnnotationVirusDatabaseChecksum] == string(b) {
+				ad.virusScanReport = &p
 			}
 		default:
 			continue
 		}
 	}
+	return nil
 }
 
 func attachResultsReport(ctx context.Context, subjectDescriptor, configDescriptor ocispec.Descriptor,
 	scanReport any,
 	repository oras.GraphTarget,
-	annotations map[string]string) ([]*ocispec.Descriptor, error) {
+	annotations map[string]string,
+	artifactType string) ([]*ocispec.Descriptor, error) {
 
 	var reports []*ocispec.Descriptor
 	// create the json results document
@@ -193,7 +204,7 @@ func attachResultsReport(ctx context.Context, subjectDescriptor, configDescripto
 			return nil, fmt.Errorf("decoding subject index: %w", err)
 		}
 		for _, manifest := range idx.Manifests {
-			r, err := attachResultsReport(ctx, manifest, configDescriptor, scanReport, repository, annotations)
+			r, err := attachResultsReport(ctx, manifest, configDescriptor, scanReport, repository, annotations, artifactType)
 			if err != nil {
 				return nil, err
 			}
@@ -207,7 +218,7 @@ func attachResultsReport(ctx context.Context, subjectDescriptor, configDescripto
 			ManifestAnnotations: annotations,
 		}
 
-		maniDesc, err := oras.PackManifest(ctx, repository, oras.PackManifestVersion1_1, ArtifactTypeVulnerabilityReport, packOpts)
+		maniDesc, err := oras.PackManifest(ctx, repository, oras.PackManifestVersion1_1, artifactType, packOpts)
 		if err != nil {
 			return nil, fmt.Errorf("pushing vulnerability results manifest: %w", err)
 		}
@@ -254,6 +265,9 @@ func VirusScan(ctx context.Context,
 	repository oras.GraphTarget,
 	clamavChecksums []ClamavDatabase,
 	pushResults bool) ([]*VirusScanManifestReport, error) {
+
+	// do reports exist with matching clamav checksums?
+
 	var reports []*VirusScanManifestReport
 
 	descCfg, err := generateEmptyBlobDescriptor(ocispec.MediaTypeImageConfig, digest.Canonical)
@@ -316,8 +330,7 @@ func VirusScan(ctx context.Context,
 		if err != nil {
 			return nil, fmt.Errorf("marshalling the virus database checksums: %w", err)
 		}
-		// TODO
-		_, err = attachResultsReport(ctx, desc, descCfg, reports, repository, map[string]string{AnnotationVirusDatabaseChecksum: string(data)})
+		_, err = attachResultsReport(ctx, desc, descCfg, reports, repository, map[string]string{AnnotationVirusDatabaseChecksum: string(data)}, ArtifactTypeVirusScanReport)
 		if err != nil {
 			return nil, err
 		}
