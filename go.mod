@@ -6,7 +6,7 @@ toolchain go1.23.4
 
 require (
 	git.act3-ace.com/ace/data/schema v1.2.13
-	git.act3-ace.com/ace/data/telemetry/v2 v2.0.4
+	git.act3-ace.com/ace/data/telemetry/v2 v2.1.0
 	git.act3-ace.com/ace/go-auth v0.0.0-20241024134738-dfc3a5ec2ac3
 	git.act3-ace.com/ace/go-common v0.0.0-20241029114748-ba3456041b7d
 	github.com/Masterminds/sprig/v3 v3.3.0
@@ -47,7 +47,7 @@ require (
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
-	git.act3-ace.com/ace/hub/api/v6 v6.0.0-20241003165841-f535566c7143 // indirect
+	git.act3-ace.com/ace/hub/api/v6 v6.0.0-20241203160221-3a1e07ae7102 // indirect
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
 	github.com/MakeNowJust/heredoc/v2 v2.0.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
@@ -57,7 +57,7 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
-	github.com/gomarkdown/markdown v0.0.0-20240930133441-72d49d9543d8 // indirect
+	github.com/gomarkdown/markdown v0.0.0-20241205020045-f7e15b2f3e62 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/muhlemmer/gu v0.3.1 // indirect
@@ -77,9 +77,9 @@ require (
 	golang.org/x/crypto v0.30.0 // indirect
 	golang.org/x/mod v0.22.0 // indirect
 	golang.org/x/oauth2 v0.23.0 // indirect
-	k8s.io/api v0.31.2 // indirect
+	k8s.io/api v0.31.3 // indirect
 	sigs.k8s.io/controller-runtime v0.19.0 // indirect
-	sigs.k8s.io/gateway-api v1.2.0 // indirect
+	sigs.k8s.io/gateway-api v1.2.1 // indirect
 )
 
 require (
