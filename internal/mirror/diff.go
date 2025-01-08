@@ -50,10 +50,20 @@ func ListArtifacts(ctx context.Context, opts DiffOptions) ([][]string, error) {
 	if !isArtifact {
 		return nil, fmt.Errorf("%s is not a mirror artifact", opts.RootArtifactReference)
 	}
-
+	// this is the table for printing
+	manifestOriginalReferences := [][]string{}
+	indexDesciptors := []ocispec.Descriptor{}
+	// add in any indexes that are in the annotations if the artifact was created with --index-fallback
+	v, ok := idx.Annotations[encoding.AnnotationExtraManifests]
+	if ok {
+		if err := json.Unmarshal([]byte(v), &indexDesciptors); err != nil {
+			return nil, fmt.Errorf("unmarshalling the extra manifest annotations for manifest %s: %w", opts.RootArtifactReference, err)
+		}
+	}
+	// add the manifests to the index descriptors
+	indexDesciptors = append(indexDesciptors, idx.Manifests...)
 	// iterate over the images
-	manifestOriginalReferences := [][]string{{"reference", "digest"}}
-	for _, manifest := range idx.Manifests {
+	for _, manifest := range indexDesciptors {
 		if len(filteredImages) != 0 {
 			_, ok := filteredImages[manifest.Digest]
 			if ok {
@@ -62,15 +72,21 @@ func ListArtifacts(ctx context.Context, opts DiffOptions) ([][]string, error) {
 			}
 		}
 		if opts.Expanded {
-			// if it's not an index we don't need to expand to get the artifact type
-			expandedImages, err := getExpandedImages(ctx, manifest, filteredImages, repository)
+			expandedImages, err := getExpandedImages(ctx, manifest, repository)
 			if err != nil {
 				return nil, err
 			}
 			if len(expandedImages) != 0 {
-				manifestOriginalReferences = append(manifestOriginalReferences, expandedImages...)
+				for digest, srcRef := range expandedImages {
+					_, ok := filteredImages[digest]
+					if !ok {
+						// we want to add the digest
+						filteredImages[digest] = srcRef
+						manifestOriginalReferences = append(manifestOriginalReferences, []string{srcRef, digest.String()})
+					}
+				}
 				filteredImages[manifest.Digest] = ""
-				// we don't want to add the top-level gather source reference to the table
+				// we don't want to add the top-level gather source reference to the table so we continue
 				continue
 			}
 		}
@@ -84,8 +100,8 @@ func ListArtifacts(ctx context.Context, opts DiffOptions) ([][]string, error) {
 	return manifestOriginalReferences, nil
 }
 
-func getExpandedImages(ctx context.Context, desc ocispec.Descriptor, filteredImages map[digest.Digest]string, repository oras.GraphTarget) ([][]string, error) {
-	manifestOriginalReferences := [][]string{}
+// getExpandedImages asserts whether the given descriptor is a mirror artifact and if so, returns a map of its images.
+func getExpandedImages(ctx context.Context, desc ocispec.Descriptor, repository oras.GraphTarget) (map[digest.Digest]string, error) {
 	if encoding.IsIndex(desc.MediaType) {
 		isMirrorArtifact, nestedIdx, err := DescIsMirrorArtifact(ctx, desc, repository)
 		if err != nil {
@@ -93,28 +109,25 @@ func getExpandedImages(ctx context.Context, desc ocispec.Descriptor, filteredIma
 		}
 		if isMirrorArtifact {
 			// all nested images in Digest:original reference
-			nestedImages, err := getNestedArtifactImages(ctx, *nestedIdx, repository)
-			if err != nil {
-				return nil, err
-			}
-			for digest, srcRef := range nestedImages {
-				_, ok := filteredImages[digest]
-				if !ok {
-					// we want to add the digest
-					filteredImages[digest] = srcRef
-					manifestOriginalReferences = append(manifestOriginalReferences, []string{srcRef, digest.String()})
-				}
-			}
+			return getNestedArtifactImages(ctx, *nestedIdx, repository)
 		}
 	}
-	return manifestOriginalReferences, nil
+	return nil, nil
 }
 
+// getNestedArtifactImages returns a map of all mirror artifact manifests (inclusive of nested mirror artifacts).
 func getNestedArtifactImages(ctx context.Context, gatheredIndex ocispec.Index, repository oras.GraphTarget) (map[digest.Digest]string, error) {
 	// create a map to hold existing images from nested gather artifacts
 	diffImages := map[digest.Digest]string{}
 
-	for _, manifest := range gatheredIndex.Manifests {
+	// are there any extra indexes at the top level of the gatheredIndex?
+	manifestList, err := getExtraIndexes(gatheredIndex)
+	if err != nil {
+		return nil, err
+	}
+	// add all of the index manifests to the list
+	manifestList = append(manifestList, gatheredIndex.Manifests...)
+	for _, manifest := range manifestList {
 		isGatherArtifact, nestedIndex, err := DescIsMirrorArtifact(ctx, manifest, repository)
 		if err != nil {
 			return nil, err
@@ -127,13 +140,26 @@ func getNestedArtifactImages(ctx context.Context, gatheredIndex ocispec.Index, r
 			for k, v := range images {
 				diffImages[k] = v
 			}
-			return diffImages, nil
+		} else {
+			diffImages[manifest.Digest] = manifest.Annotations[ref.AnnotationSrcRef]
 		}
-		diffImages[manifest.Digest] = manifest.Annotations[ref.AnnotationSrcRef]
 	}
 	return diffImages, nil
 }
 
+// getExtraIndexes returns the index descriptors in a given artifact's extra manifests annotation.
+func getExtraIndexes(nestedIndex ocispec.Index) ([]ocispec.Descriptor, error) {
+	indexDescriptors := []ocispec.Descriptor{}
+	subExtraIndexes, ok := nestedIndex.Annotations[encoding.AnnotationExtraManifests]
+	if ok {
+		if err := json.Unmarshal([]byte(subExtraIndexes), &indexDescriptors); err != nil {
+			return nil, fmt.Errorf("unmarshalling the extra manifest annotations for nested manifest %s: %w", nestedIndex.Annotations[ref.AnnotationSrcRef], err)
+		}
+	}
+	return indexDescriptors, nil
+}
+
+// generateFilteredList creates a map inclusive of all manifest and sub-manifest digests within the given slice of reference strings in existingImages. It returns the map for easy searching.
 func generateFilteredList(ctx context.Context, existingImages []string, graphTargeter reg.GraphTargeter) (map[digest.Digest]string, error) {
 	filteredImages := map[digest.Digest]string{}
 	// get the image and put its digest and all of its sub-digests into the map
@@ -146,26 +172,28 @@ func generateFilteredList(ctx context.Context, existingImages []string, graphTar
 		if err != nil {
 			return nil, err
 		}
-		e, err := existingManifests(ctx, reference.String(), repo)
+		// get the descriptor
+		desc, err := repo.Resolve(ctx, reference.String())
+		if err != nil {
+			return nil, fmt.Errorf("resolving existing image %s: %w", reference, err)
+		}
+		// get all of the manifest and sub-manifest digests for the given descriptor.
+		e, err := existingManifests(ctx, desc, repo)
 		if err != nil {
 			return nil, err
 		}
-		for k := range e {
-			filteredImages[k] = ""
+		for _, k := range e {
+			filteredImages[k] = "" // nothing needs to be stored in the value, the map is purely for key searching (by digest).
 		}
 	}
 	return filteredImages, nil
 }
 
-func existingManifests(ctx context.Context, reference string, repo oras.GraphTarget) (map[digest.Digest]string, error) {
-	existing := map[digest.Digest]string{}
-	// get the digest
-	desc, err := repo.Resolve(ctx, reference)
-	if err != nil {
-		return nil, fmt.Errorf("resolving existing image %s: %w", reference, err)
-	}
+// existingManifests returns a slice of all manifest and sub-manifest digests for a given descriptor.
+func existingManifests(ctx context.Context, desc ocispec.Descriptor, repo oras.GraphTarget) ([]digest.Digest, error) {
+	existing := []digest.Digest{}
 	// add the root to the existing map
-	existing[desc.Digest] = ""
+	existing = append(existing, desc.Digest)
 	// is it a mirror artifact?
 	isMirrorArtifact, gatheredIndex, err := DescIsMirrorArtifact(ctx, desc, repo)
 	if err != nil {
@@ -177,8 +205,8 @@ func existingManifests(ctx context.Context, reference string, repo oras.GraphTar
 		if err != nil {
 			return nil, err
 		}
-		for k, v := range nestedImages {
-			existing[k] = v
+		for k := range nestedImages {
+			existing = append(existing, k)
 		}
 	}
 

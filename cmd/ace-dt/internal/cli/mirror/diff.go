@@ -26,8 +26,17 @@ The output is sent to standard output by default but can be redirected to a file
 		Example: `To list all images in "reg.example.com/repo/data:sync-45" to standard out:
 ace-dt mirror diff reg.example.com/repo/data:sync-45
 
-To list all images in "reg.example.com/repo/data:sync-45" to file output.txt:
-ace-dt mirror diff reg.example.com/repo/data:sync-45 -o output.txt
+To list all images in "reg.example.com/repo/data:sync-45" in table format to file output.txt:
+ace-dt mirror diff reg.example.com/repo/data:sync-45 -o table=output.txt
+
+To list all images in "reg.example.com/repo/data:sync-45" to file output.json:
+ace-dt mirror diff reg.example.com/repo/data:sync-45 -o json=output.json
+
+To list all images in "reg.example.com/repo/data:sync-45" in json format to standard out:
+ace-dt mirror diff reg.example.com/repo/data:sync-45 -o json
+
+To list all images in "reg.example.com/repo/data:sync-45" in csv format to file output.csv:
+ace-dt mirror diff reg.example.com/repo/data:sync-45 -o csv=output.csv
 
 To list all images in "reg.example.com/repo/data:sync-45" but exclude any images that exist in sync-44:
 ace-dt mirror diff reg.example.com/repo/data:sync-45 reg.example.com/repo/data:sync-44
@@ -41,7 +50,7 @@ ace-dt mirror diff reg.example.com/repo/data:sync-45 --expand
 		},
 	}
 
-	cmd.Flags().StringVarP(&action.Output, "output", "o", "-", `Define a filepath to print to file or "-" to print to standard output (default behavior).`)
+	cmd.Flags().StringSliceVarP(&action.Output, "output", "o", []string{"table"}, "Define how you would like the output displayed. Supported types are json, csv, and table. Adding an '=' between the type and a filename can redirect to file. Multiple values are supported.")
 	cmd.Flags().BoolVar(&action.Expanded, "expand", false, "Expand any nested mirror artifacts to show all images in list. (Default behavior only shows mirror artifact reference.)")
 	return cmd
 }
