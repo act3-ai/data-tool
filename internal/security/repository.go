@@ -282,24 +282,22 @@ func VirusScan(ctx context.Context,
 	// output any errors but do not fail until the end
 	if encoding.IsIndex(desc.MediaType) {
 		var idx ocispec.Index
-		rc, err := repository.Fetch(ctx, desc)
+		b, err := content.FetchAll(ctx, repository, desc)
 		if err != nil {
 			return nil, fmt.Errorf("fetching index manifest: %w", err)
 		}
-		decoder := json.NewDecoder(rc)
-		if err := decoder.Decode(&idx); err != nil {
+		if err := json.Unmarshal(b, &idx); err != nil {
 			return nil, fmt.Errorf("parsing the image manifest: %w", err)
 		}
 		for _, man := range idx.Manifests {
-			report := VirusScanManifestReport{}
-			rl, err := scanManifestForViruses(ctx, man, repository)
+			rl, err := VirusScan(ctx, man, repository, clamavChecksums, pushResults)
 			if err != nil {
 				return nil, err
 			}
-			report.Results = append(report.Results, rl...)
-			reports = append(reports, &report)
+			reports = append(reports, rl...)
 		}
 	} else {
+		fmt.Println("scanning ", desc.Digest.String())
 		report := VirusScanManifestReport{}
 		rl, err := scanManifestForViruses(ctx, desc, repository)
 		if err != nil {
@@ -308,33 +306,35 @@ func VirusScan(ctx context.Context,
 		report.Results = rl
 		report.ManifestDigest = desc.Digest.String()
 		reports = append(reports, &report)
-	}
-	if pushResults {
-		// is this really the best spot to push the empty descriptor?
-		cfgExists, err := repository.Exists(ctx, descCfg)
-		if err != nil {
-			return nil, fmt.Errorf("checking existence of config: %w", err)
-		}
-		if !cfgExists {
-			imgcfg := ocispec.ImageConfig{}
-			cfg, err := json.Marshal(imgcfg)
+		if pushResults {
+			// is this really the best spot to push the empty descriptor?
+			cfgExists, err := repository.Exists(ctx, descCfg)
 			if err != nil {
-				return nil, fmt.Errorf("marshalling empty config: %w", err)
+				return nil, fmt.Errorf("checking existence of config: %w", err)
 			}
-			if err := repository.Push(ctx, descCfg, bytes.NewReader(cfg)); err != nil {
-				return nil, fmt.Errorf("pushing empty config. Do you have push permissions? If not, use --check: %w", err)
+			if !cfgExists {
+				imgcfg := ocispec.ImageConfig{}
+				cfg, err := json.Marshal(imgcfg)
+				if err != nil {
+					return nil, fmt.Errorf("marshalling empty config: %w", err)
+				}
+				if err := repository.Push(ctx, descCfg, bytes.NewReader(cfg)); err != nil {
+					return nil, fmt.Errorf("pushing empty config. Do you have push permissions? If not, use --check: %w", err)
+				}
 			}
-		}
 
-		data, err := json.Marshal(clamavChecksums)
-		if err != nil {
-			return nil, fmt.Errorf("marshalling the virus database checksums: %w", err)
+			data, err := json.Marshal(clamavChecksums)
+			if err != nil {
+				return nil, fmt.Errorf("marshalling the virus database checksums: %w", err)
+			}
+			// attach the results report
+			rd, err := attachResultsReport(ctx, desc, descCfg, reports, repository, map[string]string{AnnotationVirusDatabaseChecksum: string(data)}, ArtifactTypeVirusScanReport)
+			if err != nil {
+				return nil, err
+			}
+			fmt.Println("pushed results for", desc.Digest.String(), " to ", rd[0].Digest.String())
+			slog.InfoContext(ctx, "pushed results", "reference", desc.Digest.String())
 		}
-		_, err = attachResultsReport(ctx, desc, descCfg, reports, repository, map[string]string{AnnotationVirusDatabaseChecksum: string(data)}, ArtifactTypeVirusScanReport)
-		if err != nil {
-			return nil, err
-		}
-		slog.InfoContext(ctx, "pushed results", "reference", desc.Digest.String())
 	}
 	return reports, nil
 
