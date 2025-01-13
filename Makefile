@@ -13,7 +13,7 @@ IMAGE_REPO=$(REGISTRY_NAME)/ace/data/tool
 # Tool versions
 
 # renovate: datasource=go depName=sigs.k8s.io/controller-tools
-CONTROLLER_GEN_VERSION?=v0.16.5
+CONTROLLER_GEN_VERSION?=v0.17.1
 # renovate: datasource=go depName=github.com/elastic/crd-ref-docs
 CRD_REF_DOCS_VERSION?=v0.1.0
 # renovate: datasource=go depName=github.com/google/ko
