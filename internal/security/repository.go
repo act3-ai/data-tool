@@ -9,12 +9,15 @@ import (
 	"fmt"
 	"hash"
 	"log/slog"
+	"path/filepath"
+	"strings"
 
 	notationreg "github.com/notaryproject/notation-go/registry"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
 
 	gitoci "github.com/act3-ai/data-tool/internal/git/oci"
@@ -264,7 +267,8 @@ func VirusScan(ctx context.Context,
 	desc ocispec.Descriptor,
 	repository oras.GraphTarget,
 	clamavChecksums []ClamavDatabase,
-	pushResults bool) ([]*VirusScanManifestReport, error) {
+	pushResults bool,
+	cachePath string) ([]*VirusScanManifestReport, error) {
 
 	// do reports exist with matching clamav checksums?
 
@@ -290,7 +294,7 @@ func VirusScan(ctx context.Context,
 			return nil, fmt.Errorf("parsing the image manifest: %w", err)
 		}
 		for _, man := range idx.Manifests {
-			rl, err := VirusScan(ctx, man, repository, clamavChecksums, pushResults)
+			rl, err := VirusScan(ctx, man, repository, clamavChecksums, pushResults, cachePath)
 			if err != nil {
 				return nil, err
 			}
@@ -299,7 +303,7 @@ func VirusScan(ctx context.Context,
 	} else {
 		fmt.Println("scanning ", desc.Digest.String())
 		report := VirusScanManifestReport{}
-		rl, err := scanManifestForViruses(ctx, desc, repository)
+		rl, err := scanManifestForViruses(ctx, desc, repository, cachePath)
 		if err != nil {
 			return nil, err
 		}
@@ -348,8 +352,14 @@ func VirusScan(ctx context.Context,
 // output any errors but do not fail until the end
 func scanManifestForViruses(ctx context.Context,
 	desc ocispec.Descriptor,
-	repository oras.GraphTarget) ([]*VirusScanResults, error) {
+	repository oras.GraphTarget,
+	cachePath string) ([]*VirusScanResults, error) {
 	var clamavResults []*VirusScanResults
+	// initialize the storage cache
+	store, err := oci.NewStorage(cachePath)
+	if err != nil {
+		return nil, fmt.Errorf("initializing the storage cache: %w", err)
+	}
 	// pull the image manifest
 	rc, err := repository.Fetch(ctx, desc)
 	if err != nil {
@@ -369,14 +379,34 @@ func scanManifestForViruses(ctx context.Context,
 		if err != nil {
 			return nil, fmt.Errorf("fetching the image layer: %w", err)
 		}
-		r, err := clamavBytes(ctx, lrc)
-		if err != nil {
-			return nil, err
-		}
+		// TODO CLEANUP
+		if layer.MediaType == gitoci.MediaTypeBundleLayer {
+			// download to cache
+			if err := store.Push(ctx, layer, lrc); err != nil {
+				if !strings.Contains(err.Error(), "already exists") {
+					return nil, fmt.Errorf("caching the git layer: %w", err)
+				}
+			}
+			fmt.Println(cachePath, layer.Digest.String())
+			r, err := clamavGitBundle(ctx, cachePath, filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded()))
+			if err != nil {
+				return nil, err
+			}
+			if r != nil {
+				r.LayerDigest = layer.Digest.String()
+				clamavResults = append(clamavResults, r)
+			}
+			continue
+		} else {
+			r, err := clamavBytes(ctx, lrc)
+			if err != nil {
+				return nil, err
+			}
 
-		if r != nil {
-			r.LayerDigest = layer.Digest.String()
-			clamavResults = append(clamavResults, r)
+			if r != nil {
+				r.LayerDigest = layer.Digest.String()
+				clamavResults = append(clamavResults, r)
+			}
 		}
 	}
 

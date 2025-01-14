@@ -33,6 +33,7 @@ func (action *Scan) Run(ctx context.Context) (int, error) {
 
 	// Build the scan options
 	opts := security.ScanOptions{
+		CachePath:               cfg.CachePath,
 		SourceFile:              action.SourceFile,
 		GatherArtifactReference: action.GatherArtifactReference,
 		Output:                  action.Output,

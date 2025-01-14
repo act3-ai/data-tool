@@ -8,6 +8,8 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/act3-ai/data-tool/internal/ui"
@@ -207,4 +209,55 @@ func getClamAVChecksum(ctx context.Context) ([]ClamavDatabase, error) {
 		}
 	}
 	return clamavDBChecksums, nil
+}
+
+func clamavGitBundle(ctx context.Context, cachePath, bundlePath string) (*VirusScanResults, error) {
+	tmpDir, err := os.MkdirTemp(filepath.Join(cachePath, "tmp"), "")
+	if err != nil {
+		return nil, fmt.Errorf("creating tmp git dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	// initialize the git repo
+	cmd := exec.CommandContext(ctx, "git", "init", "--bare")
+	cmd.Dir = tmpDir
+	if res, err := cmd.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("failed to initialize empty repository: %w\n%s", err, string(res))
+	}
+	// fetch the bundle to the temporary directory
+	cmd = exec.CommandContext(ctx, "git", "fetch", bundlePath, "refs/heads/*:refs/heads/*")
+	cmd.Dir = tmpDir
+	if res, err := cmd.CombinedOutput(); err != nil {
+		return nil, fmt.Errorf("failed to fetch git bundle: %w\n%s", err, string(res))
+	}
+	// list commit hashes
+	cmd = exec.CommandContext(ctx, "git", "log", "--all")
+	cmd.Dir = tmpDir
+	res, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("failed to log git commits for bundle: %w\n%s", err, string(res))
+	}
+	regex := regexp.MustCompile(`[a-f0-9]{40}`)
+	commitHashes := regex.FindAllString(string(res), -1)
+	for _, hash := range commitHashes {
+		cmd = exec.CommandContext(ctx, "git", "ls-tree", "-r", hash)
+		cmd.Dir = tmpDir
+		res, err := cmd.CombinedOutput()
+		if err != nil {
+			return nil, fmt.Errorf("failed to ls-tree commit hash in bundle: %w\n%s", err, string(res))
+		}
+		regex := regexp.MustCompile(`\b[0-9a-f]{40}\b`)
+		blobHashes := regex.FindAllString(string(res), -1)
+		for _, blob := range blobHashes {
+			cmd = exec.CommandContext(ctx, "git", "cat-file", "-p", blob)
+			cmd.Dir = tmpDir
+			res, err := cmd.CombinedOutput()
+			if err != nil {
+				return nil, fmt.Errorf("getting blob from git bundle: %w\n%s", err, string(res))
+			}
+			r := bytes.NewReader(res)
+			rc := io.NopCloser(r)
+			return clamavBytes(ctx, rc)
+		}
+	}
+	return nil, nil
 }

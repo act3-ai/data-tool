@@ -19,15 +19,16 @@ import (
 
 // ScanOptions defines the options needed to run the scan operation.
 type ScanOptions struct {
-	SourceFile              string
+	CachePath               string
 	GatherArtifactReference string
-	Output                  []string
 	SaveReport              string
+	SourceFile              string
 	VulnerabilityLevel      string
+	Output                  []string
 	DryRun                  bool
+	OnlyScanVirus           bool
 	PushReport              bool
 	ScanVirus               bool
-	OnlyScanVirus           bool
 }
 
 // ScanArtifacts will fetch the artifact details for each image in a source file or a mirror (gather) artifact.
@@ -153,7 +154,7 @@ func processArtifact(ctx context.Context,
 	artifactDetails.handlePredecessors(grypeChecksumDB, clamavDBChecksums)
 
 	if opts.ScanVirus {
-		if err := processVirusScanning(ctx, artifactDetails, source[0], repository, clamavDBChecksums, opts.PushReport); err != nil {
+		if err := processVirusScanning(ctx, artifactDetails, source[0], repository, clamavDBChecksums, opts.PushReport, opts.CachePath); err != nil {
 			return nil, err
 		}
 		if opts.OnlyScanVirus {
@@ -238,8 +239,13 @@ func processVulnerabilityScanning(ctx context.Context, artifactDetails *Artifact
 	return &res, nil
 }
 
-func processVirusScanning(ctx context.Context, artifactDetails *ArtifactDetails, reference string, repository *remote.Repository,
-	clamavDBChecksums []ClamavDatabase, pushReport bool) error {
+func processVirusScanning(ctx context.Context,
+	artifactDetails *ArtifactDetails,
+	reference string,
+	repository *remote.Repository,
+	clamavDBChecksums []ClamavDatabase,
+	pushReport bool,
+	cachePath string) error {
 	log := logger.FromContext(ctx)
 
 	if artifactDetails.virusScanReport != nil {
@@ -261,7 +267,7 @@ func processVirusScanning(ctx context.Context, artifactDetails *ArtifactDetails,
 		}
 		artifactDetails.MalwareResults = vr
 	} else {
-		virusResults, err := VirusScan(ctx, artifactDetails.desc, repository, clamavDBChecksums, pushReport)
+		virusResults, err := VirusScan(ctx, artifactDetails.desc, repository, clamavDBChecksums, pushReport, cachePath)
 		if err != nil {
 			return fmt.Errorf("virus scanning for reference %s: %w", reference, err)
 		}
