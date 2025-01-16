@@ -64,19 +64,28 @@ func (c *Helper) ListReachableLFSFiles(ctx context.Context, argRevList []string)
 
 	// must do one at a time, see `man git-lfs-ls-files`
 	for _, ref := range argRevList {
-		newFiles, err := c.LSFiles(ctx, ref, "--long", "--deleted")
+		res, err := c.ShowRefs(ctx, ref)
 		if err != nil {
-			return nil, fmt.Errorf("retrieving new git lfs tracked files for ref %s: %w", ref, err)
+			return nil, fmt.Errorf("resolving full references for '%s': %w", ref, err)
 		}
-		// add the OID paths
-		for _, file := range newFiles {
-			split := strings.Fields(file) // split[0] = OID; split[1] = -/*; split[2] = file name
-			if _, ok := resolver[split[0]]; !ok {
-				resolver[split[0]] = struct{}{}
 
-				reachable = append(reachable, split[0])
+		for _, commitRef := range res {
+			split := strings.Fields(commitRef)
+			newFiles, err := c.LSFiles(ctx, split[1], "--long", "--deleted")
+			if err != nil {
+				return nil, fmt.Errorf("retrieving new git lfs tracked files for ref %s: %w", ref, err)
+			}
+			// add the OID paths
+			for _, file := range newFiles {
+				split := strings.Fields(file) // split[0] = OID; split[1] = -/*; split[2] = file name
+				if _, ok := resolver[split[0]]; !ok {
+					resolver[split[0]] = struct{}{}
+
+					reachable = append(reachable, split[0])
+				}
 			}
 		}
+
 	}
 
 	return reachable, nil
