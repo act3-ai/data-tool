@@ -12,7 +12,11 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/act3-ai/data-tool/internal/ui"
+	"github.com/act3-ai/bottle-schema/pkg/mediatype"
+	"github.com/act3-ai/data-tool/internal/bottle"
+	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/content"
 )
 
 func syftReference(ctx context.Context, reference string) ([]byte, error) {
@@ -28,7 +32,7 @@ func syftReference(ctx context.Context, reference string) ([]byte, error) {
 	return res, nil
 }
 
-func clamavBytes(ctx context.Context, data io.ReadCloser) (*VirusScanResults, error) {
+func clamavBytes(ctx context.Context, data io.ReadCloser, filename string) (*VirusScanResults, error) {
 	cmd := exec.CommandContext(ctx, "clamscan", "--no-summary", "--infected", "--stdout", "-")
 	cmd.Stdin = data
 	res, err := cmd.CombinedOutput()
@@ -37,7 +41,7 @@ func clamavBytes(ctx context.Context, data io.ReadCloser) (*VirusScanResults, er
 	if match := foundPattern.FindStringSubmatch(output); len(match) > 1 {
 		lines := strings.Split(strings.TrimSpace(match[1]), ":")
 		return &VirusScanResults{
-			File:    match[0],
+			File:    filename,
 			Finding: lines[1],
 		}, nil
 	}
@@ -245,10 +249,14 @@ func clamavGitBundle(ctx context.Context, cachePath, bundlePath string) (*VirusS
 		if err != nil {
 			return nil, fmt.Errorf("failed to ls-tree commit hash in bundle: %w\n%s", err, string(res))
 		}
-		regex := regexp.MustCompile(`\b[0-9a-f]{40}\b`)
+		// use regex to find the blob digest and filename
+		regex := regexp.MustCompile(`\b[0-9a-f]{40}\b\s.+`)
 		blobHashes := regex.FindAllString(string(res), -1)
 		for _, blob := range blobHashes {
-			cmd = exec.CommandContext(ctx, "git", "cat-file", "-p", blob)
+			fmt.Println(blob)
+			blob = strings.TrimSpace(blob)
+			blobFile := strings.Split(blob, "\t")
+			cmd = exec.CommandContext(ctx, "git", "cat-file", "-p", blobFile[0])
 			cmd.Dir = tmpDir
 			res, err := cmd.CombinedOutput()
 			if err != nil {
@@ -256,7 +264,20 @@ func clamavGitBundle(ctx context.Context, cachePath, bundlePath string) (*VirusS
 			}
 			r := bytes.NewReader(res)
 			rc := io.NopCloser(r)
-			return clamavBytes(ctx, rc)
+			return clamavBytes(ctx, rc, blobFile[1])
+		}
+	}
+	return nil, nil
+}
+
+func clamavBottle(ctx context.Context, cfg []byte, layers []ocispec.Descriptor) ([]*VirusScanResults, error) {
+	// inspect the config for the hash -->  file mappings
+	filenames := make(map[digest.Digest]string, len(layers)-1)
+	var bottle bottle.Bottle
+	for _, layer := range layers {
+		if layer.ArtifactType == mediatype.MediaTypeBottleConfig {
+			content.FetchAll(ctx, repository, layer)
+			json.Unmarshal()
 		}
 	}
 	return nil, nil

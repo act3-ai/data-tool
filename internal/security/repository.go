@@ -20,6 +20,7 @@ import (
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
 
+	"github.com/act3-ai/bottle-schema/pkg/mediatype"
 	gitoci "github.com/act3-ai/data-tool/internal/git/oci"
 	"github.com/act3-ai/data-tool/internal/mirror"
 	"github.com/act3-ai/data-tool/internal/mirror/encoding"
@@ -387,7 +388,6 @@ func scanManifestForViruses(ctx context.Context,
 					return nil, fmt.Errorf("caching the git layer: %w", err)
 				}
 			}
-			fmt.Println(cachePath, layer.Digest.String())
 			r, err := clamavGitBundle(ctx, cachePath, filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded()))
 			if err != nil {
 				return nil, err
@@ -397,8 +397,10 @@ func scanManifestForViruses(ctx context.Context,
 				clamavResults = append(clamavResults, r)
 			}
 			continue
+		} else if layer.MediaType == mediatype.MediaTypeBottleConfig {
+			return clamavBottle(ctx, manifest.Layers)
 		} else {
-			r, err := clamavBytes(ctx, lrc)
+			r, err := clamavBytes(ctx, lrc, "")
 			if err != nil {
 				return nil, err
 			}
