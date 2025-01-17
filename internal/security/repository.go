@@ -15,9 +15,9 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/registry"
 
 	"github.com/act3-ai/bottle-schema/pkg/mediatype"
+	"github.com/act3-ai/data-tool/internal/actions/pypi"
 	gitoci "github.com/act3-ai/data-tool/internal/git/oci"
 	"github.com/act3-ai/data-tool/internal/mirror"
 	"github.com/act3-ai/data-tool/internal/mirror/encoding"
@@ -49,25 +49,29 @@ func GetArtifactDetails( //nolint:gocognit
 	ctx context.Context,
 	reference string,
 	repo oras.GraphTarget) (*ArtifactDetails, error) {
+
 	maniDetails := &ArtifactDetails{}
 	maniDetails.source.Name = reference
 	var platforms []string
 	var size int64
 	sboms := map[string][]*ocispec.Descriptor{}
 	var predecessors []ocispec.Descriptor
-	r, err := registry.ParseReference(reference)
+	maniDetails.repository = repo
+
+	desc, err := repo.Resolve(ctx, reference)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing ref %s: %w", reference, err)
+		return nil, fmt.Errorf("error resolving reference %s: %w", reference, err)
 	}
 
-	maniDetails.repository = repo
-	d, data, err := oras.FetchBytes(ctx, repo, r.ReferenceOrDefault(), oras.DefaultFetchBytesOptions)
+	data, err := repo.Fetch(ctx, desc)
+	// d, data, err := oras.FetchBytes(ctx, repo, reference, oras.DefaultFetchBytesOptions)
 	if err != nil {
-		return nil, fmt.Errorf("fetching the manifest bytes: %w", err)
+		return nil, fmt.Errorf("fetching the manifest bytes for %s: %w", reference, err)
 	}
-	maniDetails.desc = d
-	maniDetails.isOCICompliant = encoding.IsOCICompliant(d.MediaType)
-	p, err := repo.Predecessors(ctx, d)
+
+	maniDetails.desc = desc
+	maniDetails.isOCICompliant = encoding.IsOCICompliant(desc.MediaType)
+	p, err := repo.Predecessors(ctx, desc)
 	if err != nil {
 		return nil, fmt.Errorf("fetching predecessors: %w", err)
 	}
@@ -75,24 +79,33 @@ func GetArtifactDetails( //nolint:gocognit
 	// Fetch predecessors/SBOMs/Signatures
 	predecessors = append(predecessors, p...)
 
-	if encoding.IsIndex(d.MediaType) {
+	if encoding.IsIndex(desc.MediaType) {
 		var idx ocispec.Index
-		err = json.Unmarshal(data, &idx)
-		if err != nil {
-			return nil, err
+		decoder := json.NewDecoder(data)
+		if err := decoder.Decode(&idx); err != nil {
+			return nil, fmt.Errorf("decoding the index bytes: %w", err)
 		}
-		size += d.Size
+		// err = json.Unmarshal(data, &idx)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		size += desc.Size
 		for _, man := range idx.Manifests {
 			var img ocispec.Manifest
-			manDesc, manData, err := oras.FetchBytes(ctx, repo, man.Digest.String(), oras.DefaultFetchBytesOptions)
+			manData, err := repo.Fetch(ctx, man)
+			// manDesc, manData, err := oras.FetchBytes(ctx, repo, man.Digest.String(), oras.DefaultFetchBytesOptions)
 			if err != nil {
 				return nil, fmt.Errorf("fetching the manifest bytes: %w", err)
 			}
 			// all of this below should be put in a manifest function, needs to return size, predecessors, and platforms
-			if err := json.Unmarshal(manData, &img); err != nil {
-				return nil, err
+			decoder := json.NewDecoder(manData)
+			if err := decoder.Decode(&img); err != nil {
+				return nil, fmt.Errorf("decoding the manifest data: %w", err)
 			}
-			size += manDesc.Size
+			// if err := json.Unmarshal(manData, &img); err != nil {
+			// 	return nil, err
+			// }
+			size += man.Size
 			for _, blob := range img.Layers {
 				size += blob.Size
 			}
@@ -116,16 +129,20 @@ func GetArtifactDetails( //nolint:gocognit
 		}
 		maniDetails.SBOMs = sboms
 	} else {
-		size += d.Size
-		if d.Platform != nil {
-			platformString := formatPlatformString(d.Platform)
+		size += desc.Size
+		if desc.Platform != nil {
+			platformString := formatPlatformString(desc.Platform)
 			platforms = append(platforms, platformString)
 		} else {
 			// pull the config and see if we can decode from there
 			var img ocispec.Manifest
-			if err := json.Unmarshal(data, &img); err != nil {
-				return nil, err
+			decoder := json.NewDecoder(data)
+			if err := decoder.Decode(&img); err != nil {
+				return nil, fmt.Errorf("decoding the manifest: %w", err)
 			}
+			// if err := json.Unmarshal(data, &img); err != nil {
+			// 	return nil, err
+			// }
 			// use the config descriptor to get the bytes
 			data, err := content.FetchAll(ctx, repo, img.Config)
 			if err != nil {
@@ -354,6 +371,9 @@ func scanManifestForViruses(ctx context.Context,
 	cachePath string) ([]*VirusScanResults, error) {
 	var clamavResults []*VirusScanResults
 
+	// create a blob tracker
+	tracker := map[digest.Digest]string{}
+
 	// pull the image manifest
 	rc, err := repository.Fetch(ctx, desc)
 	if err != nil {
@@ -365,20 +385,19 @@ func scanManifestForViruses(ctx context.Context,
 		return nil, fmt.Errorf("parsing the image manifest: %w", err)
 	}
 
-	// var config ocispec.ImageConfig
+	if manifest.ArtifactType == pypi.MediaTypePythonDistribution {
+		return clamavPypiArtifact(ctx, cachePath, manifest.Layers, repository, tracker)
+	}
+
 	// pull the config
 	rcCfg, err := repository.Fetch(ctx, manifest.Config)
 	if err != nil {
 		return nil, fmt.Errorf("fetching manifest config: %w", err)
 	}
-	// decoder = json.NewDecoder(rcCfg)
-	// if err := decoder.Decode(&config); err != nil {
-	// 	return nil, fmt.Errorf("parsing the image manifest config: %w", err)
-	// }
 
 	switch manifest.Config.MediaType {
 	case gitoci.MediaTypeSyncConfig:
-		return clamavGitArtifact(ctx, rcCfg, cachePath, manifest.Layers, repository)
+		return clamavGitArtifact(ctx, cachePath, manifest.Layers, repository)
 	case mediatype.MediaTypeBottleConfig:
 		return clamavBottle(ctx, rcCfg, manifest.Layers, repository)
 	default:
@@ -398,47 +417,6 @@ func scanManifestForViruses(ctx context.Context,
 			}
 		}
 	}
-
-	// pull each layer and pass through the virus scanner
-	// add the config to the layers slice so that it also gets scanned
-	// manifest.Layers = append(manifest.Layers, manifest.Config)
-	// for _, layer := range manifest.Layers {
-	// 	lrc, err := repository.Fetch(ctx, layer)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("fetching the image layer: %w", err)
-	// 	}
-	// 	// TODO CLEANUP
-	// 	if layer.MediaType == gitoci.MediaTypeBundleLayer {
-	// 		// download to cache
-	// 		if err := store.Push(ctx, layer, lrc); err != nil {
-	// 			if !strings.Contains(err.Error(), "already exists") {
-	// 				return nil, fmt.Errorf("caching the git layer: %w", err)
-	// 			}
-	// 		}
-	// 		r, err := clamavGitBundle(ctx, cachePath, filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded()))
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	// 		if r != nil {
-	// 			r.LayerDigest = layer.Digest.String()
-	// 			clamavResults = append(clamavResults, r)
-	// 		}
-	// 		continue
-	// 	} else if layer.MediaType == mediatype.MediaTypeBottleConfig || layer.MediaType == mediatype.MediaTypeLayer {
-
-	// 		return clamavBottle(ctx, lrc, manifest.Layers[:len(manifest.Layers)-1], repository)
-	// 	} else {
-	// 		r, err := clamavBytes(ctx, lrc, "")
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-
-	// 		if r != nil {
-	// 			r.LayerDigest = layer.Digest.String()
-	// 			clamavResults = append(clamavResults, r)
-	// 		}
-	// 	}
-	// }
 
 	return clamavResults, nil
 }

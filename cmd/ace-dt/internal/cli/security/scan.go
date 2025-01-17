@@ -61,7 +61,6 @@ func newScanCommand(tool *securityActions.Action) *cobra.Command {
 	cmd.Flags().BoolVar(&action.DisplayPlatforms, "display-platforms", false, "Outputs a table of platform information to file or stdout")
 	cmd.Flags().BoolVar(&action.PushReport, "push-reports", false, "Pushes and attaches the vulnerability reports to each image.")
 	cmd.Flags().BoolVar(&action.ScanVirus, "virus", false, "Scans viruses via clamav")
-	cmd.Flags().BoolVar(&action.OnlyScanVirus, "only-virus", false, "Set to true to only scan viruses, no CVE/vulnerabilities")
 
 	ui.AddOptionsFlags(cmd.Flags(), &uiOptions)
 	return cmd

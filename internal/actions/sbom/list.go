@@ -27,7 +27,7 @@ func (action *List) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	list, err := sbom.GetListofSBOMS(ctx, action.GatherArtifactReference, action.SourceImage, repository, cfg.ConcurrentHTTP, action.Platforms)
+	list, err := sbom.GetListofSBOMS(ctx, action.GatherArtifactReference, action.SourceImage, repository, action.Config, cfg.ConcurrentHTTP, action.Platforms)
 	if err != nil {
 		return err
 	}

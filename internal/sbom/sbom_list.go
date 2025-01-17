@@ -7,9 +7,9 @@ import (
 
 	"oras.land/oras-go/v2/registry/remote"
 
-	"github.com/act3-ai/go-common/pkg/logger"
-
 	"github.com/act3-ai/data-tool/internal/security"
+	reg "github.com/act3-ai/data-tool/pkg/registry"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // GetListofSBOMS accepts a mirror gather artifact and/or image string reference and creates a slice of string slices
@@ -17,19 +17,20 @@ import (
 func GetListofSBOMS(ctx context.Context,
 	artifact, image string,
 	repository *remote.Repository,
+	targeter reg.GraphTargeter,
 	concurrency int,
 	platforms []string) ([][]string, error) {
 
 	log := logger.FromContext(ctx)
 	log.InfoContext(ctx, "fetching artifact information", "reference", artifact)
-	m, err := security.FormatSources(ctx, "", artifact, repository, concurrency)
+	m, err := security.FormatSources(ctx, "", artifact, repository, targeter, concurrency)
 	if err != nil {
 		return nil, fmt.Errorf("extracting sources from artifact: %w", err)
 	}
 	sbomList := [][]string{{"reference", "platform", "sbom manifest digest", "artifact-type"}}
 	for _, entry := range m {
-		reference := entry[0]
-		source := entry[1]
+		reference := entry.OriginalReference
+		source := entry.ArtifactReference
 		if image != "" && reference != image {
 			continue
 		}

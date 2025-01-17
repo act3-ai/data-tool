@@ -81,3 +81,8 @@ type ClamavDatabase struct {
 	File     string `json:"filepath"`
 	Checksum string `json:"checksum"`
 }
+
+type Source struct {
+	OriginalReference string
+	ArtifactReference string
+}

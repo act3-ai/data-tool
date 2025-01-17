@@ -11,9 +11,10 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry"
 
 	"github.com/act3-ai/data-tool/internal/ref"
+	reg "github.com/act3-ai/data-tool/pkg/registry"
 	"github.com/act3-ai/go-common/pkg/logger"
 )
 
@@ -26,38 +27,31 @@ type ScanOptions struct {
 	VulnerabilityLevel      string
 	Output                  []string
 	DryRun                  bool
-	OnlyScanVirus           bool
 	PushReport              bool
 	ScanVirus               bool
+	Targeter                reg.GraphTargeter
 }
 
 // ScanArtifacts will fetch the artifact details for each image in a source file or a mirror (gather) artifact.
 // It will then generate SBOMs for the reference if dryRun is false, upload them to the target repository, and use them for scanning.
 // If dryRun is set to true, the artifacts will be scanned by reference.
 // It returns a slice of results (derived from grype's json results) for the artifacts.
-func ScanArtifacts(ctx context.Context,
-	opts ScanOptions,
-	repoFunction func(context.Context, string) (*remote.Repository, error),
-	concurrency int) ([]*ArtifactDetails, int, error) {
-
+func ScanArtifacts(ctx context.Context, opts ScanOptions, concurrency int) ([]*ArtifactDetails, int, error) {
 	if opts.SourceFile == "" && opts.GatherArtifactReference == "" {
 		return nil, 3, fmt.Errorf("either sourcefile or gather artifact must be chosen but not both")
 	}
-	return scan(ctx, opts, repoFunction, concurrency)
+	return scan(ctx, opts, concurrency)
 }
 
-func scan(ctx context.Context,
-	opts ScanOptions,
-	repoFunction func(context.Context, string) (*remote.Repository, error),
-	concurrency int) ([]*ArtifactDetails, int, error) {
+func scan(ctx context.Context, opts ScanOptions, concurrency int) ([]*ArtifactDetails, int, error) {
 
 	log := logger.FromContext(ctx)
 	mu := sync.Mutex{}
-	var repository *remote.Repository
+	var repository oras.GraphTarget
 
 	// exitCode is set to 0 if clear, 2 if there are viruses found in the artifacts, and 3 for program errors.
 	exitCode := 0
-	repository, err := initializeRepository(ctx, opts, repoFunction)
+	repository, err := initializeRepository(ctx, opts)
 	if err != nil {
 		return nil, 3, err
 	}
@@ -67,7 +61,7 @@ func scan(ctx context.Context,
 		return nil, 3, err
 	}
 
-	m, err := FormatSources(ctx, opts.SourceFile, opts.GatherArtifactReference, repository, concurrency)
+	m, err := FormatSources(ctx, opts.SourceFile, opts.GatherArtifactReference, repository, opts.Targeter, concurrency)
 	if err != nil {
 		return nil, 3, fmt.Errorf("extracting sources from artifact: %w", err)
 	}
@@ -77,8 +71,8 @@ func scan(ctx context.Context,
 
 	for i, source := range m {
 		g.Go(func() error {
-			log.InfoContext(ctx, "Processing artifact", "reference", source[1], "originatingReference", source[0])
-			artifactDetails, err := processArtifact(gctx, source, opts, repoFunction, grypeChecksumDB, clamavDBChecksums, repository)
+			log.InfoContext(ctx, "Processing artifact", "reference", source.ArtifactReference, "originatingReference", source.OriginalReference)
+			artifactDetails, err := processArtifact(gctx, source, opts, opts.Targeter, grypeChecksumDB, clamavDBChecksums, repository)
 			if err != nil {
 				return err
 			}
@@ -104,11 +98,11 @@ func scan(ctx context.Context,
 
 }
 
-func initializeRepository(ctx context.Context, opts ScanOptions, repoFunction func(context.Context, string) (*remote.Repository, error)) (*remote.Repository, error) {
+func initializeRepository(ctx context.Context, opts ScanOptions) (oras.GraphTarget, error) {
 	if opts.GatherArtifactReference == "" {
 		return nil, nil
 	}
-	return repoFunction(ctx, opts.GatherArtifactReference)
+	return opts.Targeter.GraphTarget(ctx, opts.GatherArtifactReference)
 }
 
 func initializeChecksums(ctx context.Context, opts ScanOptions) (string, []ClamavDatabase, error) {
@@ -128,37 +122,34 @@ func initializeChecksums(ctx context.Context, opts ScanOptions) (string, []Clama
 	return grypeChecksumDB, clamavDBChecksums, nil
 }
 
-// TODO maybe create artifact options?
 func processArtifact(ctx context.Context,
-	source []string, opts ScanOptions,
-	repoFunction func(context.Context, string) (*remote.Repository, error),
+	source Source, opts ScanOptions,
+	targeter reg.GraphTargeter,
 	grypeChecksumDB string,
 	clamavDBChecksums []ClamavDatabase,
-	repository *remote.Repository) (*ArtifactDetails, error) {
+	repository oras.GraphTarget) (*ArtifactDetails, error) {
 	log := logger.FromContext(ctx)
 
 	if repository == nil || opts.SourceFile != "" {
-		repo, err := repoFunction(ctx, source[1])
+		// repo, err := repoFunction(ctx, source.ArtifactReference)
+		repo, err := targeter.GraphTarget(ctx, source.ArtifactReference)
 		if err != nil {
 			return nil, err
 		}
 		repository = repo
 	}
 
-	log.InfoContext(ctx, "fetching manifest details", "artifact", source[1], "originatingReference", source[0])
-	artifactDetails, err := GetArtifactDetails(ctx, source[1], repository)
+	log.InfoContext(ctx, "fetching manifest details", "artifact", source.ArtifactReference, "originatingReference", source.OriginalReference)
+	artifactDetails, err := GetArtifactDetails(ctx, source.ArtifactReference, repository)
 	if err != nil {
-		return nil, fmt.Errorf("getting artifact details for %s: %w", source[0], err)
+		return nil, fmt.Errorf("getting artifact details for %s: %w", source.OriginalReference, err)
 	}
-	artifactDetails.originatingReference = source[0]
+	artifactDetails.originatingReference = source.OriginalReference
 	artifactDetails.handlePredecessors(grypeChecksumDB, clamavDBChecksums)
 
 	if opts.ScanVirus {
-		if err := processVirusScanning(ctx, artifactDetails, source[0], repository, clamavDBChecksums, opts.PushReport, opts.CachePath); err != nil {
+		if err := processVirusScanning(ctx, artifactDetails, source.OriginalReference, repository, clamavDBChecksums, opts.PushReport, opts.CachePath); err != nil {
 			return nil, err
-		}
-		if opts.OnlyScanVirus {
-			return nil, nil
 		}
 	}
 
@@ -176,7 +167,7 @@ func processArtifact(ctx context.Context,
 	return artifactDetails, nil
 }
 
-func processVulnerabilityScanning(ctx context.Context, artifactDetails *ArtifactDetails, source []string,
+func processVulnerabilityScanning(ctx context.Context, artifactDetails *ArtifactDetails, source Source,
 	grypeChecksumDB string, opts ScanOptions) (*VulnerabilityScanResults, error) {
 	log := logger.FromContext(ctx)
 
@@ -190,7 +181,7 @@ func processVulnerabilityScanning(ctx context.Context, artifactDetails *Artifact
 	switch {
 	case !opts.DryRun && artifactDetails.manifestDigestSBOM == "":
 		log.InfoContext(ctx, "Generating SBOM(s)...", "reference", artifactDetails.originatingReference)
-		grypeResults, err := GenerateSBOM(ctx, source[1], grypeChecksumDB, artifactDetails.repository, opts.PushReport)
+		grypeResults, err := GenerateSBOM(ctx, source.ArtifactReference, grypeChecksumDB, artifactDetails.repository, opts.PushReport)
 		if err != nil {
 			return nil, err
 		}
@@ -225,9 +216,9 @@ func processVulnerabilityScanning(ctx context.Context, artifactDetails *Artifact
 	default:
 		// use the reference from the *remote.Repository created by getManifestDetails, ensuring our reference
 		// contains the correct endpoint if it was changed
-		result, err := grypeReference(ctx, source[1])
+		result, err := grypeReference(ctx, source.ArtifactReference)
 		if err != nil {
-			return nil, fmt.Errorf("gryping reference %s: %w", source[0], err)
+			return nil, fmt.Errorf("gryping reference %s: %w", source.OriginalReference, err)
 		}
 		res = *result
 	}
@@ -242,7 +233,7 @@ func processVulnerabilityScanning(ctx context.Context, artifactDetails *Artifact
 func processVirusScanning(ctx context.Context,
 	artifactDetails *ArtifactDetails,
 	reference string,
-	repository *remote.Repository,
+	repository oras.GraphTarget,
 	clamavDBChecksums []ClamavDatabase,
 	pushReport bool,
 	cachePath string) error {
@@ -276,10 +267,10 @@ func processVirusScanning(ctx context.Context,
 	return nil
 }
 
-func extractSourcesFromMirrorArtifact(ctx context.Context, reference string, repo *remote.Repository) ([][]string, error) {
-	sources := [][]string{}
+func extractSourcesFromMirrorArtifact(ctx context.Context, reference registry.Reference, repo oras.GraphTarget) ([]Source, error) {
+	sources := []Source{}
 	// fetch the reference index
-	_, data, err := oras.FetchBytes(ctx, repo, repo.Reference.ReferenceOrDefault(), oras.DefaultFetchBytesOptions)
+	_, data, err := oras.FetchBytes(ctx, repo, reference.String(), oras.DefaultFetchBytesOptions)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching the artifact index: %w", err)
 	}
@@ -289,7 +280,7 @@ func extractSourcesFromMirrorArtifact(ctx context.Context, reference string, rep
 	}
 	for _, manifest := range idx.Manifests {
 		// create a source
-		sources = append(sources, []string{manifest.Annotations[ref.AnnotationSrcRef], strings.Join([]string{reference, manifest.Digest.String()}, "@")})
+		sources = append(sources, Source{manifest.Annotations[ref.AnnotationSrcRef], strings.Join([]string{reference.String(), manifest.Digest.String()}, "@")})
 	}
 	return sources, nil
 }

@@ -1,11 +1,13 @@
 package security
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -13,6 +15,8 @@ import (
 	"strings"
 
 	cfgdef "github.com/act3-ai/bottle-schema/pkg/apis/data.act3-ace.io/v1"
+	"github.com/act3-ai/data-tool/internal/actions/pypi"
+	"github.com/act3-ai/data-tool/internal/ui"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
@@ -218,7 +222,6 @@ func getClamAVChecksum(ctx context.Context) ([]ClamavDatabase, error) {
 }
 
 func clamavGitArtifact(ctx context.Context,
-	rcCfg io.ReadCloser,
 	cachePath string,
 	layers []ocispec.Descriptor,
 	repository oras.GraphTarget) ([]*VirusScanResults, error) {
@@ -341,7 +344,6 @@ func clamavBottle(ctx context.Context, cfg io.ReadCloser, layers []ocispec.Descr
 	for _, part := range bottle.Parts {
 		filenames[part.Digest] = part.Name
 	}
-	fmt.Printf("filenames mapper: %+v\n", filenames)
 	for _, layer := range layers {
 		v, ok := filenames[layer.Digest]
 		layerBytes, err := content.FetchAll(ctx, repository, layer)
@@ -369,4 +371,71 @@ func clamavBottle(ctx context.Context, cfg io.ReadCloser, layers []ocispec.Descr
 		}
 	}
 	return scanResults, nil
+}
+
+func clamavPypiArtifact(ctx context.Context, cachePath string, layers []ocispec.Descriptor, repository oras.GraphTarget, tracker map[digest.Digest]string) ([]*VirusScanResults, error) {
+	// iterate through the layers, if the layer is a wheel, unzip into tmp dir.
+	// If the layer is metadata, can scan as is.
+	// add scanned layers to tracker map
+	var results []*VirusScanResults
+
+	// initialize the storage cache
+	store, err := oci.NewStorage(cachePath)
+	if err != nil {
+		return nil, fmt.Errorf("initializing the storage cache: %w", err)
+	}
+
+	tmpDir, err := os.MkdirTemp(filepath.Join(cachePath, "tmp"), "")
+	if err != nil {
+		return nil, fmt.Errorf("creating tmp git dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	for _, layer := range layers {
+		// pull the layer
+		lrc, err := repository.Fetch(ctx, layer)
+		if err != nil {
+			return nil, fmt.Errorf("fetching the layer: %w", err)
+		}
+		if layer.MediaType == pypi.MediaTypePythonDistributionWheel {
+			// download to cache
+			if err := store.Push(ctx, layer, lrc); err != nil {
+				if !strings.Contains(err.Error(), "already exists") {
+					return nil, fmt.Errorf("caching the git layer: %w", err)
+				}
+			}
+			filepath := filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded())
+			// unzip
+			r, err := zip.OpenReader(filepath)
+			if err != nil {
+				return nil, fmt.Errorf("initializing zip reader for pypi blob: %w", err)
+			}
+			defer r.Close()
+			for _, f := range r.File {
+				slog.InfoContext(ctx, "scanning", "filename", f.Name)
+				rc, err := f.Open()
+				if err != nil {
+					return nil, fmt.Errorf("opening file within zip %s: %w", f.Name, err)
+				}
+				res, err := clamavBytes(ctx, rc, f.Name)
+				if err != nil {
+					return nil, err
+				}
+				if res != nil {
+					results = append(results, res)
+				}
+			}
+			tracker[layer.Digest] = ""
+		} else {
+			// scan as is
+			res, err := clamavBytes(ctx, lrc, layer.Digest.String())
+			if err != nil {
+				return nil, err
+			}
+			if res != nil {
+				results = append(results, res)
+			}
+		}
+	}
+	return results, nil
 }

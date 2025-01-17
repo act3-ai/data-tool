@@ -23,7 +23,6 @@ type Scan struct {
 	DisplayPlatforms        bool
 	PushReport              bool
 	ScanVirus               bool
-	OnlyScanVirus           bool
 }
 
 // Run executes the security scan Run() action.
@@ -41,11 +40,12 @@ func (action *Scan) Run(ctx context.Context) (int, error) {
 		DryRun:                  action.DryRun,
 		PushReport:              action.PushReport,
 		ScanVirus:               action.ScanVirus,
+		Targeter:                action.Config,
 	}
 
 	log.InfoContext(ctx, "Scanning Artifacts...")
 	// iterate through artifactDetails in sourceFile or in a gathered object
-	results, exitCode, err := security.ScanArtifacts(ctx, opts, action.Config.Repository, cfg.ConcurrentHTTP)
+	results, exitCode, err := security.ScanArtifacts(ctx, opts, cfg.ConcurrentHTTP)
 	if err != nil {
 		return 3, err
 	}
