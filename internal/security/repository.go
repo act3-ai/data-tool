@@ -278,6 +278,7 @@ func generateEmptyBlobDescriptor(mt string, algo digest.Algorithm) (ocispec.Desc
 	return emptyBlobDescriptor, nil
 }
 
+// VirusScan scans an artifact using clamav and reutrns a slice of virus scanning report manifests.
 func VirusScan(ctx context.Context,
 	desc ocispec.Descriptor,
 	repository oras.GraphTarget,
@@ -355,12 +356,6 @@ func VirusScan(ctx context.Context,
 
 }
 
-// get the config if it's a image manifest
-// if it's a bottle, we can pull filenames
-// if it's an image, we need to derive the image source/architecture
-// if it's a helm chart??? is it supported?
-// git, pypi
-// output any errors but do not fail until the end
 func scanManifestForViruses(ctx context.Context,
 	desc ocispec.Descriptor,
 	repository oras.GraphTarget,

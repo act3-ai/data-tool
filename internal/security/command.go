@@ -228,14 +228,9 @@ func clamavGitArtifact(ctx context.Context,
 
 	var clamavResults []*VirusScanResults
 	// initialize the storage cache
-	store, err := oci.NewStorage(cachePath)
+	store, tmpDir, err := generateStoreAndTempDir(cachePath)
 	if err != nil {
-		return nil, fmt.Errorf("initializing the storage cache: %w", err)
-	}
-
-	tmpDir, err := os.MkdirTemp(filepath.Join(cachePath, "tmp"), "")
-	if err != nil {
-		return nil, fmt.Errorf("creating tmp git dir: %w", err)
+		return nil, err
 	}
 	defer os.RemoveAll(tmpDir)
 
@@ -379,15 +374,9 @@ func clamavPypiArtifact(ctx context.Context, cachePath string, layers []ocispec.
 	// add scanned layers to tracker map
 	var results []*VirusScanResults
 
-	// initialize the storage cache
-	store, err := oci.NewStorage(cachePath)
+	store, tmpDir, err := generateStoreAndTempDir(cachePath)
 	if err != nil {
-		return nil, fmt.Errorf("initializing the storage cache: %w", err)
-	}
-
-	tmpDir, err := os.MkdirTemp(filepath.Join(cachePath, "tmp"), "")
-	if err != nil {
-		return nil, fmt.Errorf("creating tmp git dir: %w", err)
+		return nil, err
 	}
 	defer os.RemoveAll(tmpDir)
 
@@ -442,4 +431,19 @@ func clamavPypiArtifact(ctx context.Context, cachePath string, layers []ocispec.
 		}
 	}
 	return results, nil
+}
+
+func generateStoreAndTempDir(cachePath string) (content.Storage, string, error) {
+	// initialize the storage cache
+	store, err := oci.NewStorage(cachePath)
+	if err != nil {
+		return nil, "", fmt.Errorf("initializing the storage cache: %w", err)
+	}
+
+	tmpDir, err := os.MkdirTemp(filepath.Join(cachePath, "tmp"), "")
+	if err != nil {
+		return nil, "", fmt.Errorf("creating tmp git dir: %w", err)
+	}
+
+	return store, tmpDir, nil
 }
