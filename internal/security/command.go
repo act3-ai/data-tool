@@ -12,11 +12,12 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/act3-ai/bottle-schema/pkg/mediatype"
-	"github.com/act3-ai/data-tool/internal/bottle"
+	cfgdef "github.com/act3-ai/bottle-schema/pkg/apis/data.act3-ace.io/v1"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/content/oci"
 )
 
 func syftReference(ctx context.Context, reference string) ([]byte, error) {
@@ -52,6 +53,7 @@ func clamavBytes(ctx context.Context, data io.ReadCloser, filename string) (*Vir
 	if len(res) != 0 {
 		lines := strings.Split(strings.TrimSpace(string(res)), ":")
 		return &VirusScanResults{
+			File:    filename,
 			Finding: lines[1],
 		}, nil
 	}
@@ -215,20 +217,59 @@ func getClamAVChecksum(ctx context.Context) ([]ClamavDatabase, error) {
 	return clamavDBChecksums, nil
 }
 
-func clamavGitBundle(ctx context.Context, cachePath, bundlePath string) (*VirusScanResults, error) {
+func clamavGitArtifact(ctx context.Context,
+	rcCfg io.ReadCloser,
+	cachePath string,
+	layers []ocispec.Descriptor,
+	repository oras.GraphTarget) ([]*VirusScanResults, error) {
+
+	var clamavResults []*VirusScanResults
+	// initialize the storage cache
+	store, err := oci.NewStorage(cachePath)
+	if err != nil {
+		return nil, fmt.Errorf("initializing the storage cache: %w", err)
+	}
+
 	tmpDir, err := os.MkdirTemp(filepath.Join(cachePath, "tmp"), "")
 	if err != nil {
 		return nil, fmt.Errorf("creating tmp git dir: %w", err)
 	}
 	defer os.RemoveAll(tmpDir)
-	// initialize the git repo
+
 	cmd := exec.CommandContext(ctx, "git", "init", "--bare")
 	cmd.Dir = tmpDir
 	if res, err := cmd.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("failed to initialize empty repository: %w\n%s", err, string(res))
 	}
+
+	for _, layer := range layers {
+		lrc, err := repository.Fetch(ctx, layer)
+		if err != nil {
+			return nil, fmt.Errorf("fetching the layer: %w", err)
+		}
+		// download to cache
+		if err := store.Push(ctx, layer, lrc); err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				return nil, fmt.Errorf("caching the git layer: %w", err)
+			}
+		}
+		r, err := clamavGitBundle(ctx, tmpDir, filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded()))
+		if err != nil {
+			return nil, err
+		}
+		if r != nil {
+			r.LayerDigest = layer.Digest.String()
+			clamavResults = append(clamavResults, r)
+		}
+		// continue
+		// clamavGitBundle(ctx, tmpDir)
+	}
+	return clamavResults, nil
+}
+
+func clamavGitBundle(ctx context.Context, tmpDir, bundlePath string) (*VirusScanResults, error) {
 	// fetch the bundle to the temporary directory
-	cmd = exec.CommandContext(ctx, "git", "fetch", bundlePath, "refs/heads/*:refs/heads/*")
+	cmd := exec.CommandContext(ctx, "git", "fetch", bundlePath, "refs/heads/*:refs/heads/*")
 	cmd.Dir = tmpDir
 	if res, err := cmd.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("failed to fetch git bundle: %w\n%s", err, string(res))
@@ -253,7 +294,6 @@ func clamavGitBundle(ctx context.Context, cachePath, bundlePath string) (*VirusS
 		regex := regexp.MustCompile(`\b[0-9a-f]{40}\b\s.+`)
 		blobHashes := regex.FindAllString(string(res), -1)
 		for _, blob := range blobHashes {
-			fmt.Println(blob)
 			blob = strings.TrimSpace(blob)
 			blobFile := strings.Split(blob, "\t")
 			cmd = exec.CommandContext(ctx, "git", "cat-file", "-p", blobFile[0])
@@ -270,15 +310,63 @@ func clamavGitBundle(ctx context.Context, cachePath, bundlePath string) (*VirusS
 	return nil, nil
 }
 
-func clamavBottle(ctx context.Context, cfg []byte, layers []ocispec.Descriptor) ([]*VirusScanResults, error) {
+func clamavBottle(ctx context.Context, cfg io.ReadCloser, layers []ocispec.Descriptor, repository oras.GraphTarget) ([]*VirusScanResults, error) {
+	// Create the return slice of results for each layer
+	var scanResults []*VirusScanResults
+
 	// inspect the config for the hash -->  file mappings
-	filenames := make(map[digest.Digest]string, len(layers)-1)
-	var bottle bottle.Bottle
+	filenames := make(map[digest.Digest]string, len(layers))
+
+	b, err := io.ReadAll(cfg)
+	if err != nil {
+		return nil, err
+	}
+
+	r := bytes.NewReader(b)
+	rc := io.NopCloser(r)
+
+	// scan the config first
+	cfgResults, err := clamavBytes(ctx, rc, "config")
+	if err != nil {
+		return nil, err
+	}
+	if cfgResults != nil {
+		scanResults = append(scanResults, cfgResults)
+	}
+
+	var bottle cfgdef.Bottle
+	if err := json.Unmarshal(b, &bottle); err != nil {
+		return nil, fmt.Errorf("decoding the bottle config: %w", err)
+	}
+	for _, part := range bottle.Parts {
+		filenames[part.Digest] = part.Name
+	}
+	fmt.Printf("filenames mapper: %+v\n", filenames)
 	for _, layer := range layers {
-		if layer.ArtifactType == mediatype.MediaTypeBottleConfig {
-			content.FetchAll(ctx, repository, layer)
-			json.Unmarshal()
+		v, ok := filenames[layer.Digest]
+		layerBytes, err := content.FetchAll(ctx, repository, layer)
+		if err != nil {
+			return nil, fmt.Errorf("fetching the bottle layer %s: %w", layer.Digest.String(), err)
+		}
+		r := bytes.NewReader(layerBytes)
+		rc := io.NopCloser(r)
+		if ok {
+			results, err := clamavBytes(ctx, rc, v)
+			if err != nil {
+				return nil, err
+			}
+			if results != nil {
+				scanResults = append(scanResults, results)
+			}
+		} else {
+			results, err := clamavBytes(ctx, rc, layer.Digest.String())
+			if err != nil {
+				return nil, err
+			}
+			if results != nil {
+				scanResults = append(scanResults, results)
+			}
 		}
 	}
-	return nil, nil
+	return scanResults, nil
 }

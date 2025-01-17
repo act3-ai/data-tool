@@ -230,7 +230,7 @@ func PrintTable(out io.Writer, results []*ArtifactDetails, vulnerabilityLevel st
 // printMalwareTable
 func printMalwareTable(out io.Writer, results []*ArtifactDetails) error {
 	table := [][]string{{}}
-	table[0] = []string{"reference", "layer", "malware ID"}
+	table[0] = []string{"reference", "filename/layer", "malware ID"}
 	for _, res := range results {
 		if res.MalwareResults == nil {
 			table = append(table, []string{res.originatingReference, "", "No Malware Found"})

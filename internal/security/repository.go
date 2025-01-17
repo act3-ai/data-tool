@@ -9,15 +9,12 @@ import (
 	"fmt"
 	"hash"
 	"log/slog"
-	"path/filepath"
-	"strings"
 
 	notationreg "github.com/notaryproject/notation-go/registry"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
 
 	"github.com/act3-ai/bottle-schema/pkg/mediatype"
@@ -302,7 +299,6 @@ func VirusScan(ctx context.Context,
 			reports = append(reports, rl...)
 		}
 	} else {
-		fmt.Println("scanning ", desc.Digest.String())
 		report := VirusScanManifestReport{}
 		rl, err := scanManifestForViruses(ctx, desc, repository, cachePath)
 		if err != nil {
@@ -337,8 +333,9 @@ func VirusScan(ctx context.Context,
 			if err != nil {
 				return nil, err
 			}
-			fmt.Println("pushed results for", desc.Digest.String(), " to ", rd[0].Digest.String())
-			slog.InfoContext(ctx, "pushed results", "reference", desc.Digest.String())
+			for _, result := range rd {
+				slog.InfoContext(ctx, "pushed results", "reference", result.Digest.String())
+			}
 		}
 	}
 	return reports, nil
@@ -356,11 +353,7 @@ func scanManifestForViruses(ctx context.Context,
 	repository oras.GraphTarget,
 	cachePath string) ([]*VirusScanResults, error) {
 	var clamavResults []*VirusScanResults
-	// initialize the storage cache
-	store, err := oci.NewStorage(cachePath)
-	if err != nil {
-		return nil, fmt.Errorf("initializing the storage cache: %w", err)
-	}
+
 	// pull the image manifest
 	rc, err := repository.Fetch(ctx, desc)
 	if err != nil {
@@ -372,34 +365,28 @@ func scanManifestForViruses(ctx context.Context,
 		return nil, fmt.Errorf("parsing the image manifest: %w", err)
 	}
 
-	// pull each layer and pass through the virus scanner
-	// add the config to the layers slice so that it also gets scanned
-	manifest.Layers = append(manifest.Layers, manifest.Config)
-	for _, layer := range manifest.Layers {
-		lrc, err := repository.Fetch(ctx, layer)
-		if err != nil {
-			return nil, fmt.Errorf("fetching the image layer: %w", err)
-		}
-		// TODO CLEANUP
-		if layer.MediaType == gitoci.MediaTypeBundleLayer {
-			// download to cache
-			if err := store.Push(ctx, layer, lrc); err != nil {
-				if !strings.Contains(err.Error(), "already exists") {
-					return nil, fmt.Errorf("caching the git layer: %w", err)
-				}
-			}
-			r, err := clamavGitBundle(ctx, cachePath, filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded()))
+	// var config ocispec.ImageConfig
+	// pull the config
+	rcCfg, err := repository.Fetch(ctx, manifest.Config)
+	if err != nil {
+		return nil, fmt.Errorf("fetching manifest config: %w", err)
+	}
+	// decoder = json.NewDecoder(rcCfg)
+	// if err := decoder.Decode(&config); err != nil {
+	// 	return nil, fmt.Errorf("parsing the image manifest config: %w", err)
+	// }
+
+	switch manifest.Config.MediaType {
+	case gitoci.MediaTypeSyncConfig:
+		return clamavGitArtifact(ctx, rcCfg, cachePath, manifest.Layers, repository)
+	case mediatype.MediaTypeBottleConfig:
+		return clamavBottle(ctx, rcCfg, manifest.Layers, repository)
+	default:
+		for _, layer := range manifest.Layers {
+			lrc, err := repository.Fetch(ctx, layer)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("fetching the image layer: %w", err)
 			}
-			if r != nil {
-				r.LayerDigest = layer.Digest.String()
-				clamavResults = append(clamavResults, r)
-			}
-			continue
-		} else if layer.MediaType == mediatype.MediaTypeBottleConfig {
-			return clamavBottle(ctx, manifest.Layers)
-		} else {
 			r, err := clamavBytes(ctx, lrc, "")
 			if err != nil {
 				return nil, err
@@ -411,6 +398,47 @@ func scanManifestForViruses(ctx context.Context,
 			}
 		}
 	}
+
+	// pull each layer and pass through the virus scanner
+	// add the config to the layers slice so that it also gets scanned
+	// manifest.Layers = append(manifest.Layers, manifest.Config)
+	// for _, layer := range manifest.Layers {
+	// 	lrc, err := repository.Fetch(ctx, layer)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("fetching the image layer: %w", err)
+	// 	}
+	// 	// TODO CLEANUP
+	// 	if layer.MediaType == gitoci.MediaTypeBundleLayer {
+	// 		// download to cache
+	// 		if err := store.Push(ctx, layer, lrc); err != nil {
+	// 			if !strings.Contains(err.Error(), "already exists") {
+	// 				return nil, fmt.Errorf("caching the git layer: %w", err)
+	// 			}
+	// 		}
+	// 		r, err := clamavGitBundle(ctx, cachePath, filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded()))
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	// 		if r != nil {
+	// 			r.LayerDigest = layer.Digest.String()
+	// 			clamavResults = append(clamavResults, r)
+	// 		}
+	// 		continue
+	// 	} else if layer.MediaType == mediatype.MediaTypeBottleConfig || layer.MediaType == mediatype.MediaTypeLayer {
+
+	// 		return clamavBottle(ctx, lrc, manifest.Layers[:len(manifest.Layers)-1], repository)
+	// 	} else {
+	// 		r, err := clamavBytes(ctx, lrc, "")
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+
+	// 		if r != nil {
+	// 			r.LayerDigest = layer.Digest.String()
+	// 			clamavResults = append(clamavResults, r)
+	// 		}
+	// 	}
+	// }
 
 	return clamavResults, nil
 }
