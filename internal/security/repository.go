@@ -246,7 +246,7 @@ func attachResultsReport(ctx context.Context, subjectDescriptor, configDescripto
 	return reports, nil
 }
 
-func generateEmptyBlobDescriptor(mediatype string, algo digest.Algorithm) (ocispec.Descriptor, error) {
+func generateEmptyBlobDescriptor(mt string, algo digest.Algorithm) (ocispec.Descriptor, error) {
 	emptyCfg := ocispec.ImageConfig{}
 	emptyData, err := json.Marshal(emptyCfg)
 	if err != nil {
@@ -271,7 +271,7 @@ func generateEmptyBlobDescriptor(mediatype string, algo digest.Algorithm) (ocisp
 	emptyDigest := digest.NewDigest(algo, h)
 	// Create a descriptor using the computed digest.
 	emptyBlobDescriptor := ocispec.Descriptor{
-		MediaType: mediatype,
+		MediaType: mt,
 		Digest:    emptyDigest,
 		Size:      int64(len(emptyData)), // should be 2
 	}
@@ -294,11 +294,7 @@ func VirusScan(ctx context.Context,
 		return nil, err
 	}
 
-	// get the config if it's a image manifest
-	// if it's a bottle, we can pull filenames
-	// if it's an image, we need to derive the image source/architecture
-	// if it's a helm chart??? is it supported?
-	// output any errors but do not fail until the end
+	// output any errors but do not fail until the end.
 	if encoding.IsIndex(desc.MediaType) {
 		var idx ocispec.Index
 		b, err := content.FetchAll(ctx, repository, desc)

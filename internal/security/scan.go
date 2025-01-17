@@ -145,7 +145,9 @@ func processArtifact(ctx context.Context,
 		return nil, fmt.Errorf("getting artifact details for %s: %w", source.OriginalReference, err)
 	}
 	artifactDetails.originatingReference = source.OriginalReference
-	artifactDetails.handlePredecessors(grypeChecksumDB, clamavDBChecksums)
+	if err := artifactDetails.handlePredecessors(grypeChecksumDB, clamavDBChecksums); err != nil {
+		return nil, err
+	}
 
 	if opts.ScanVirus {
 		if err := processVirusScanning(ctx, artifactDetails, source.OriginalReference, repository, clamavDBChecksums, opts.PushReport, opts.CachePath); err != nil {
@@ -197,7 +199,7 @@ func processVulnerabilityScanning(ctx context.Context, artifactDetails *Artifact
 		}
 
 	case artifactDetails.manifestDigestSBOM != "":
-		log.Info("SBOM Manifest found", "reference", artifactDetails.originatingReference, "digest", artifactDetails.manifestDigestSBOM)
+		log.InfoContext(ctx, "SBOM Manifest found", "reference", artifactDetails.originatingReference, "digest", artifactDetails.manifestDigestSBOM)
 		grypeRes, err := extractAndGrypeSBOMs(ctx, artifactDetails.desc, artifactDetails.repository, artifactDetails.manifestDigestSBOM, grypeChecksumDB, opts.PushReport)
 		if err != nil {
 			return nil, err

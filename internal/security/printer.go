@@ -227,7 +227,7 @@ func PrintTable(out io.Writer, results []*ArtifactDetails, vulnerabilityLevel st
 	return nil
 }
 
-// printMalwareTable
+// printMalwareTable prints a separate virus scanning table.
 func printMalwareTable(out io.Writer, results []*ArtifactDetails) error {
 	table := [][]string{{}}
 	table[0] = []string{"reference", "filename/layer", "malware ID"}

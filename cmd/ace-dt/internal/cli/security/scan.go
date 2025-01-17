@@ -42,11 +42,9 @@ func newScanCommand(tool *securityActions.Action) *cobra.Command {
 				return fmt.Errorf("either --source-file or --gathered-image must be specified")
 			}
 			exitCode, err := action.Run(cmd.Context())
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-				os.Exit(exitCode)
-			} else if exitCode != 0 {
-				os.Exit(exitCode)
+			if exitCode != 0 {
+				fmt.Fprintf(os.Stderr, "Error: %v\n", err) //nolint:revive
+				os.Exit(exitCode)                          //nolint:revive
 			}
 			return nil
 		},

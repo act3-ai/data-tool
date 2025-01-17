@@ -64,24 +64,26 @@ var SeverityLevels = map[string]int{
 	"unknown":    0,
 }
 
-// holds the results of one manifest
+// VirusScanManifestReport holds the results of one manifest.
 type VirusScanManifestReport struct {
 	ManifestDigest string              `json:"Manifest"`
 	Results        []*VirusScanResults `json:"VirusScanResults"`
 }
 
-// Virus scanning
+// VirusScanResults holds a single file's results.
 type VirusScanResults struct {
 	File        string `json:"File"`
 	LayerDigest string `json:"Layer"`
 	Finding     string `json:"Finding"`
 }
 
+// ClamavDatabase holds the checksums for all local clamav databases for report pushing.
 type ClamavDatabase struct {
 	File     string `json:"filepath"`
 	Checksum string `json:"checksum"`
 }
 
+// Source holds the originating and true artifact references for a given artifact.
 type Source struct {
 	OriginalReference string
 	ArtifactReference string

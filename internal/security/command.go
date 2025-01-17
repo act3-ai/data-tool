@@ -322,7 +322,7 @@ func clamavBottle(ctx context.Context, cfg io.ReadCloser, layers []ocispec.Descr
 
 	b, err := io.ReadAll(cfg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("reading the bottle config: %w", err)
 	}
 
 	r := bytes.NewReader(b)
@@ -404,26 +404,30 @@ func clamavPypiArtifact(ctx context.Context, cachePath string, layers []ocispec.
 					return nil, fmt.Errorf("caching the git layer: %w", err)
 				}
 			}
-			filepath := filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded())
+			fp := filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded())
 			// unzip
-			r, err := zip.OpenReader(filepath)
+			r, err := zip.OpenReader(fp)
 			if err != nil {
 				return nil, fmt.Errorf("initializing zip reader for pypi blob: %w", err)
 			}
-			defer r.Close()
 			for _, f := range r.File {
 				slog.InfoContext(ctx, "scanning", "filename", f.Name)
 				rc, err := f.Open()
 				if err != nil {
+					r.Close() //nolint
 					return nil, fmt.Errorf("opening file within zip %s: %w", f.Name, err)
 				}
 				res, err := clamavBytes(ctx, rc, f.Name)
 				if err != nil {
+					r.Close() //nolint
 					return nil, err
 				}
 				if res != nil {
 					results = append(results, res)
 				}
+			}
+			if err = r.Close(); err != nil {
+				return nil, fmt.Errorf("closing zip reader: %w", err)
 			}
 			tracker[layer.Digest] = ""
 		} else {
