@@ -2,7 +2,7 @@ module gitlab.com/act3-ai/asce/data/tool
 
 go 1.23.1
 
-toolchain go1.23.4
+toolchain go1.23.5
 
 require (
 	git.act3-ace.com/ace/data/schema v1.2.13
