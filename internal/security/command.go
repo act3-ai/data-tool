@@ -381,6 +381,10 @@ func clamavPypiArtifact(ctx context.Context, cachePath string, layers []ocispec.
 	defer os.RemoveAll(tmpDir)
 
 	for _, layer := range layers {
+		_, ok := tracker[layer.Digest]
+		if ok {
+			continue
+		}
 		// pull the layer
 		lrc, err := repository.Fetch(ctx, layer)
 		if err != nil {
