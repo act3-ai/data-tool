@@ -386,37 +386,26 @@ func clamavPypiArtifact(ctx context.Context, cachePath string, layers []ocispec.
 		if err != nil {
 			return nil, fmt.Errorf("fetching the layer: %w", err)
 		}
+		// initially scan the layer as a zip, if there is a positive virus scan result, the copied buffered reader is used to unzip and inspect the files in each layer.
+		var buf bytes.Buffer
+		tr := io.TeeReader(lrc, &buf)
+		trc := io.NopCloser(tr)
+		initialResults, err := clamavBytes(ctx, trc, layer.Digest.String())
+		if err != nil {
+			return nil, fmt.Errorf("scanning the pypi artifact layer %s: %w", layer.Digest.String(), err)
+		}
+		if initialResults == nil {
+			// we don't want to pull out all of the files if there is no hit on the initial scan of the zip.
+			continue
+		}
 		if layer.MediaType == pypi.MediaTypePythonDistributionWheel {
-			// download to cache
-			if err := store.Push(ctx, layer, lrc); err != nil {
-				if !strings.Contains(err.Error(), "already exists") {
-					return nil, fmt.Errorf("caching the git layer: %w", err)
-				}
-			}
-			fp := filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded())
-			// unzip
-			r, err := zip.OpenReader(fp)
+			buffReadCloser := io.NopCloser(&buf)
+			res, err := unzipAndScanLayerFiles(ctx, cachePath, layer, buffReadCloser, store)
 			if err != nil {
-				return nil, fmt.Errorf("initializing zip reader for pypi blob: %w", err)
+				return nil, err
 			}
-			for _, f := range r.File {
-				slog.InfoContext(ctx, "scanning", "filename", f.Name)
-				rc, err := f.Open()
-				if err != nil {
-					r.Close() //nolint
-					return nil, fmt.Errorf("opening file within zip %s: %w", f.Name, err)
-				}
-				res, err := clamavBytes(ctx, rc, f.Name)
-				if err != nil {
-					r.Close() //nolint
-					return nil, err
-				}
-				if res != nil {
-					results = append(results, res)
-				}
-			}
-			if err = r.Close(); err != nil {
-				return nil, fmt.Errorf("closing zip reader: %w", err)
+			if res != nil {
+				results = append(results, res)
 			}
 			tracker[layer.Digest] = ""
 		} else {
@@ -446,4 +435,35 @@ func generateStoreAndTempDir(cachePath string) (content.Storage, string, error) 
 	}
 
 	return store, tmpDir, nil
+}
+
+func unzipAndScanLayerFiles(ctx context.Context, cachePath string, layer ocispec.Descriptor, layerReadCloser io.ReadCloser, store content.Storage) (*VirusScanResults, error) {
+	// download to cache
+	if err := store.Push(ctx, layer, layerReadCloser); err != nil {
+		if !strings.Contains(err.Error(), "already exists") {
+			return nil, fmt.Errorf("caching the git layer: %w", err)
+		}
+	}
+	fp := filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded())
+	// unzip
+	r, err := zip.OpenReader(fp)
+	if err != nil {
+		return nil, fmt.Errorf("initializing zip reader for pypi blob: %w", err)
+	}
+	defer r.Close()
+	for _, f := range r.File {
+		slog.InfoContext(ctx, "scanning", "filename", f.Name)
+		rc, err := f.Open()
+		if err != nil {
+			return nil, fmt.Errorf("opening file within zip %s: %w", f.Name, err)
+		}
+		res, err := clamavBytes(ctx, rc, f.Name)
+		if err != nil {
+			return nil, err
+		}
+		if res != nil {
+			return res, nil
+		}
+	}
+	return nil, nil
 }
