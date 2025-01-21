@@ -83,7 +83,7 @@ func Test_resolveSecret(t *testing.T) {
 
 	t.Run("Command", func(t *testing.T) {
 		v := &Value{}
-		if err := v.Set(fmt.Sprintf("cmd:echo -n %s", pass)); err != nil {
+		if err := v.Set(fmt.Sprintf("cmd:echo %s", pass)); err != nil {
 			t.Errorf("setting secret, error = %v", err)
 			return
 		}

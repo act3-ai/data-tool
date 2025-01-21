@@ -2,6 +2,7 @@
 package secret
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"os"
@@ -120,15 +121,10 @@ func (v *Value) resolveSecret(ctx context.Context) (redact.Secret, error) {
 			// #nosec G204
 			stdoutBytes, err = exec.CommandContext(ctx, "sh", "-c", v.sourceVal).Output()
 		}
-		select {
-		case <-ctx.Done():
-			err = ctx.Err()
-		default:
-		}
 		if err != nil {
 			return "", fmt.Errorf("failed to run secret command %q: %w", v.sourceVal, err)
 		}
-		plaintext = redact.Secret(stdoutBytes)
+		plaintext = redact.Secret(bytes.TrimSpace(stdoutBytes))
 
 	default:
 		return "", fmt.Errorf("%w: got %q", errUnsupportedSecretSource, v.source)
