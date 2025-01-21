@@ -326,7 +326,7 @@ func Test_ToFromOCIRewrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("creating destination repo command helper: %v", err)
 	}
-	err = destRepoCH.Init(ctx)
+	err = destRepoCH.Init(ctx, "--bare")
 	if err != nil {
 		t.Fatalf("setting up git rebuild dir: %v", err)
 	}
@@ -444,7 +444,7 @@ func Test_ToFromOCIRewrite(t *testing.T) {
 	if err != nil {
 		t.Fatalf("creating destination repo command helper: %v", err)
 	}
-	err = destRepoCH2.Init(ctx)
+	err = destRepoCH2.Init(ctx, "--bare")
 	if err != nil {
 		t.Fatalf("setting up git rebuild dir: %v", err)
 	}
