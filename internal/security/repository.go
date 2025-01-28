@@ -64,7 +64,6 @@ func GetArtifactDetails( //nolint:gocognit
 	}
 
 	data, err := repo.Fetch(ctx, desc)
-	// d, data, err := oras.FetchBytes(ctx, repo, reference, oras.DefaultFetchBytesOptions)
 	if err != nil {
 		return nil, fmt.Errorf("fetching the manifest bytes for %s: %w", reference, err)
 	}
@@ -85,15 +84,10 @@ func GetArtifactDetails( //nolint:gocognit
 		if err := decoder.Decode(&idx); err != nil {
 			return nil, fmt.Errorf("decoding the index bytes: %w", err)
 		}
-		// err = json.Unmarshal(data, &idx)
-		// if err != nil {
-		// 	return nil, err
-		// }
 		size += desc.Size
 		for _, man := range idx.Manifests {
 			var img ocispec.Manifest
 			manData, err := repo.Fetch(ctx, man)
-			// manDesc, manData, err := oras.FetchBytes(ctx, repo, man.Digest.String(), oras.DefaultFetchBytesOptions)
 			if err != nil {
 				return nil, fmt.Errorf("fetching the manifest bytes: %w", err)
 			}
@@ -102,9 +96,6 @@ func GetArtifactDetails( //nolint:gocognit
 			if err := decoder.Decode(&img); err != nil {
 				return nil, fmt.Errorf("decoding the manifest data: %w", err)
 			}
-			// if err := json.Unmarshal(manData, &img); err != nil {
-			// 	return nil, err
-			// }
 			size += man.Size
 			for _, blob := range img.Layers {
 				size += blob.Size
@@ -140,15 +131,12 @@ func GetArtifactDetails( //nolint:gocognit
 			if err := decoder.Decode(&img); err != nil {
 				return nil, fmt.Errorf("decoding the manifest: %w", err)
 			}
-			// if err := json.Unmarshal(data, &img); err != nil {
-			// 	return nil, err
-			// }
 			// use the config descriptor to get the bytes
 			data, err := content.FetchAll(ctx, repo, img.Config)
 			if err != nil {
 				return nil, fmt.Errorf("getting the config descriptor for %s: %w", reference, err)
 			}
-			// Is this an unsupported manifest for vulnerability scanning?
+			// check if this an unsupported manifest for vulnerability scanning
 			if img.Config.MediaType == MediaTypeHelmChartConfig || img.Config.MediaType == gitoci.MediaTypeSyncConfig {
 				maniDetails.isNotScanSupported = true
 			}

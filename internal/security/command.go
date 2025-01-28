@@ -14,14 +14,14 @@ import (
 	"regexp"
 	"strings"
 
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
+
 	cfgdef "github.com/act3-ai/bottle-schema/pkg/apis/data.act3-ace.io/v1"
 	"github.com/act3-ai/data-tool/internal/actions/pypi"
 	"github.com/act3-ai/data-tool/internal/ui"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/content/oci"
 )
 
 func syftReference(ctx context.Context, reference string) ([]byte, error) {
@@ -61,6 +61,11 @@ func clamavBytes(ctx context.Context, data io.ReadCloser, filename string) (*Vir
 			Finding: lines[1],
 		}, nil
 	}
+	return nil, nil
+}
+
+// TODO
+func clamavFile(ctx context.Context, filepath string) (*VirusScanResults, error) {
 	return nil, nil
 }
 
@@ -227,8 +232,8 @@ func clamavGitArtifact(ctx context.Context,
 	repository oras.GraphTarget) ([]*VirusScanResults, error) {
 
 	var clamavResults []*VirusScanResults
-	// initialize the storage cache
-	store, tmpDir, err := generateStoreAndTempDir(cachePath)
+	// initialize the temporary directory
+	tmpDir, err := generateTempDir(cachePath)
 	if err != nil {
 		return nil, err
 	}
@@ -241,15 +246,10 @@ func clamavGitArtifact(ctx context.Context,
 	}
 
 	for _, layer := range layers {
-		lrc, err := repository.Fetch(ctx, layer)
+		// force fetch to cache?
+		_, err := repository.Fetch(ctx, layer)
 		if err != nil {
 			return nil, fmt.Errorf("fetching the layer: %w", err)
-		}
-		// download to cache
-		if err := store.Push(ctx, layer, lrc); err != nil {
-			if !strings.Contains(err.Error(), "already exists") {
-				return nil, fmt.Errorf("caching the git layer: %w", err)
-			}
 		}
 		r, err := clamavGitBundle(ctx, tmpDir, filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded()))
 		if err != nil {
@@ -294,6 +294,7 @@ func clamavGitBundle(ctx context.Context, tmpDir, bundlePath string) (*VirusScan
 		for _, blob := range blobHashes {
 			blob = strings.TrimSpace(blob)
 			blobFile := strings.Split(blob, "\t")
+			// TODO scan file not scan in memory
 			cmd = exec.CommandContext(ctx, "git", "cat-file", "-p", blobFile[0])
 			cmd.Dir = tmpDir
 			res, err := cmd.CombinedOutput()
@@ -374,7 +375,7 @@ func clamavPypiArtifact(ctx context.Context, cachePath string, layers []ocispec.
 	// add scanned layers to tracker map
 	var results []*VirusScanResults
 
-	store, tmpDir, err := generateStoreAndTempDir(cachePath)
+	tmpDir, err := generateTempDir(cachePath)
 	if err != nil {
 		return nil, err
 	}
@@ -404,7 +405,7 @@ func clamavPypiArtifact(ctx context.Context, cachePath string, layers []ocispec.
 		}
 		if layer.MediaType == pypi.MediaTypePythonDistributionWheel {
 			buffReadCloser := io.NopCloser(&buf)
-			res, err := unzipAndScanLayerFiles(ctx, cachePath, layer, buffReadCloser, store)
+			res, err := unzipAndScanLayerFiles(ctx, cachePath, layer, buffReadCloser)
 			if err != nil {
 				return nil, err
 			}
@@ -426,28 +427,19 @@ func clamavPypiArtifact(ctx context.Context, cachePath string, layers []ocispec.
 	return results, nil
 }
 
-func generateStoreAndTempDir(cachePath string) (content.Storage, string, error) {
+func generateTempDir(cachePath string) (string, error) {
 	// initialize the storage cache
-	store, err := oci.NewStorage(cachePath)
-	if err != nil {
-		return nil, "", fmt.Errorf("initializing the storage cache: %w", err)
-	}
 
 	tmpDir, err := os.MkdirTemp(filepath.Join(cachePath, "tmp"), "")
 	if err != nil {
-		return nil, "", fmt.Errorf("creating tmp git dir: %w", err)
+		return "", fmt.Errorf("creating tmp git dir: %w", err)
 	}
 
-	return store, tmpDir, nil
+	return tmpDir, nil
 }
 
-func unzipAndScanLayerFiles(ctx context.Context, cachePath string, layer ocispec.Descriptor, layerReadCloser io.ReadCloser, store content.Storage) (*VirusScanResults, error) {
-	// download to cache
-	if err := store.Push(ctx, layer, layerReadCloser); err != nil {
-		if !strings.Contains(err.Error(), "already exists") {
-			return nil, fmt.Errorf("caching the git layer: %w", err)
-		}
-	}
+func unzipAndScanLayerFiles(ctx context.Context, cachePath string, layer ocispec.Descriptor, layerReadCloser io.ReadCloser) (*VirusScanResults, error) {
+
 	fp := filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded())
 	// unzip
 	r, err := zip.OpenReader(fp)

@@ -18,6 +18,13 @@ import (
 	"github.com/act3-ai/go-common/pkg/logger"
 )
 
+// ErrorVirusFound defines the error type when virus scanning yields any positive result.
+type ErrorVirusFound struct{}
+
+func (e *ErrorVirusFound) Error() string {
+	return "virus found"
+}
+
 // ScanOptions defines the options needed to run the scan operation.
 type ScanOptions struct {
 	CachePath               string
