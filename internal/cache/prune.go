@@ -38,7 +38,8 @@ func Prune(ctx context.Context, root string, maxSize int64) error {
 
 	// walk the blobs dir
 	path := filepath.Join(root, ocispec.ImageBlobsDir)
-	curSize, finfos, err := evalDir(os.DirFS(path))
+	path = filepath.ToSlash(path)
+	curSize, finfos, err := evalDir(path)
 	if err != nil {
 		return fmt.Errorf("evaluating cache directory: %w", err)
 	}
@@ -108,11 +109,12 @@ func deleteBlob(root string, dgst digest.Digest) error {
 }
 
 // evalDir evaluates a directory returning the total size of all files seen as well as their file infos.
-func evalDir(fsys fs.FS) (int64, []fileInfoWithDir, error) {
+func evalDir(fullPath string) (int64, []fileInfoWithDir, error) {
 	var size int64
 	seen := make(map[uint64]string)
 	infos := make([]fileInfoWithDir, 0)
 
+	fsys := os.DirFS(fullPath)
 	return size, infos, fs.WalkDir(fsys, ".", func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -129,10 +131,10 @@ func evalDir(fsys fs.FS) (int64, []fileInfoWithDir, error) {
 		if fi.Mode()&os.ModeSymlink == os.ModeSymlink {
 			return nil
 		}
+		wrappedFI := fileInfoWithDir{fi, filepath.Join(fullPath, path)}
+		infos = append(infos, wrappedFI)
 
-		infos = append(infos, fileInfoWithDir{fi, path})
-
-		inode, err := fsutil.GetInode(fi)
+		inode, err := fsutil.GetInode(wrappedFI)
 		if err != nil {
 			return fmt.Errorf("error getting inode: %w", err)
 		}
@@ -154,4 +156,8 @@ type fileInfoWithDir struct {
 	fs.FileInfo
 
 	path string
+}
+
+func (f fileInfoWithDir) Name() string {
+	return f.path
 }

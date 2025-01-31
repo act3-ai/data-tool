@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"runtime"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -145,11 +144,6 @@ func (mj *ManifestJSON) addManifestFromIndex(ctx context.Context, fetcher conten
 		if img.Platform.OS == "linux" && img.Platform.Architecture == "amd64" {
 			chosen = img
 		}
-
-		if img.Platform.OS == runtime.GOOS && img.Platform.Architecture == runtime.GOARCH {
-			chosen = img
-			break
-		}
 	}
 
 	mBytes, err := content.FetchAll(ctx, fetcher, chosen)
@@ -168,5 +162,5 @@ func (mj *ManifestJSON) addManifestFromIndex(ctx context.Context, fetcher conten
 // addPrefix resolves and adds the appropriate prefix to a blob digest as
 // it exists in a tar archive, e.g. "blobs/sha256/a1b2c3...".
 func addPrefix(dgst digest.Digest) string {
-	return filepath.Join("blobs", dgst.Algorithm().String(), dgst.Hex())
+	return filepath.Join("blobs", dgst.Algorithm().String(), dgst.Encoded())
 }

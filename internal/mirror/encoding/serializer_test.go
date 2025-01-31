@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"testing"
 
@@ -26,12 +27,11 @@ func TestSerializerWriteOCILayout(t *testing.T) {
 	tmp := t.TempDir()
 	destFile := filepath.Join(tmp, "test.tar")
 	// open the destination file/tape carefully to append only
-	file, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	dest, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	rne(err)
-	defer file.Close()
+	defer dest.Close()
 
 	// setup the destination
-	var dest io.WriteCloser = file
 	t.Logf("Creating serializer with destination %s", destFile)
 	s, err := NewOCILayoutSerializer(dest, "")
 	rne(err)
@@ -43,9 +43,9 @@ func TestSerializerWriteOCILayout(t *testing.T) {
 	rne(s.Close())
 	rne(dest.Close())
 	// TODO verify that the OCI Layout file is in the correct format
-	file, err = os.Open(destFile)
-	defer file.Close() //nolint:staticcheck
+	file, err := os.Open(destFile)
 	rne(err)
+	defer file.Close()
 	tr := tar.NewReader(file)
 	for {
 		hdr, err := tr.Next()
@@ -70,15 +70,15 @@ func TestSerializerWriteBlobLayer(t *testing.T) {
 	tmp := t.TempDir()
 	destFile := filepath.Join(tmp, "test.tar")
 	// open the destination file/tape carefully to append only
-	file, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	dest, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	rne(err)
-	defer file.Close()
+	defer dest.Close()
 
 	// setup the destination
 	t.Logf("Creating serializer with destination %s", destFile)
-	s, err := NewOCILayoutSerializer(file, "")
+	s, err := NewOCILayoutSerializer(dest, "")
 	rne(err)
-	// defer s.Close()
+	defer s.Close()
 
 	cas := memory.New()
 
@@ -90,21 +90,20 @@ func TestSerializerWriteBlobLayer(t *testing.T) {
 	// DUT
 	err = s.SaveBlob(ctx, cas, blob)
 	rne(err)
-
 	rne(s.Close())
 
 	// verify that there is a blobs directory
 	// verify that the layer exists in the tar file
 	// "blobs", "blobs/sha256", "blobs/sha256/digest"
-	file, err = os.Open(destFile)
-	defer file.Close() //nolint
+	file, err := os.Open(destFile)
 	rne(err)
+	defer file.Close()
 
 	// populate our expected map
 	expected := map[string]string{
-		"blobs":        "",
-		"blobs/sha256": "",
-		filepath.Join("blobs", "sha256", blob.Digest.Encoded()): "",
+		"blobs":                      "",
+		path.Join("blobs", "sha256"): "",
+		path.Join("blobs", "sha256", blob.Digest.Encoded()): "",
 	}
 
 	tr := tar.NewReader(file)
@@ -129,15 +128,15 @@ func TestSerializerWriteIndex(t *testing.T) {
 	tmp := t.TempDir()
 	destFile := filepath.Join(tmp, "test.tar")
 	// open the destination file/tape carefully to append only
-	file, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	dest, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	rne(err)
+	defer dest.Close()
 
 	// setup the destination
-	var dest io.WriteCloser = file
 	t.Logf("Creating serializer with destination %s", destFile)
 	s, err := NewOCILayoutSerializer(dest, "")
 	rne(err)
-	// defer s.Close()
+	defer s.Close()
 	rne(s.SaveIndex(ocispec.Index{}))
 	rne(s.Close())
 	rne(dest.Close())
@@ -145,9 +144,9 @@ func TestSerializerWriteIndex(t *testing.T) {
 	// verify that there is a blobs directory
 	// verify that the layer exists in the tar file
 	// "blobs", "blobs/sha256", "blobs/sha256/digest"
-	file, err = os.Open(destFile)
-	defer file.Close() //nolint
+	file, err := os.Open(destFile)
 	rne(err)
+	defer file.Close()
 
 	tr := tar.NewReader(file)
 	for {
@@ -170,18 +169,21 @@ func TestSerializerWithLedger(t *testing.T) {
 	tmp := t.TempDir()
 	destFile := filepath.Join(tmp, "test.tar")
 	// open the destination file/tape carefully to append only
-	file, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	dest, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	rne(err)
+	defer dest.Close()
+
 	// set up the ledger
 	l := filepath.Join(tmp, "ledger")
 	ledger, err := os.OpenFile(l, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	rne(err)
+	defer ledger.Close()
 
 	// setup the destination
-	var dest io.WriteCloser = file
 	t.Logf("Creating serializer with destination %s", destFile)
 	s, err := NewOCILayoutSerializerWithLedger(dest, ledger, "")
 	rne(err)
+	defer s.Close()
 
 	cas := memory.New()
 
@@ -202,9 +204,9 @@ func TestSerializerWithLedger(t *testing.T) {
 	// verify that there is a blobs directory
 	// verify that the layer exists in the tar file
 	// "blobs", "blobs/sha256", "blobs/sha256/digest"
-	file, err = os.Open(l)
-	defer file.Close() //nolint
+	file, err := os.Open(l)
 	rne(err)
+	defer file.Close()
 
 	decoder := json.NewDecoder(file)
 	for {
@@ -230,18 +232,20 @@ func TestSerializerWithLedgerAndGzipCompression(t *testing.T) {
 	tmp := t.TempDir()
 	destFile := filepath.Join(tmp, "test.tar.gz")
 	// open the destination file/tape carefully to append only
-	file, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	dest, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	rne(err)
+	defer dest.Close()
 	// set up the ledger
 	l := filepath.Join(tmp, "ledger")
 	ledger, err := os.OpenFile(l, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	rne(err)
+	defer ledger.Close()
 
 	// setup the destination
-	var dest io.WriteCloser = file
 	t.Logf("Creating serializer with destination %s", destFile)
 	s, err := NewOCILayoutSerializerWithLedger(dest, ledger, "gzip")
 	rne(err)
+	defer s.Close()
 
 	cas := memory.New()
 
@@ -262,9 +266,9 @@ func TestSerializerWithLedgerAndGzipCompression(t *testing.T) {
 	// verify that there is a blobs directory
 	// verify that the layer exists in the tar file
 	// "blobs", "blobs/sha256", "blobs/sha256/digest"
-	file, err = os.Open(l)
-	defer file.Close() //nolint
+	file, err := os.Open(l)
 	rne(err)
+	defer file.Close()
 
 	decoder := json.NewDecoder(file)
 	for {
@@ -283,6 +287,7 @@ func TestSerializerWithLedgerAndGzipCompression(t *testing.T) {
 	// verify that dest file is gzip formatted
 	file, err = os.Open(destFile)
 	rne(err)
+	defer file.Close()
 	buf := make([]byte, 10)
 	_, err = file.Read(buf)
 	rne(err)
@@ -290,6 +295,7 @@ func TestSerializerWithLedgerAndGzipCompression(t *testing.T) {
 	if len(buf) <= 1 || buf[0] != 0x1F && buf[1] != 0x8B {
 		rne(fmt.Errorf("destfile is not gzip formatted: %x", buf))
 	}
+	rne(file.Close())
 }
 
 func TestSerializerWithLedgerAndZstdCompression(t *testing.T) {
@@ -301,18 +307,20 @@ func TestSerializerWithLedgerAndZstdCompression(t *testing.T) {
 	tmp := t.TempDir()
 	destFile := filepath.Join(tmp, "test.tar.zst")
 	// open the destination file/tape carefully to append only
-	file, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	dest, err := os.OpenFile(destFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	rne(err)
+	defer dest.Close()
 	// set up the ledger
 	l := filepath.Join(tmp, "ledger")
 	ledger, err := os.OpenFile(l, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	rne(err)
+	defer ledger.Close()
 
 	// setup the destination
-	var dest io.WriteCloser = file
 	t.Logf("Creating serializer with destination %s", destFile)
 	s, err := NewOCILayoutSerializerWithLedger(dest, ledger, "zstd")
 	rne(err)
+	defer s.Close()
 
 	cas := memory.New()
 
@@ -333,9 +341,9 @@ func TestSerializerWithLedgerAndZstdCompression(t *testing.T) {
 	// verify that there is a blobs directory
 	// verify that the layer exists in the tar file
 	// "blobs", "blobs/sha256", "blobs/sha256/digest"
-	file, err = os.Open(l)
-	defer file.Close() //nolint
+	file, err := os.Open(l)
 	rne(err)
+	defer file.Close()
 
 	decoder := json.NewDecoder(file)
 	for {
@@ -354,6 +362,7 @@ func TestSerializerWithLedgerAndZstdCompression(t *testing.T) {
 	// verify that dest file is gzip formatted
 	file, err = os.Open(destFile)
 	rne(err)
+	defer file.Close()
 	buf := make([]byte, 10)
 	_, err = file.Read(buf)
 	rne(err)
@@ -361,4 +370,5 @@ func TestSerializerWithLedgerAndZstdCompression(t *testing.T) {
 	if len(buf) <= 3 || buf[0] != 0x28 && buf[1] != 0xB5 && buf[2] != 0x2F && buf[3] != 0xFD {
 		rne(fmt.Errorf("destfile is not zstd formatted: %x", buf))
 	}
+	rne(file.Close())
 }

@@ -237,7 +237,7 @@ func (c *Link) resolveUncachedBundles(ctx context.Context, layers []ocispec.Desc
 	for _, refInfo := range config.Refs.Tags {
 		// only check for a possible update if the ref is before the cutoff
 		if layerNumResolver[refInfo.Layer] < layerCutoff {
-			// fullTagRef := filepath.Join(cmd.TagRefPrefix, tag)
+			// fullTagRef := path.Join(cmd.TagRefPrefix, tag)
 			// refCommits, err := c.CmdHelper.ShowRefs(fullTagRef) // returned slice should be of length 1
 			err := c.CmdHelper.Git.CatFile(ctx, "-e", string(refInfo.Commit))
 			if err != nil {
@@ -250,7 +250,7 @@ func (c *Link) resolveUncachedBundles(ctx context.Context, layers []ocispec.Desc
 	for _, refInfo := range config.Refs.Heads {
 		// only check for a possible update if the ref is before the cutoff
 		if layerNumResolver[refInfo.Layer] < layerCutoff {
-			// fullHeadRef := filepath.Join(cmd.HeadRefPrefix, head)
+			// fullHeadRef := path.Join(cmd.HeadRefPrefix, head)
 			// refCommits, err := c.CmdHelper.ShowRefs(fullHeadRef) // returned slice should be of length 1
 			err := c.CmdHelper.Git.CatFile(ctx, "-e", string(refInfo.Commit))
 			if err != nil {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -229,7 +230,7 @@ func (f *FromOCI) updateRefList(ctx context.Context, prefixType string,
 	refs map[string]oci.ReferenceInfo, remoteRefs map[string]cmd.Commit) ([]string, error) {
 	var updated []string
 	for ref, refInfo := range refs {
-		fullRef := prefixType + ref
+		fullRef := path.Join(prefixType, ref)
 		oldCommit, ok := remoteRefs[fullRef]
 		if !ok || oldCommit != refInfo.Commit {
 			updated = append(updated, fmt.Sprintf("%s %s", refInfo.Commit, fullRef))
@@ -257,7 +258,7 @@ func (f *FromOCI) resolveLayersNeeded(ctx context.Context) ([]ocispec.Descriptor
 	for tag, refInfo := range f.base.config.Refs.Tags {
 		// only check for a possible update if the ref is before the cutoff
 		if layerNumResolver[refInfo.Layer] < layerCutoff {
-			fullTagRef := filepath.Join(cmd.TagRefPrefix, tag)
+			fullTagRef := path.Join(cmd.TagRefPrefix, tag)           // references don't use OS-specific path separators
 			refCommits, err := f.cmdHelper.ShowRefs(ctx, fullTagRef) // returned slice should be of length 1
 			if err != nil {
 				// try to recover by assuming this ref DNE
@@ -276,7 +277,7 @@ func (f *FromOCI) resolveLayersNeeded(ctx context.Context) ([]ocispec.Descriptor
 	for head, refInfo := range f.base.config.Refs.Heads {
 		// only check for a possible update if the ref is before the cutoff
 		if layerNumResolver[refInfo.Layer] < layerCutoff {
-			fullHeadRef := filepath.Join(cmd.HeadRefPrefix, head)
+			fullHeadRef := path.Join(cmd.HeadRefPrefix, head)         // references don't use OS-specific path separators
 			refCommits, err := f.cmdHelper.ShowRefs(ctx, fullHeadRef) // returned slice should be of length 1
 			if err != nil {
 				// try to recover by assuming this ref DNE

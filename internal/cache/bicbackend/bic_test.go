@@ -3,6 +3,7 @@ package bicbackend
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/opencontainers/go-digest"
 	"github.com/stretchr/testify/assert"
@@ -95,6 +96,7 @@ func testGenericRecordKnownLocations(t *testing.T, cache BlobInfoCache) {
 				lr1 := BICLocationReference{Opaque: scopeName + "1"}
 				lr2 := BICLocationReference{Opaque: scopeName + "2"}
 				cache.RecordKnownLocation(ctx, transport, scope, digest, lr2)
+				time.Sleep(1 * time.Nanosecond) // ensure that the timestamps are different for systems that have lower time resolution (like Windows)
 				cache.RecordKnownLocation(ctx, transport, scope, digest, lr1)
 				assert.Equal(t, []BICReplacementCandidate{
 					{Digest: digest, Location: lr1, TransformerName: UnknownTransformer},
@@ -148,6 +150,7 @@ func testGenericCandidateLocations(t *testing.T, cache BlobInfoCache) {
 		for _, suffix := range []string{"2", "1"} {
 			for _, e := range digestNameSet {
 				cache.RecordKnownLocation(ctx, transport, scope, e.d, BICLocationReference{Opaque: scopeName + e.n + suffix})
+				time.Sleep(1 * time.Nanosecond) // ensure that the timestamps are different
 			}
 		}
 
@@ -224,6 +227,7 @@ func testGenericCandidateLocations2(t *testing.T, cache BlobInfoCache) {
 		for _, suffix := range []string{"2", "1"} {
 			for _, e := range digestNameSet {
 				cache.RecordKnownLocation(ctx, transport, scope, e.d, BICLocationReference{Opaque: scopeName + e.n + suffix})
+				time.Sleep(1 * time.Nanosecond) // ensure that the timestamps are different
 			}
 		}
 

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/opencontainers/go-digest"
@@ -80,5 +79,5 @@ func blobPath(dgst digest.Digest) (string, error) {
 		return "", fmt.Errorf("cannot calculate blob path from invalid digest %s: %w: %w",
 			dgst.String(), errdef.ErrInvalidDigest, err)
 	}
-	return path.Join(ocispec.ImageBlobsDir, dgst.Algorithm().String(), dgst.Encoded()), nil
+	return filepath.Join(ocispec.ImageBlobsDir, dgst.Algorithm().String(), dgst.Encoded()), nil
 }

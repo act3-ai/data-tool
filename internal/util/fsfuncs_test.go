@@ -3,11 +3,14 @@ package util
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
 func TestDirSizeSymlinks(t *testing.T) {
-	// Test my test code
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not support symlinks")
+	}
 
 	d := t.TempDir()
 

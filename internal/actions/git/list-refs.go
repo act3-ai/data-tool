@@ -3,7 +3,7 @@ package git
 import (
 	"context"
 	"fmt"
-	"path/filepath"
+	"path"
 
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/git"
@@ -55,11 +55,11 @@ func (action *ListRefs) Run(ctx context.Context) error {
 	}
 
 	for tag, refInfo := range tags {
-		rootUI.Infof("%s %s", refInfo.Commit, filepath.Join(cmd.TagRefPrefix, tag))
+		rootUI.Infof("%s %s", refInfo.Commit, path.Join(cmd.TagRefPrefix, tag)) // references don't use OS-specific path separators
 	}
 
 	for head, refInfo := range heads {
-		rootUI.Infof("%s %s", refInfo.Commit, filepath.Join(cmd.HeadRefPrefix, head))
+		rootUI.Infof("%s %s", refInfo.Commit, path.Join(cmd.HeadRefPrefix, head)) // references don't use OS-specific path separators
 	}
 
 	if err := fromOCI.Cleanup(); err != nil {

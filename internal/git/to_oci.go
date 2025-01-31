@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -198,6 +199,8 @@ func (t *ToOCI) updateBaseConfig(ctx context.Context) error {
 
 	// Update config refs
 	for i, fullRef := range fullRefs {
+		// typically we shouldn't handle references as paths since git on windows
+		// still uses a "/" separator, but the underlying go implementation is fine here
 		trimmedRef := filepath.Base(fullRef)
 		newCommit := newCommits[i]
 
@@ -420,7 +423,7 @@ StatusCheck:
 			refsToBadObj = t.sync.headRefsFromCommit(badObj.Object())
 			replacements = make([]string, 0, len(refsToBadObj))
 			for _, ref := range refsToBadObj {
-				out, err := t.cmdHelper.MergeBase(ctx, ref, filepath.Join(existingRepo, ref))
+				out, err := t.cmdHelper.MergeBase(ctx, ref, path.Join(existingRepo, ref)) // references don't use OS-specific path separators
 				switch {
 				case err != nil:
 					return "", fmt.Errorf("resolving merge base for bad object: %w", err)
@@ -556,7 +559,7 @@ func (t *ToOCI) reconsructExisting(ctx context.Context, manDesc ocispec.Descript
 	}
 
 	for ref, refInfo := range t.base.config.Refs.Heads {
-		if err := ch.UpdateRef(ctx, cmd.HeadRefPrefix+ref, string(refInfo.Commit)); err != nil {
+		if err := ch.UpdateRef(ctx, path.Join(cmd.HeadRefPrefix, ref), string(refInfo.Commit)); err != nil {
 			return "", fmt.Errorf("updating reference %s for commit %s: %w", ref, refInfo.Commit, err)
 		}
 	}
