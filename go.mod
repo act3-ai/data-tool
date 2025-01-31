@@ -1,12 +1,10 @@
 module gitlab.com/act3-ai/asce/data/tool
 
-go 1.23.1
-
-toolchain go1.23.5
+go 1.23.5
 
 require (
 	git.act3-ace.com/ace/data/schema v1.2.13
-	git.act3-ace.com/ace/data/telemetry/v2 v2.1.0
+	git.act3-ace.com/ace/data/telemetry/v3 v3.0.0
 	git.act3-ace.com/ace/go-auth v0.0.0-20250131153712-a991d7d2a8e6
 	git.act3-ace.com/ace/go-common v0.0.0-20241029114748-ba3456041b7d
 	github.com/Masterminds/sprig/v3 v3.3.0
@@ -26,6 +24,7 @@ require (
 	github.com/sourcegraph/conc v0.3.0
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/pflag v1.0.6
+	gitlab.com/act3-ai/asce/go-common v0.0.0-20250131143710-28da888b4134
 	go.etcd.io/bbolt v1.3.11
 	golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c
 	golang.org/x/net v0.34.0
@@ -70,7 +69,6 @@ require (
 	github.com/zitadel/logging v0.6.1 // indirect
 	github.com/zitadel/oidc/v3 v3.34.1 // indirect
 	github.com/zitadel/schema v1.3.0 // indirect
-	gitlab.com/act3-ai/asce/go-common v0.0.0-20250131143710-28da888b4134 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel v1.34.0 // indirect
 	go.opentelemetry.io/otel/metric v1.34.0 // indirect

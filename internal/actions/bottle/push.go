@@ -7,7 +7,7 @@ import (
 
 	"oras.land/oras-go/v2/errdef"
 
-	"git.act3-ace.com/ace/data/telemetry/v2/pkg/types"
+	"git.act3-ace.com/ace/data/telemetry/v3/pkg/types"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"

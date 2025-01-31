@@ -6,16 +6,15 @@ package bottle
 import (
 	"context"
 
-	telemv1alpha2 "git.act3-ace.com/ace/data/telemetry/v2/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
-	"git.act3-ace.com/ace/go-common/pkg/redact"
+	"github.com/spf13/cobra"
+
+	telemv1alpha2 "git.act3-ace.com/ace/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/flag"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/oci"
-
-	"github.com/spf13/cobra"
-
 	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/go-common/pkg/redact"
 )
 
 // pullCmd represents the pull command.

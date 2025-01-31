@@ -5,7 +5,7 @@
 package v1alpha1
 
 import (
-	"git.act3-ace.com/ace/data/telemetry/v2/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
+	"git.act3-ace.com/ace/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
