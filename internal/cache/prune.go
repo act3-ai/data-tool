@@ -15,7 +15,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/errdef"
 
-	"git.act3-ace.com/ace/go-common/pkg/fsutil"
+	"gitlab.com/act3-ai/asce/go-common/pkg/fsutil"
 )
 
 // Prune removes files until the total size of the cache is less than or

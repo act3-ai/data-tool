@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // channel buffer size.

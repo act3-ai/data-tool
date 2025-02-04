@@ -20,6 +20,8 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 
+	telemv1alpha2 "git.act3-ace.com/ace/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
+
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/git"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/mirror"
@@ -29,11 +31,9 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/security"
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/go-common/pkg/config"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/go-common/pkg/redact"
-
-	telemv1alpha2 "git.act3-ace.com/ace/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
-	"git.act3-ace.com/ace/go-common/pkg/config"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
 )
 
 // NewToolCmd returns a command that represents the root command ace-dt.

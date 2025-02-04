@@ -19,10 +19,10 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 
 	"git.act3-ace.com/ace/data/schema/pkg/selectors"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"git.act3-ace.com/ace/go-common/pkg/redact"
 	"gitlab.com/act3-ai/asce/data/tool/internal/python"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/redact"
 )
 
 // Some motivation for this approach is given in https://stevelasker.blog/2021/08/26/artifact-services/

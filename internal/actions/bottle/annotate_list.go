@@ -6,10 +6,10 @@ import (
 	"io"
 	"strings"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions/internal/format"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // AnnotateList represents the bottle annotate list action.

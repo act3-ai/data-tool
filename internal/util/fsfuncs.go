@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"git.act3-ace.com/ace/go-common/pkg/fsutil"
+	"gitlab.com/act3-ai/asce/go-common/pkg/fsutil"
 )
 
 // DirSize returns the size of a directory.

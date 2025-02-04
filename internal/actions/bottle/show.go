@@ -10,13 +10,13 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 
 	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions/internal/format"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
 	"gitlab.com/act3-ai/asce/data/tool/internal/print"
 	telem "gitlab.com/act3-ai/asce/data/tool/pkg/telemetry"
 	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Show represents the bottle show action.

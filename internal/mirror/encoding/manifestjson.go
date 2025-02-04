@@ -11,7 +11,7 @@ import (
 	"oras.land/oras-go/v2/content"
 
 	"git.act3-ace.com/ace/data/tool/internal/ref"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // ManifestJSON is the top level structure of the manifest.json file.

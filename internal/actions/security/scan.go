@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
 	security "gitlab.com/act3-ai/asce/data/tool/internal/security"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Scan represents the scan action.

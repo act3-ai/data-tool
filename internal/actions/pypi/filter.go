@@ -6,8 +6,8 @@ import (
 	"strings"
 
 	"git.act3-ace.com/ace/data/schema/pkg/selectors"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/python"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // NOTE consider adding dependency checking (io.MultiWriter and unzip then look at the deps and add them to list to download)

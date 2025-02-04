@@ -3,7 +3,7 @@ package ui
 import (
 	"context"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // contextKey is how we find the UI.Root function in a context.Context.

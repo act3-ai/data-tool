@@ -6,7 +6,6 @@ require (
 	git.act3-ace.com/ace/data/schema v1.2.13
 	git.act3-ace.com/ace/data/telemetry/v3 v3.0.0
 	git.act3-ace.com/ace/go-auth v0.0.0-20250131153712-a991d7d2a8e6
-	git.act3-ace.com/ace/go-common v0.0.0-20241029114748-ba3456041b7d
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/adrg/xdg v0.5.3
 	github.com/djherbis/atime v1.1.0
@@ -49,6 +48,8 @@ require (
 	git.act3-ace.com/ace/hub/api/v6 v6.0.0-20241203160221-3a1e07ae7102 // indirect
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
 	github.com/MakeNowJust/heredoc/v2 v2.0.1 // indirect
+	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
+	github.com/charmbracelet/x/ansi v0.8.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
 	github.com/go-asn1-ber/asn1-ber v1.5.7 // indirect
 	github.com/go-jose/go-jose/v4 v4.0.4 // indirect
@@ -59,6 +60,8 @@ require (
 	github.com/gomarkdown/markdown v0.0.0-20241205020045-f7e15b2f3e62 // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
+	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
+	github.com/muesli/termenv v0.15.2 // indirect
 	github.com/muhlemmer/gu v0.3.1 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/neilotoole/slogt v1.1.0 // indirect

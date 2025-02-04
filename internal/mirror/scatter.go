@@ -12,13 +12,13 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
 	"gitlab.com/act3-ai/asce/data/tool/internal/print"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 	dtreg "gitlab.com/act3-ai/asce/data/tool/internal/registry"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // ScatterOptions specify the requirements to run the mirror scatter command.

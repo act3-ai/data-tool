@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Describe represents the bottle describe action.

@@ -14,8 +14,8 @@ import (
 	"oras.land/oras-go/v2/content/memory"
 
 	"git.act3-ace.com/ace/data/tool/internal/ref"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	tlog "git.act3-ace.com/ace/go-common/pkg/test"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	tlog "gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 func TestBuildManifestJSON(t *testing.T) {

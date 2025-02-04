@@ -5,7 +5,7 @@ import (
 	"io"
 
 	latest "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // AuthorAdd represents the bottle author add action.

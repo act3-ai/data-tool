@@ -8,7 +8,7 @@ import (
 
 	apivalidation "k8s.io/apimachinery/pkg/api/validation"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Annotate represents the bottle annotate action.

@@ -9,15 +9,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opencontainers/go-digest"
+
 	latest "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
 	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-
-	"github.com/opencontainers/go-digest"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Options define a set of options for processing file statuses.

@@ -15,10 +15,6 @@ import (
 	"strings"
 	"testing"
 
-	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
-	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
-
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -26,12 +22,16 @@ import (
 	orasreg "oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	tlog "git.act3-ace.com/ace/go-common/pkg/test"
+	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
+
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
 	tbtl "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
 	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	tlog "gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 var (

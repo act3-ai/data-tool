@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // ExtractTar unarchives a tar file.

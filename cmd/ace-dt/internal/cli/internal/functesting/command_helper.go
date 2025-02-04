@@ -17,9 +17,9 @@ import (
 	"github.com/stretchr/testify/require"
 	"oras.land/oras-go/v2/content/oci"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"git.act3-ace.com/ace/go-common/pkg/test"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
 // NewCommandHelper returns a new CommandHelper using the given cobra command.

@@ -11,8 +11,8 @@ import (
 
 	"golang.org/x/term"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
-	"git.act3-ace.com/ace/go-common/pkg/redact"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/redact"
 )
 
 // PromptUsername prompts a username input from stdin.

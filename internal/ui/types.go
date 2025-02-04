@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // UI is a simple user interface abstraction.

@@ -27,12 +27,13 @@ import (
 	"git.act3-ace.com/ace/data/telemetry/v3/pkg/client"
 	"git.act3-ace.com/ace/data/telemetry/v3/pkg/types"
 	"git.act3-ace.com/ace/go-auth/pkg/oauth2/device"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
 	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // ErrTelemetrySend indicates that a telemetry send event was not properly

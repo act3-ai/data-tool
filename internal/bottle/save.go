@@ -16,7 +16,7 @@ import (
 	"git.act3-ace.com/ace/data/tool/internal/archive"
 	"git.act3-ace.com/ace/data/tool/internal/bottle/label"
 	"git.act3-ace.com/ace/data/tool/internal/util"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content"

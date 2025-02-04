@@ -6,8 +6,8 @@ import (
 	"io"
 
 	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
-	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // ArtifactSet represents the bottle artifact set action.
