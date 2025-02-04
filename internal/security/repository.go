@@ -15,10 +15,11 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
 
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+
 	gitoci "git.act3-ace.com/ace/data/tool/internal/git/oci"
 	"git.act3-ace.com/ace/data/tool/internal/mirror"
 	"git.act3-ace.com/ace/data/tool/internal/mirror/encoding"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // ArtifactDetails contains all of the details needed to scan for vulnerabilities of a given artifact.

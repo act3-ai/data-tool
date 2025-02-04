@@ -14,8 +14,9 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror/encoding"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+
+	"git.act3-ace.com/ace/data/tool/internal/mirror/encoding"
 )
 
 func extractAndGrypeSBOMs(ctx context.Context, subjectDescriptor ocispec.Descriptor, target oras.GraphTarget, digestSBOM, grypeDBChecksum string, pushReport bool) ([]Results, error) {

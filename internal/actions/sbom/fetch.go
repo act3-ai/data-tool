@@ -11,9 +11,10 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+
 	"git.act3-ace.com/ace/data/tool/internal/ref"
 	sbom "git.act3-ace.com/ace/data/tool/internal/sbom"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // FetchSBOM represents the scan action.

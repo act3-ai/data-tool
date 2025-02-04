@@ -11,8 +11,9 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 
-	security "git.act3-ace.com/ace/data/tool/internal/security"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+
+	security "git.act3-ace.com/ace/data/tool/internal/security"
 )
 
 // FetchImageSBOM accepts a reference, repository, and optional platforms and returns a map of platform-->SBOM ReadCloser for printing to stdout or saving to file.
