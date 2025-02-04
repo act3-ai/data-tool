@@ -18,10 +18,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"golang.org/x/sync/errgroup"
 
-	"git.act3-ace.com/ace/go-common/pkg/httputil"
 	"git.act3-ace.com/ace/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 )
@@ -51,24 +49,23 @@ func (action *GUI) Run(ctx context.Context, out io.Writer) error {
 	defer close(finishedEditingChannel)
 
 	// Set up the http request router
-	router := chi.NewRouter()
+	mux := http.NewServeMux()
 	h := handlers{
 		tmpl: template.Must(template.New("base").ParseFS(baseTemplateFS, "templates/*.html")),
 		done: finishedEditingChannel,
 		btl:  btl,
 		log:  log.WithGroup("handler"),
 	}
-
-	router.Get("/", h.bottleGet)
-	router.Post("/discard", h.bottleDiscard)
-	router.Post("/", h.bottlePost)
+	mux.HandleFunc("GET /", h.bottleGet)
+	mux.HandleFunc("POST /discard", h.bottleDiscard)
+	mux.HandleFunc("POST /", h.bottlePost)
 
 	// Also serving static assets
 	templatesAssetsDir, err := fs.Sub(baseTemplateFS, "templates/assets")
 	if err != nil {
 		return fmt.Errorf("could not open templates/assets directory: %w", err)
 	}
-	httputil.FileServer(router, "/assets", templatesAssetsDir)
+	mux.Handle("GET /assets/", http.StripPrefix("/assets", http.FileServerFS(templatesAssetsDir)))
 
 	// we create our own Listener because we need a way to get th port that it chooses (when port is 0).
 	// http server's ListenAndServe() does not provide access to that.
@@ -89,7 +86,7 @@ func (action *GUI) Run(ctx context.Context, out io.Writer) error {
 	}
 
 	httpServer := http.Server{
-		Handler: router,
+		Handler: mux,
 	}
 
 	// Using an errorgroup and channel to be able to gracefully shutdown in case of an error
