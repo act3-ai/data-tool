@@ -517,6 +517,8 @@ To efficiently track the status of artifacts, files are created in the SYNC-DIRE
 
 ### Batch-Serialize
 
+> For step-by-step guidance, [consult the mirror batch-serialize tutorial](../tutorials/mirror/mirror-batch-serialize.md)
+
 The `ace-dt mirror batch-serialize` command serializes multiple artifacts to separate files within the SYNC-DIRECTORY. In a typical user workflow, multiple artifacts may need to get transferred over an air gap on a semi-regular basis. The gather artifact that has been compiled may contain many of the same images as an artifact that was serialized at an earlier time. To account for this, `ace-dt` consults the `record-keeping.csv` file and adds the previously serialized images to the [EXISTING-IMAGES...] slice when it eventually runs the `serialize` action.
 
 The `batch-serialize` command requires 2 arguments: the `BATCH-LIST` and the `SYNC-DIRECTORY`. The `BATCH-LIST` is a user-generated `.csv` file that includes the name of the artifact and the remote location. For example, if a user wanted to serialize 3 artifacts named `tools`, `ops`, and `cicd`, they might have a `BATCH-LIST` named `batch.csv` that looks like this:
