@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -19,6 +20,8 @@ import (
 
 	cfgdef "github.com/act3-ai/bottle-schema/pkg/apis/data.act3-ace.io/v1"
 	"github.com/act3-ai/data-tool/internal/actions/pypi"
+	gitoci "github.com/act3-ai/data-tool/internal/git"
+	gitcmd "github.com/act3-ai/data-tool/internal/git/cmd"
 	"github.com/act3-ai/data-tool/internal/ui"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -66,7 +69,7 @@ func clamavBytes(ctx context.Context, data io.ReadCloser, filename string) (*Vir
 
 // TODO
 func clamavFile(ctx context.Context, filepath string) (*VirusScanResults, error) {
-	return nil, nil
+	cmd := exec.CommandContext(ctx, "clamscan", filepath, "--no-summary", "--infected", "--stdout")
 }
 
 func grypeReference(ctx context.Context, reference string) (*VulnerabilityScanResults, error) {
@@ -245,23 +248,45 @@ func clamavGitArtifact(ctx context.Context,
 		return nil, fmt.Errorf("failed to initialize empty repository: %w\n%s", err, string(res))
 	}
 
-	for _, layer := range layers {
-		// force fetch to cache?
-		_, err := repository.Fetch(ctx, layer)
-		if err != nil {
-			return nil, fmt.Errorf("fetching the layer: %w", err)
-		}
-		r, err := clamavGitBundle(ctx, tmpDir, filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded()))
-		if err != nil {
-			return nil, err
-		}
-		if r != nil {
-			r.LayerDigest = layer.Digest.String()
-			clamavResults = append(clamavResults, r)
-		}
-		// continue
-		// clamavGitBundle(ctx, tmpDir)
+	f, err := gitoci.NewFromOCI(ctx, repository, "", tmpDir, gitoci.SyncOptions{}, &gitcmd.Options{GitOptions: gitcmd.GitOptions{}, LFSOptions: &gitcmd.LFSOptions{WithLFS: true}})
+	if err != nil {
+		return nil, err
 	}
+	f.Run(ctx)
+
+	if err := fs.WalkDir(os.DirFS(tmpDir), ".", func(path string, d fs.DirEntry, err error) error {
+		if !d.IsDir() {
+			res, err := clamavFile(ctx, filepath.Join(path, d.Name()))
+			if err != nil {
+				return err
+			}
+			if res != nil {
+				// res.LayerDigest = layer.Digest.String()
+				clamavResults = append(clamavResults, res)
+			}
+		}
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+	// for _, layer := range layers {
+	// 	// force fetch to cache?
+	// 	_, err := repository.Fetch(ctx, layer)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("fetching the layer: %w", err)
+	// 	}
+
+	// 	r, err := clamavGitBundle(ctx, tmpDir, filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded()))
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	if r != nil {
+	// 		r.LayerDigest = layer.Digest.String()
+	// 		clamavResults = append(clamavResults, r)
+	// 	}
+	// 	// continue
+	// 	// clamavGitBundle(ctx, tmpDir)
+	// }
 	return clamavResults, nil
 }
 

@@ -40,12 +40,12 @@ func (action *Scan) Run(ctx context.Context) (int, error) {
 		DryRun:                  action.DryRun,
 		PushReport:              action.PushReport,
 		ScanVirus:               action.ScanVirus,
-		Targeter:                action.Config,
+		Concurrency:             cfg.ConcurrentHTTP,
 	}
 
 	log.InfoContext(ctx, "Scanning Artifacts...")
 	// iterate through artifactDetails in sourceFile or in a gathered object
-	results, exitCode, err := security.ScanArtifacts(ctx, opts, cfg.ConcurrentHTTP)
+	results, exitCode, err := security.ScanArtifacts(ctx, opts, action.Config)
 	if err != nil {
 		return 3, err
 	}

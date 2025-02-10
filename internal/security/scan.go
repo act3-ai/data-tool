@@ -36,21 +36,21 @@ type ScanOptions struct {
 	DryRun                  bool
 	PushReport              bool
 	ScanVirus               bool
-	Targeter                reg.GraphTargeter
+	Concurrency             int
 }
 
 // ScanArtifacts will fetch the artifact details for each image in a source file or a mirror (gather) artifact.
 // It will then generate SBOMs for the reference if dryRun is false, upload them to the target repository, and use them for scanning.
 // If dryRun is set to true, the artifacts will be scanned by reference.
 // It returns a slice of results (derived from grype's json results) for the artifacts.
-func ScanArtifacts(ctx context.Context, opts ScanOptions, concurrency int) ([]*ArtifactDetails, int, error) {
-	if opts.SourceFile == "" && opts.GatherArtifactReference == "" {
+func ScanArtifacts(ctx context.Context, opts ScanOptions, targeter reg.GraphTargeter) ([]*ArtifactDetails, int, error) {
+	if opts.SourceFile != "" && opts.GatherArtifactReference != "" {
 		return nil, 3, fmt.Errorf("either sourcefile or gather artifact must be chosen but not both")
 	}
-	return scan(ctx, opts, concurrency)
+	return scan(ctx, opts, targeter)
 }
 
-func scan(ctx context.Context, opts ScanOptions, concurrency int) ([]*ArtifactDetails, int, error) {
+func scan(ctx context.Context, opts ScanOptions, targeter reg.GraphTargeter) ([]*ArtifactDetails, int, error) {
 
 	log := logger.FromContext(ctx)
 	mu := sync.Mutex{}
@@ -58,7 +58,7 @@ func scan(ctx context.Context, opts ScanOptions, concurrency int) ([]*ArtifactDe
 
 	// exitCode is set to 0 if clear, 2 if there are viruses found in the artifacts, and 3 for program errors.
 	exitCode := 0
-	repository, err := initializeRepository(ctx, opts)
+	repository, err := initializeRepository(ctx, opts, targeter)
 	if err != nil {
 		return nil, 3, err
 	}
@@ -68,18 +68,18 @@ func scan(ctx context.Context, opts ScanOptions, concurrency int) ([]*ArtifactDe
 		return nil, 3, err
 	}
 
-	m, err := FormatSources(ctx, opts.SourceFile, opts.GatherArtifactReference, repository, opts.Targeter, concurrency)
+	m, err := FormatSources(ctx, opts.SourceFile, opts.GatherArtifactReference, repository, targeter, opts.Concurrency)
 	if err != nil {
 		return nil, 3, fmt.Errorf("extracting sources from artifact: %w", err)
 	}
 	results := make([]*ArtifactDetails, len(m))
 	g, gctx := errgroup.WithContext(ctx)
-	g.SetLimit(concurrency)
+	g.SetLimit(opts.Concurrency)
 
 	for i, source := range m {
 		g.Go(func() error {
 			log.InfoContext(ctx, "Processing artifact", "reference", source.ArtifactReference, "originatingReference", source.OriginalReference)
-			artifactDetails, err := processArtifact(gctx, source, opts, opts.Targeter, grypeChecksumDB, clamavDBChecksums, repository)
+			artifactDetails, err := processArtifact(gctx, source, opts, targeter, grypeChecksumDB, clamavDBChecksums, repository)
 			if err != nil {
 				return err
 			}
@@ -105,11 +105,11 @@ func scan(ctx context.Context, opts ScanOptions, concurrency int) ([]*ArtifactDe
 
 }
 
-func initializeRepository(ctx context.Context, opts ScanOptions) (oras.GraphTarget, error) {
+func initializeRepository(ctx context.Context, opts ScanOptions, targeter reg.GraphTargeter) (oras.GraphTarget, error) {
 	if opts.GatherArtifactReference == "" {
 		return nil, nil
 	}
-	return opts.Targeter.GraphTarget(ctx, opts.GatherArtifactReference)
+	return targeter.GraphTarget(ctx, opts.GatherArtifactReference)
 }
 
 func initializeChecksums(ctx context.Context, opts ScanOptions) (string, []ClamavDatabase, error) {
