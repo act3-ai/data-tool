@@ -17,6 +17,7 @@ import (
 
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/content/file"
 
 	cfgdef "github.com/act3-ai/bottle-schema/pkg/apis/data.act3-ace.io/v1"
 	"github.com/act3-ai/data-tool/internal/actions/pypi"
@@ -253,7 +254,8 @@ func getClamAVChecksum(ctx context.Context) ([]ClamavDatabase, error) {
 func clamavGitArtifact(ctx context.Context,
 	cachePath string,
 	layers []ocispec.Descriptor,
-	repository oras.GraphTarget) ([]*VirusScanResults, error) {
+	repository oras.GraphTarget,
+	reference string) ([]*VirusScanResults, error) {
 
 	var clamavResults []*VirusScanResults
 	// initialize the temporary directory
@@ -268,24 +270,52 @@ func clamavGitArtifact(ctx context.Context,
 	if res, err := cmd.CombinedOutput(); err != nil {
 		return nil, fmt.Errorf("failed to initialize empty repository: %w\n%s", err, string(res))
 	}
-
-	f, err := gitoci.NewFromOCI(ctx, repository, "", tmpDir, gitoci.SyncOptions{}, &gitcmd.Options{GitOptions: gitcmd.GitOptions{}, LFSOptions: &gitcmd.LFSOptions{WithLFS: true}})
+	toOCIFStore, err := file.New(tmpDir)
+	if err != nil {
+		return nil, fmt.Errorf("creating file store: %w", err)
+	}
+	f, err := gitoci.NewFromOCI(ctx, repository, "", tmpDir, gitoci.SyncOptions{
+		Clean:             true,
+		UserAgent:         "ace-dt",
+		IntermediateDir:   tmpDir,
+		IntermediateStore: toOCIFStore,
+	}, &gitcmd.Options{GitOptions: gitcmd.GitOptions{Force: true}, LFSOptions: &gitcmd.LFSOptions{WithLFS: true}})
 	if err != nil {
 		return nil, err
 	}
-	f.Run(ctx)
-
+	list, err := f.FetchBaseManifestConfig(ctx)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("*** ", list)
+	refs, err := f.Run(ctx)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("/// ", refs)
+	cmd = exec.CommandContext(ctx, "git", "fetch", ".", "refs/heads/*:refs/heads/*")
+	cmd.Dir = tmpDir
+	if res, err := cmd.CombinedOutput(); err != nil {
+		fmt.Println("~~ ", string(res))
+		return nil, fmt.Errorf("failed to fetch git bundle: %w\n%s", err, string(res))
+	}
+	// list commit hashes
+	cmd = exec.CommandContext(ctx, "git", "log", "--all")
+	cmd.Dir = tmpDir
+	reslog, err := cmd.CombinedOutput()
+	fmt.Println("!!! ", string(reslog), err)
 	if err := fs.WalkDir(os.DirFS(tmpDir), ".", func(path string, d fs.DirEntry, err error) error {
-		if !d.IsDir() {
-			res, err := clamavFile(ctx, filepath.Join(path, d.Name()))
-			if err != nil {
-				return err
-			}
-			if res != nil {
-				// res.LayerDigest = layer.Digest.String()
-				clamavResults = append(clamavResults, res)
-			}
-		}
+		fmt.Println(path, d.Name())
+		// if !d.IsDir() {
+		// 	res, err := clamavFile(ctx, filepath.Join(path, d.Name()))
+		// 	if err != nil {
+		// 		return err
+		// 	}
+		// 	if res != nil {
+		// 		// res.LayerDigest = layer.Digest.String()
+		// 		clamavResults = append(clamavResults, res)
+		// 	}
+		// }
 		return nil
 	}); err != nil {
 		return nil, err
