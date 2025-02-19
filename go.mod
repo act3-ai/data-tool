@@ -25,9 +25,9 @@ require (
 	github.com/spf13/pflag v1.0.6
 	gitlab.com/act3-ai/asce/go-common v0.0.0-20250131213325-c79ed3cba0e3
 	go.etcd.io/bbolt v1.3.11
-	golang.org/x/exp v0.0.0-20250128182459-e0ece0dbea4c
+	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa
 	golang.org/x/net v0.34.0
-	golang.org/x/sync v0.10.0
+	golang.org/x/sync v0.11.0
 	golang.org/x/term v0.28.0
 	golang.org/x/text v0.21.0
 	k8s.io/apimachinery v0.32.2
@@ -78,7 +78,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
-	golang.org/x/mod v0.22.0 // indirect
+	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/oauth2 v0.25.0 // indirect
 	k8s.io/api v0.31.3 // indirect
 	sigs.k8s.io/controller-runtime v0.19.0 // indirect
