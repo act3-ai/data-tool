@@ -3,5 +3,6 @@
     "njoslin"
   ],
   "ignorePaths": ["**/testdata/**"],
-  "postUpdateOptions":["gomodTidy"]
+  "postUpdateOptions":["gomodTidy"],
+  "prHourlyLimit":10
 }
