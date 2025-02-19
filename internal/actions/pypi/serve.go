@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"gitlab.com/act3-ai/asce/go-common/pkg/httputil"
+	"gitlab.com/act3-ai/asce/go-common/pkg/httputil/promhttputil"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
@@ -43,7 +44,7 @@ func (action *Serve) Run(ctx context.Context, repository string) error {
 
 		httputil.TracingMiddleware,
 		httputil.LoggingMiddleware(logger.FromContext(ctx)),
-		httputil.PrometheusMiddleware,
+		promhttputil.PrometheusMiddleware,
 	)
 
 	myApp.Initialize(router)
