@@ -253,6 +253,8 @@ func (pp prettyPrinter) nest(prefix string) prettyPrinter {
 
 // processDescriptor determines the appropriate printing func by descriptor media type.
 // If storage implements content.PredecessorFinder then we also display predecessors.
+//
+//nolint:revive
 func (pp prettyPrinter) processDescriptor(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) (int64, error) {
 	// check for max depth
 	if pp.depth >= pp.Depth {

@@ -15,12 +15,12 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content"
 
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 
 	"git.act3-ace.com/ace/data/tool/internal/archive"
 	"git.act3-ace.com/ace/data/tool/internal/bottle/label"
 	"git.act3-ace.com/ace/data/tool/internal/util"
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
 )
 
 // SaveOptions is a structure for supplying options to the SaveUpdatesToSet function. By default, all options

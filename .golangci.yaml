@@ -23,7 +23,6 @@ linters:
     - unused
     - misspell
     - goimports
-    - tenv
     # - gochecknoglobals
     - gochecknoinits
     # - gci
@@ -41,6 +40,7 @@ linters:
     # - exportloopref
     - sloglint
     - copyloopvar
+    - usetesting
 
 linters-settings:
   # importas:

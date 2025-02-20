@@ -403,21 +403,22 @@ StatusCheck:
 			if !exists || err != nil {
 				ociExists = false
 				break
-			} else {
-				remote, err := t.reconsructExisting(ctx, t.sync.base.manDesc)
-				if err != nil {
-					return "", fmt.Errorf("reconstructing existing repository state from OCI: %w", err)
-				}
-				existingRepo = "oldversion"
-
-				if err := t.cmdHelper.RemoteAdd(ctx, existingRepo, "file://"+remote); err != nil {
-					return "", fmt.Errorf("adding reconstructed existing repository as remote to new version: %w", err)
-				}
-
-				if err := t.cmdHelper.Git.Fetch(ctx, existingRepo); err != nil {
-					return "", fmt.Errorf("fetching old remotes: %w", err)
-				}
 			}
+
+			remote, err := t.reconsructExisting(ctx, t.sync.base.manDesc)
+			if err != nil {
+				return "", fmt.Errorf("reconstructing existing repository state from OCI: %w", err)
+			}
+			existingRepo = "oldversion"
+
+			if err := t.cmdHelper.RemoteAdd(ctx, existingRepo, "file://"+remote); err != nil {
+				return "", fmt.Errorf("adding reconstructed existing repository as remote to new version: %w", err)
+			}
+
+			if err := t.cmdHelper.Git.Fetch(ctx, existingRepo); err != nil {
+				return "", fmt.Errorf("fetching old remotes: %w", err)
+			}
+
 			fallthrough
 		case existingRepo != "":
 			refsToBadObj = t.sync.headRefsFromCommit(badObj.Object())

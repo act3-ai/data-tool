@@ -135,7 +135,7 @@ func (action *ToOCI) Run(ctx context.Context, repository string, additionalRequi
 	if len(action.Selectors) != 0 {
 		s, err := selectors.Parse(action.Selectors)
 		if err != nil {
-			return err
+			return err //nolint:wrapcheck
 		}
 		opts.sels = s
 	}

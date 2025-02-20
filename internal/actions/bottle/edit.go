@@ -168,7 +168,7 @@ func checkBottle(ctx context.Context, bottlePath string, filePath string) error 
 		if err != nil {
 			return err
 		}
-		return btl.Definition.ValidateWithContext(ctx)
+		return btl.Definition.ValidateWithContext(ctx) //nolint:wrapcheck
 	}
 
 	btl, err := bottle.LoadBottle(bottlePath,
@@ -178,5 +178,5 @@ func checkBottle(ctx context.Context, bottlePath string, filePath string) error 
 	if err != nil {
 		return err
 	}
-	return btl.Definition.ValidateWithContext(ctx)
+	return btl.Definition.ValidateWithContext(ctx) //nolint:wrapcheck
 }
