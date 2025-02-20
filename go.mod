@@ -4,7 +4,7 @@ go 1.23.5
 
 require (
 	git.act3-ace.com/ace/data/schema v1.2.13
-	git.act3-ace.com/ace/data/telemetry/v3 v3.0.0
+	git.act3-ace.com/ace/data/telemetry/v3 v3.0.2
 	git.act3-ace.com/ace/go-auth v0.0.0-20250131153712-a991d7d2a8e6
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/adrg/xdg v0.5.3
@@ -26,10 +26,10 @@ require (
 	gitlab.com/act3-ai/asce/go-common v0.0.0-20250207222538-c9e7dd31dd43
 	go.etcd.io/bbolt v1.3.11
 	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa
-	golang.org/x/net v0.34.0
+	golang.org/x/net v0.35.0
 	golang.org/x/sync v0.11.0
-	golang.org/x/term v0.28.0
-	golang.org/x/text v0.21.0
+	golang.org/x/term v0.29.0
+	golang.org/x/text v0.22.0
 	k8s.io/apimachinery v0.32.2
 	k8s.io/utils v0.0.0-20241210054802-24370beab758
 	oras.land/oras-go/v2 v2.5.0
@@ -45,7 +45,7 @@ require (
 
 require (
 	dario.cat/mergo v1.0.1 // indirect
-	git.act3-ace.com/ace/hub/api/v6 v6.0.0-20241203160221-3a1e07ae7102 // indirect
+	git.act3-ace.com/ace/hub/api/v6 v6.0.0-20250118111308-d56eb09953c3 // indirect
 	github.com/Azure/go-ntlmssp v0.0.0-20221128193559-754e69321358 // indirect
 	github.com/MakeNowJust/heredoc/v2 v2.0.1 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
@@ -59,7 +59,7 @@ require (
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
-	github.com/gomarkdown/markdown v0.0.0-20241205020045-f7e15b2f3e62 // indirect
+	github.com/gomarkdown/markdown v0.0.0-20250207164621-7a1f277a159e // indirect
 	github.com/gorilla/securecookie v1.1.2 // indirect
 	github.com/iancoleman/strcase v0.3.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
@@ -78,17 +78,18 @@ require (
 	github.com/zitadel/logging v0.6.1 // indirect
 	github.com/zitadel/oidc/v3 v3.34.1 // indirect
 	github.com/zitadel/schema v1.3.0 // indirect
+	gitlab.com/act3-ai/asce/data/schema v1.2.14 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel v1.34.0 // indirect
 	go.opentelemetry.io/otel/metric v1.34.0 // indirect
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	golang.org/x/crypto v0.32.0 // indirect
+	golang.org/x/crypto v0.33.0 // indirect
 	golang.org/x/mod v0.23.0 // indirect
 	golang.org/x/oauth2 v0.25.0 // indirect
 	google.golang.org/protobuf v1.36.3 // indirect
-	k8s.io/api v0.31.3 // indirect
-	sigs.k8s.io/controller-runtime v0.19.0 // indirect
+	k8s.io/api v0.32.2 // indirect
+	sigs.k8s.io/controller-runtime v0.19.3 // indirect
 	sigs.k8s.io/gateway-api v1.2.1 // indirect
 )
 
@@ -106,7 +107,7 @@ require (
 	github.com/hashicorp/go-version v1.7.0
 	github.com/huandu/xstrings v1.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/invopop/jsonschema v0.12.0 // indirect
+	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -127,10 +128,10 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
-	sigs.k8s.io/structured-merge-diff/v4 v4.4.2 // indirect
+	sigs.k8s.io/structured-merge-diff/v4 v4.5.0 // indirect
 )
