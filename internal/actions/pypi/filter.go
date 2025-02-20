@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"git.act3-ace.com/ace/data/schema/pkg/selectors"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
 	"gitlab.com/act3-ai/asce/data/tool/internal/python"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )

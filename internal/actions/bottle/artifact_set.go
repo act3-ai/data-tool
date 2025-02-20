@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )

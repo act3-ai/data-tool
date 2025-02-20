@@ -18,8 +18,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
-
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"

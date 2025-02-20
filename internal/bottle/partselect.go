@@ -7,8 +7,8 @@ import (
 
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 
-	"git.act3-ace.com/ace/data/schema/pkg/selectors"
-	"git.act3-ace.com/ace/data/schema/pkg/util"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/util"
 )
 
 // PartSelectorOptions are options for creating a PartSelector.

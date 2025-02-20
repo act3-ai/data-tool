@@ -22,8 +22,7 @@ import (
 	orasreg "oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
-
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
 	tbtl "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"

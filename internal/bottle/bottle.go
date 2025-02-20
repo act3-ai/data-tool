@@ -24,10 +24,10 @@ import (
 	orascontent "oras.land/oras-go/v2/content"
 	orasoci "oras.land/oras-go/v2/content/oci"
 
-	bottle "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io"
-	cfgdef "git.act3-ace.com/ace/data/schema/pkg/apis/data.act3-ace.io/v1"
-	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
-	sutil "git.act3-ace.com/ace/data/schema/pkg/util"
+	bottle "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io"
+	cfgdef "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
+	sutil "gitlab.com/act3-ai/asce/data/schema/pkg/util"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
 	"gitlab.com/act3-ai/asce/data/tool/internal/cache"

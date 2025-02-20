@@ -17,7 +17,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"git.act3-ace.com/ace/data/schema/pkg/selectors"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions/oci"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
 )

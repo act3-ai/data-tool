@@ -12,16 +12,15 @@ import (
 	"strings"
 	"sync"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
-
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/errgroup"
 
-	"git.act3-ace.com/ace/data/schema/pkg/mediatype"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
 	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // archiveConcurrency is the concurrency used when archiving parts.

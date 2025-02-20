@@ -1,7 +1,5 @@
 dario.cat/mergo v1.0.1 h1:Ra4+bf83h2ztPIQYNP99R6m+Y7KfnARDfID+a+vLl4s=
 dario.cat/mergo v1.0.1/go.mod h1:uNxQE+84aUszobStD9th8a29P2fMDhsBdgRYvZOxGmk=
-git.act3-ace.com/ace/data/schema v1.2.13 h1:F6u7KCF1WFrkO1zQuCA4PiYzIh6kamfX9XYnRxJQgWk=
-git.act3-ace.com/ace/data/schema v1.2.13/go.mod h1:6GJ5yd02my+Fx+TGfkgHDDKcC3ueMsSB0Et+FvKHbq4=
 git.act3-ace.com/ace/data/telemetry/v3 v3.0.2 h1:STUqu0mwjkqmwwHepVq6f3vp1VzojPmDm2sYlkgjvhQ=
 git.act3-ace.com/ace/data/telemetry/v3 v3.0.2/go.mod h1:5gheLnH25inmPtkSdiuBNf+xFV0R3y5/R9dgldWjWLc=
 git.act3-ace.com/ace/go-auth v0.0.0-20250131153712-a991d7d2a8e6 h1:leGkZjdVIFVCm/Hbbko08ocO/F36hIkb6OXAVXJtCX8=
