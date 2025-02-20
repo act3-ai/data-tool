@@ -19,7 +19,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.0
 	github.com/sourcegraph/conc v0.3.0
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	gitlab.com/act3-ai/asce/data/schema v1.2.14
 	gitlab.com/act3-ai/asce/go-common v0.0.0-20250207222538-c9e7dd31dd43
