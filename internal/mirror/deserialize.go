@@ -127,6 +127,7 @@ func Deserialize(ctx context.Context, opts DeserializeOptions) (ocispec.Descript
 	)
 	currentStage := stageOCILayout
 	var indexDesc *ocispec.Descriptor
+	var idxCounter int
 
 	task := opts.RootUI.SubTask("Deserializing")
 	defer task.Complete()
@@ -172,11 +173,20 @@ func Deserialize(ctx context.Context, opts DeserializeOptions) (ocispec.Descript
 			}
 
 		case fname == ocispec.ImageIndexFile:
-			if indexDesc != nil {
-				// silently ignore extra index.json files
-				continue
+			idxCounter++
+			// do an initial check to see if in strict mode and past the index limit
+			if opts.Strict && idxCounter > 2 {
+				return ocispec.Descriptor{}, fmt.Errorf("expected 2 index.json files in Strict mode but received %d", idxCounter)
 			}
-
+			// we should not have any missing blobs when encountering an index.json file
+			if len(tracker.MissingBlobs()) != 0 {
+				return ocispec.Descriptor{}, fmt.Errorf("expected 0 missing blobs when processing an index.json file, but found %d", len(tracker.MissingBlobs()))
+			}
+			// if processing blobs from the previous index is done, set the currentStage back to stageIndexJSON
+			if opts.Strict && currentStage > stageIndexJSON {
+				// set it back to index stage
+				currentStage = stageIndexJSON
+			}
 			catalog, err := consumeIndexJSON(tr)
 			if err != nil {
 				return ocispec.Descriptor{}, err
@@ -197,13 +207,9 @@ func Deserialize(ctx context.Context, opts DeserializeOptions) (ocispec.Descript
 
 			// filter on ocispec.AnnotationRefName
 			var desc *ocispec.Descriptor
-			for i, d := range catalog.Manifests {
-				if _, ok := d.Annotations[ocispec.AnnotationRefName]; ok {
-					if desc != nil {
-						// multiple name references
-						// ambiguous index.json
-						return ocispec.Descriptor{}, fmt.Errorf("expected one manifest in %q with %q set but found a second at %d", ocispec.ImageIndexFile, ocispec.AnnotationRefName, i)
-					}
+			for _, d := range catalog.Manifests {
+				// a manifest may appear multiple times if referenced by separate indexes
+				if desc == nil {
 					desc = &catalog.Manifests[0]
 				}
 
@@ -229,7 +235,10 @@ func Deserialize(ctx context.Context, opts DeserializeOptions) (ocispec.Descript
 				}
 				currentStage++
 			}
-			indexDesc = desc
+
+			if indexDesc == nil {
+				indexDesc = desc
+			}
 
 		case path.Dir(path.Dir(fname)) == "blobs":
 			if err := consumeBlob(ctx, fname, hdr.Size, tr, tracker, remoteStorage, cacheStorage); err != nil {
@@ -239,7 +248,6 @@ func Deserialize(ctx context.Context, opts DeserializeOptions) (ocispec.Descript
 				if currentStage != stageBlob {
 					return ocispec.Descriptor{}, fmt.Errorf("expected the third file onward to be a blob")
 				}
-				// stay in blobs stage forever
 				// TODO verify that the ordering is depth-first.  Meaning that we always see the necessary manifests before the blobs for the manifest.
 			}
 			// update the progress with the blob size that was deserialized
