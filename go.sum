@@ -285,8 +285,8 @@ gitlab.com/act3-ai/asce/data/schema v1.2.14 h1:FbP89Ozt8LQ8QokTxuk6ZDr7eORh8SEln
 gitlab.com/act3-ai/asce/data/schema v1.2.14/go.mod h1:U6CHiNMhYncq7htCUbwoL0F6SUr2xfmc6NdiQ2gMF/Q=
 gitlab.com/act3-ai/asce/go-common v0.0.0-20250207222538-c9e7dd31dd43 h1:dgVk8dH2G3R/ZxGhU4HLH0SRy6J/GPx3BJcXH23a1OU=
 gitlab.com/act3-ai/asce/go-common v0.0.0-20250207222538-c9e7dd31dd43/go.mod h1:AHxjAMxBWfwK0XC7ZGSW4WjKhwOowVV+ju3zkB12pRc=
-go.etcd.io/bbolt v1.3.11 h1:yGEzV1wPz2yVCLsD8ZAiGHhHVlczyC9d1rP43/VCRJ0=
-go.etcd.io/bbolt v1.3.11/go.mod h1:dksAq7YMXoljX0xu6VF5DMZGbhYYoLUalEiSySYAS4I=
+go.etcd.io/bbolt v1.4.0 h1:TU77id3TnN/zKr7CO/uk+fBCwF2jGcMuw2B/FMAzYIk=
+go.etcd.io/bbolt v1.4.0/go.mod h1:AsD+OCi/qPN1giOX1aiLAha3o1U8rAz65bvN4j0sRuk=
 go.opentelemetry.io/auto/sdk v1.1.0 h1:cH53jehLUN6UFLY71z+NDOiNJqDdPRaXzTel0sJySYA=
 go.opentelemetry.io/auto/sdk v1.1.0/go.mod h1:3wSPjt5PWp2RhlCcmmOial7AvC4DQqZb7a7wCow3W8A=
 go.opentelemetry.io/otel v1.34.0 h1:zRLXxLCgL1WyKsPVrgbSdMN4c0FMkDAskSTQP+0hdUY=
