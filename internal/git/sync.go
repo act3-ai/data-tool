@@ -3,7 +3,6 @@ package git
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 
@@ -59,15 +58,6 @@ func (s *sync) FetchBaseManifestConfig(ctx context.Context) error {
 
 	manifestBytes, err := content.FetchAll(ctx, s.ociHelper.Target, s.base.manDesc)
 	if err != nil {
-		return fmt.Errorf("fetching base manifest: %w", err)
-	}
-
-	switch {
-	case s.syncOpts.Clean || errors.Is(err, errdef.ErrNotFound):
-		s.base.config.Refs.Tags = make(map[string]oci.ReferenceInfo, 0)
-		s.base.config.Refs.Heads = make(map[string]oci.ReferenceInfo, 0)
-		return errdef.ErrNotFound // propagate the error and handle accordingly, this can be ignored in ToOCI, but not in FromOCI
-	case err != nil:
 		return fmt.Errorf("fetching base manifest: %w", err)
 	}
 
