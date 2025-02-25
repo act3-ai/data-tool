@@ -30,11 +30,13 @@ type ToOCI struct {
 	argRevList   []string
 }
 
-// NewToOCI returns a ToOCI object after validating git and/or git-lfs compatibility.
-func NewToOCI(ctx context.Context, target oras.GraphTarget, tag, srcGitRemote string, argRevList []string, syncOpts SyncOptions, cmdOpts *cmd.Options) (*ToOCI, error) {
+// NewToOCI returns a ToOCI object after validating git and/or git-lfs compatibility. An existing base manifest descriptor is optional.
+func NewToOCI(ctx context.Context, target oras.GraphTarget, desc ocispec.Descriptor, srcGitRemote string, argRevList []string, syncOpts SyncOptions, cmdOpts *cmd.Options) (*ToOCI, error) {
 	toOCI := &ToOCI{
 		sync{
-			base:     syncBase{},
+			base: syncBase{
+				manDesc: desc,
+			},
 			lfs:      syncLFS{},
 			syncOpts: syncOpts,
 		},
@@ -44,7 +46,6 @@ func NewToOCI(ctx context.Context, target oras.GraphTarget, tag, srcGitRemote st
 
 	toOCI.ociHelper = &oci.Helper{
 		Target:     target,
-		Tag:        tag,
 		FStore:     syncOpts.IntermediateStore,
 		FStorePath: syncOpts.IntermediateDir,
 	}
@@ -98,9 +99,14 @@ func (t *ToOCI) Run(ctx context.Context) (ocispec.Descriptor, error) {
 	}
 
 	// see where the current sync is at
-	oldManDesc, err := t.FetchBaseManifestConfig(ctx)
-	if err != nil && !errors.Is(err, errdef.ErrNotFound) {
-		return ocispec.Descriptor{}, err
+	if t.sync.syncOpts.Clean || t.sync.base.manDesc.Digest == "" {
+		t.sync.base.config.Refs.Tags = make(map[string]oci.ReferenceInfo, 0)
+		t.sync.base.config.Refs.Heads = make(map[string]oci.ReferenceInfo, 0)
+	} else {
+		err := t.FetchBaseManifestConfig(ctx)
+		if err != nil && !errors.Is(err, errdef.ErrNotFound) {
+			return ocispec.Descriptor{}, err
+		}
 	}
 
 	// try to cache, and recover if it fails
@@ -147,7 +153,7 @@ func (t *ToOCI) Run(ctx context.Context) (ocispec.Descriptor, error) {
 
 	if t.cmdHelper.WithLFS { // we always set this to true, unless the git-lfs command was not found
 		log.InfoContext(ctx, "updating LFS manifest")
-		lfsManDesc, err := t.runLFS(ctx, oldManDesc, newManDesc)
+		lfsManDesc, err := t.runLFS(ctx, t.sync.base.manDesc, newManDesc)
 		switch {
 		case errors.Is(err, cmd.ErrLFSNotEnabled):
 			log.InfoContext(ctx, "repository does not have LFS enabled")
@@ -161,7 +167,7 @@ func (t *ToOCI) Run(ctx context.Context) (ocispec.Descriptor, error) {
 	} else {
 		// even if we don't sync LFS files try to update the lfs manifest's subject, if it exists
 		log.InfoContext(ctx, "Attempting to update LFS manifest's subject to new descriptor")
-		if err := t.updateLFSManSubject(ctx, oldManDesc, newManDesc); err != nil {
+		if err := t.updateLFSManSubject(ctx, t.sync.base.manDesc, newManDesc); err != nil {
 			return ocispec.Descriptor{}, fmt.Errorf("updating LFS manifest's subject: %w", err)
 		}
 	}
@@ -327,12 +333,6 @@ func (t *ToOCI) sendBaseSync(ctx context.Context, newBundleDesc ocispec.Descript
 	manDesc, err := oras.PackManifest(ctx, t.ociHelper.Target, oras.PackManifestVersion1_1, oci.ArtifactTypeSyncManifest, manOpts)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("packing and pushing base manifest: %w", err)
-	}
-
-	log.DebugContext(ctx, "Tagging base manifest")
-	err = t.ociHelper.Target.Tag(ctx, manDesc, t.ociHelper.Tag)
-	if err != nil {
-		return manDesc, fmt.Errorf("tagging base manifest: %w", err)
 	}
 
 	return manDesc, nil

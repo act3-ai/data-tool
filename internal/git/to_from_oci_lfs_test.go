@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/memory"
 
@@ -34,55 +35,79 @@ type lfsTest struct {
 }
 
 var lfsTests = []lfsTest{
-	{
-		t: test{
-			name: "One LFS File",
-			args: args{
-				argRevList:          []string{"main"},
-				expectedTagList:     []string{},
-				expectedHeadList:    []string{"main"},
-				expectedRebuildRefs: []string{"refs/heads/main"},
-				tag:                 "sync",
-			},
-			wantErr: false,
+	{t: test{name: "One LFS File",
+		args: args{
+			argRevList:          []string{"main"},
+			expectedTagList:     []string{},
+			expectedHeadList:    []string{"main"},
+			expectedRebuildRefs: []string{"refs/heads/main"},
+			tag:                 syncTag,
 		},
+		wantErr: false,
+	},
 		expectedLFSFiles: 1,
 	},
-	{
-		t: test{
-			name: "Two LFS Files",
-			args: args{
-				argRevList:          []string{"Feature1"},
-				expectedTagList:     []string{},
-				expectedHeadList:    []string{"main", "Feature1"},
-				expectedRebuildRefs: []string{"refs/heads/main", "refs/heads/Feature1"},
-				tag:                 "sync",
-			},
-			wantErr: false,
+	{t: test{name: "Two LFS Files",
+		args: args{
+			argRevList:          []string{"Feature1"},
+			expectedTagList:     []string{},
+			expectedHeadList:    []string{"main", "Feature1"},
+			expectedRebuildRefs: []string{"refs/heads/main", "refs/heads/Feature1"},
+			tag:                 syncTag,
 		},
+		wantErr: false,
+	},
 		expectedLFSFiles: 2,
 	},
 }
 
 // Test_ToFromOCILFS runs all lfsTests and verifies the results of the LFS portions of ToOCI and FromOCI.
 // It does NOT validate the results of the commit manifest, commit config, and bundles.
-func Test_ToFromOCILFS(t *testing.T) { //nolint
+func Test_ToFromOCILFS(t *testing.T) {
 	ctx := context.Background()
 	ctx = logger.NewContext(ctx, tlog.Logger(t, -2))
 
-	lfsSrc, lfsSrcHandler, srcServer, lfsDst, lfsDstHandler, dstServer := setupLFSServerHandlers(t, ctx)
-	defer lfsSrcHandler.cleanup() //nolint
+	srcRepo, srcHandler, srcServer, dstRepo, dstHandler, dstServer := setupLFSServerHandlers(t, ctx)
+	defer srcHandler.cleanup() //nolint
 	defer srcServer.Close()
-	defer lfsDstHandler.cleanup() //nolint
+	defer dstHandler.cleanup() //nolint
 	defer dstServer.Close()
 
 	target := memory.New() // oci target
 
 	// run LFS tests
-	for _, tt := range lfsTests {
+	for i, tt := range lfsTests {
+		if i == 0 {
+			ToFromOCILFSTestFunc(ctx, tt, target, ocispec.Descriptor{}, srcHandler, srcRepo, srcServer.URL, dstHandler, dstRepo, dstServer.URL)(t)
+		} else {
+			existingDesc, err := target.Resolve(ctx, tt.t.args.tag)
+			if err != nil {
+				t.Fatalf("resolving base manifest descriptor: error = %s", err)
+			}
 
+			ToFromOCILFSTestFunc(ctx, tt, target, existingDesc, srcHandler, srcRepo, srcServer.URL, dstHandler, dstRepo, dstServer.URL)(t)
+		}
+	}
+
+	if err := srcHandler.Cleanup(); err != nil {
+		t.Errorf("cleaning up source handler: %v", err)
+	}
+
+	if err := dstHandler.Cleanup(); err != nil {
+		t.Errorf("cleaning up destination handler: %v", err)
+	}
+
+	t.Log("test complete")
+}
+
+//nolint:gocognit
+func ToFromOCILFSTestFunc(ctx context.Context, tt lfsTest, target oras.GraphTarget, existingDesc ocispec.Descriptor,
+	srcHandler *ToOCI, srcRepo, srcServer string,
+	dstHandler *FromOCI, dstRepo, dstServer string) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Helper()
 		// build a map of expectations which corresponds to argRevList
-		reachableLFSFiles, err := lfsSrcHandler.cmdHelper.ListReachableLFSFiles(ctx, tt.t.args.argRevList)
+		reachableLFSFiles, err := srcHandler.cmdHelper.ListReachableLFSFiles(ctx, tt.t.args.argRevList)
 		if err != nil {
 			t.Errorf("resolving reachable lfs files: %v", err)
 		}
@@ -91,6 +116,7 @@ func Test_ToFromOCILFS(t *testing.T) { //nolint
 			expectedOIDmap[filepath.Base(f)] = false
 		}
 
+		var newDesc ocispec.Descriptor
 		t.Run(tt.t.name+":ToOCILFS", func(t *testing.T) {
 			toOCIFStorePath := t.TempDir()
 			toOCIFStore, err := file.New(toOCIFStorePath)
@@ -99,24 +125,24 @@ func Test_ToFromOCILFS(t *testing.T) { //nolint
 			}
 			defer toOCIFStore.Close()
 			toOCICmdOpts := cmd.Options{
-				LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: srcServer.URL},
+				LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: srcServer},
 			}
 
 			syncOpts := SyncOptions{IntermediateDir: toOCIFStorePath, IntermediateStore: toOCIFStore}
-			toOCITester, err := NewToOCI(ctx, target, tt.t.args.tag, lfsSrc, tt.t.args.argRevList, syncOpts, &toOCICmdOpts)
+			toOCITester, err := NewToOCI(ctx, target, existingDesc, srcRepo, tt.t.args.argRevList, syncOpts, &toOCICmdOpts)
 			if err != nil {
 				t.Errorf("creating ToOCI: %v", err)
 			}
 			defer toOCITester.Cleanup() //nolint
 
-			commitManDesc, err := toOCITester.Run(ctx)
+			newDesc, err = toOCITester.Run(ctx)
 			if err != nil {
 				t.Errorf("ToOCI() error = %v, wantErr %v", err, tt.t.wantErr)
 			}
 
 			// fetch it back as our version is not updated when it's sent
 			// TODO: Should we update our version of the manifest and config? Safer as a public api, but unnecessary for how we use it in ace-dt.
-			_, err = toOCITester.FetchLFSManifestConfig(ctx, commitManDesc, false)
+			_, err = toOCITester.FetchLFSManifestConfig(ctx, newDesc, false)
 			if err != nil {
 				t.Errorf("fetching lfs manifest and config: %v", err)
 			}
@@ -128,6 +154,10 @@ func Test_ToFromOCILFS(t *testing.T) { //nolint
 
 			if err := toOCITester.Cleanup(); err != nil {
 				t.Errorf("cleaning up toOCITester handler: %v", err)
+			}
+
+			if err := target.Tag(ctx, newDesc, tt.t.args.tag); err != nil {
+				t.Fatalf("tagging new sync manifest: error = %s", err)
 			}
 		})
 
@@ -144,11 +174,11 @@ func Test_ToFromOCILFS(t *testing.T) { //nolint
 			}
 			defer fromOCIFStore.Close()
 			fromOCICmdOpts := cmd.Options{
-				LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: dstServer.URL},
+				LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: dstServer},
 			}
 
 			syncOpts := SyncOptions{IntermediateDir: fromOCIFStorePath, IntermediateStore: fromOCIFStore}
-			fromOCITester, err := NewFromOCI(ctx, target, tt.t.args.tag, lfsDst, syncOpts, &fromOCICmdOpts)
+			fromOCITester, err := NewFromOCI(ctx, target, newDesc, dstRepo, syncOpts, &fromOCICmdOpts)
 			if err != nil {
 				t.Errorf("creating FromOCI: %v", err)
 			}
@@ -160,7 +190,7 @@ func Test_ToFromOCILFS(t *testing.T) { //nolint
 			}
 			t.Logf("updated refs: %s", updatedRefs)
 
-			err = validateLFSRebuild(ctx, lfsDstHandler, expectedOIDmap)
+			err = validateLFSRebuild(ctx, dstHandler, expectedOIDmap)
 			if err != nil {
 				t.Errorf("validating rebuilt lfs repo: %v", err)
 			}
@@ -170,16 +200,6 @@ func Test_ToFromOCILFS(t *testing.T) { //nolint
 			}
 		})
 	}
-
-	if err := lfsSrcHandler.Cleanup(); err != nil {
-		t.Errorf("cleaning up source handler: %v", err)
-	}
-
-	if err := lfsDstHandler.Cleanup(); err != nil {
-		t.Errorf("cleaning up destination handler: %v", err)
-	}
-
-	t.Log("test complete")
 }
 
 // setupLFSServerHandlers sets up src and dst LFS servers as well as handlers to access
@@ -197,7 +217,7 @@ func setupLFSServerHandlers(t *testing.T, ctx context.Context) (lfsSrc string, l
 	// lfsSrcHandler gives us access to the "srcGitRemote", which we can use to verify the destination repo (lfsDst) is the same as the source (lfsSrc).
 	srcSyncOpts := SyncOptions{IntermediateDir: lfsSrc}
 	srcCmdOpts := cmd.Options{LFSOptions: &cmd.LFSOptions{WithLFS: true}}
-	lfsSrcHandler, err := NewToOCI(ctx, nil, "", "", nil, srcSyncOpts, &srcCmdOpts)
+	lfsSrcHandler, err := NewToOCI(ctx, nil, ocispec.Descriptor{}, "", nil, srcSyncOpts, &srcCmdOpts)
 	if err != nil {
 		t.Fatalf("creating lfs src handler: %v", err)
 	}
@@ -216,7 +236,7 @@ func setupLFSServerHandlers(t *testing.T, ctx context.Context) (lfsSrc string, l
 	// lfsDstHandler gives us access to the "dstGitRemote", which we can use to verify the destination repo (lfsDst) is the same as the source (lfsSrc)
 	dstSyncOpts := SyncOptions{IntermediateDir: lfsDst}
 	dstCmdOpts := cmd.Options{LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: dstServer.URL}}
-	lfsDstHandler, err = NewFromOCI(ctx, nil, "", "", dstSyncOpts, &dstCmdOpts)
+	lfsDstHandler, err = NewFromOCI(ctx, nil, ocispec.Descriptor{}, "", dstSyncOpts, &dstCmdOpts)
 	if err != nil {
 		t.Errorf("creating lfs dst handler: %v", err)
 	}

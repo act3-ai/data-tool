@@ -20,7 +20,6 @@ import (
 // Helper assists in pushing to or fetching from an OCI compliant registry.
 type Helper struct {
 	Target     oras.GraphTarget
-	Tag        string
 	FStore     *file.Store
 	FStorePath string
 }

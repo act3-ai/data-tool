@@ -50,7 +50,7 @@ func NewCache(ctx context.Context, cachePath, fstorePath string, fstore *file.St
 }
 
 // NewLink builds a new link to an existing cache, allowing for concurrent access.
-func (c *Cache) NewLink(ctx context.Context, tag string, cmdOpts cmd.Options) (ObjectCacher, error) {
+func (c *Cache) NewLink(ctx context.Context, cmdOpts cmd.Options) (ObjectCacher, error) {
 	// links use the cache shared variables and allow for custom command options on a per-repo basis,
 	// e.g. we can use different LFS servers for different repos
 	link := &Link{

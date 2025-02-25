@@ -29,19 +29,24 @@ func (action *ListRefs) Run(ctx context.Context) error {
 		return fmt.Errorf("creating repository reference: %w", err)
 	}
 
-	fromOCI, err := git.NewFromOCI(ctx, repo, repo.Reference.Reference, "", git.SyncOptions{}, &cmd.Options{})
+	desc, err := repo.Resolve(ctx, repo.Reference.Reference)
+	if err != nil {
+		return fmt.Errorf("resolving base manifest descriptor: %w", err)
+	}
+
+	fromOCI, err := git.NewFromOCI(ctx, repo, desc, "", git.SyncOptions{}, &cmd.Options{})
 	if err != nil {
 		return fmt.Errorf("prepparing to run from-oci action: %w", err)
 	}
 	defer fromOCI.Cleanup() //nolint
 
 	log.InfoContext(ctx, "fetching base manifest and config")
-	manDesc, err := fromOCI.FetchBaseManifestConfig(ctx)
+	err = fromOCI.FetchBaseManifestConfig(ctx)
 	if err != nil {
 		return fmt.Errorf("fetching base manifest and config: %w", err)
 	}
 
-	rootUI.Infof("Digest of %s: %s", action.Repo, manDesc.Digest)
+	rootUI.Infof("Digest of %s: %s", action.Repo, desc.Digest)
 	rootUI.Infof("References:")
 
 	tags, err := fromOCI.GetTagRefs()

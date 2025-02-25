@@ -70,7 +70,7 @@ func (action *FromOCI) Run(ctx context.Context) error {
 		}
 
 		// init cache link
-		link, err := objCache.NewLink(ctx, repo.Reference.Reference, cmdOpts)
+		link, err := objCache.NewLink(ctx, cmdOpts)
 		if err != nil {
 			// continue without caching
 			goto Recover
@@ -86,7 +86,12 @@ Recover:
 		Cache:             cacheLink,
 	}
 
-	fromOCI, err := git.NewFromOCI(ctx, repo, repo.Reference.Reference, action.GitRemote, syncOpts, &cmdOpts)
+	desc, err := repo.Resolve(ctx, repo.Reference.Reference)
+	if err != nil {
+		return fmt.Errorf("resolving base manifest descriptor: %w", err)
+	}
+
+	fromOCI, err := git.NewFromOCI(ctx, repo, desc, action.GitRemote, syncOpts, &cmdOpts)
 	if err != nil {
 		return fmt.Errorf("prepparing to run from-oci action: %w", err)
 	}

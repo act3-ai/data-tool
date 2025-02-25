@@ -403,12 +403,27 @@ func verifyPack(ctx context.Context, ch *cmd.Helper, idxPath string) (int, error
 	}
 
 	re := regexp.MustCompile("[0-9]+")
-	nums := re.FindAllString(out[0], -1) // expecting one line
-	num, err := strconv.Atoi(nums[0])    // line should only have one int
+
+	// non-delta objects
+	objCount := 0
+	nonDeltaNum := re.FindAllString(out[0], -1)
+	n, err := strconv.Atoi(nonDeltaNum[0]) // line should only have one int
 	if err != nil {
 		return -1, fmt.Errorf("converting string to int: %w", err)
 	}
-	return num, nil
+	objCount += n
+
+	// delta objects
+	if len(out) > 1 {
+		deltaNums := re.FindAllString(out[1], -1)
+		n, err = strconv.Atoi(deltaNums[1]) // delta output has 2, we want last
+		if err != nil {
+			return -1, fmt.Errorf("converting string to int: %w", err)
+		}
+		objCount += n
+	}
+
+	return objCount, nil
 }
 
 // install calls `git lfs install --local`.

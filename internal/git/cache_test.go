@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	oras "oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/content/memory"
@@ -23,10 +24,10 @@ func Test_GitCache(t *testing.T) {
 	ctx = logger.NewContext(ctx, tlog.Logger(t, 0))
 
 	// init
-	lfsSrc, lfsSrcHandler, srcServer, lfsDst, lfsDstHandler, dstServer := setupLFSServerHandlers(t, ctx)
-	defer lfsSrcHandler.cleanup() //nolint
+	srcRepo, srcHandler, srcServer, dstRepo, dstHandler, dstServer := setupLFSServerHandlers(t, ctx)
+	defer srcHandler.cleanup() //nolint
 	defer srcServer.Close()
-	defer lfsDstHandler.cleanup() //nolint
+	defer dstHandler.cleanup() //nolint
 	defer dstServer.Close()
 
 	target := memory.New() // oci target
@@ -34,120 +35,128 @@ func Test_GitCache(t *testing.T) {
 	fromOCICacheDir := t.TempDir()
 
 	// run LFS tests
-	for _, tt := range lfsTests {
+	for i, tt := range lfsTests {
 		// prepare ground-truth
-		gitOids, lfsOids := reachableOIDs(t, ctx, tt.t.args.argRevList, lfsSrcHandler.cmdHelper)
+		gitOids, lfsOids := reachableOIDs(t, ctx, tt.t.args.argRevList, srcHandler.cmdHelper)
 
-		// run and validate ToOCI
-		t.Run(tt.t.name+":ToOCILFS-Cache", ToOCITestFn(ctx, t, lfsSrc, target, toOCICacheDir, srcServer.URL, gitOids, lfsOids, tt))
+		if i == 0 {
+			ToFromOCICacheTestFunc(ctx, tt, target, ocispec.Descriptor{}, srcHandler, srcRepo, srcServer.URL, dstHandler, dstRepo, dstServer.URL, toOCICacheDir, fromOCICacheDir, gitOids, lfsOids)(t)
+		} else {
+			existingDesc, err := target.Resolve(ctx, tt.t.args.tag)
+			if err != nil {
+				t.Fatalf("resolving base manifest descriptor: error = %s", err)
+			}
 
-		// run and validate FromOCI
-		t.Run(tt.t.name+"FromOCILFS-Cache", FromOCITestFn(ctx, t, target, lfsDst, fromOCICacheDir, dstServer.URL, gitOids, lfsOids, tt))
+			ToFromOCICacheTestFunc(ctx, tt, target, existingDesc, srcHandler, srcRepo, srcServer.URL, dstHandler, dstRepo, dstServer.URL, toOCICacheDir, fromOCICacheDir, gitOids, lfsOids)(t)
+		}
 	}
 
 	// cleanup
-	if err := lfsSrcHandler.Cleanup(); err != nil {
+	if err := srcHandler.Cleanup(); err != nil {
 		t.Errorf("cleaning up source handler: %v", err)
 	}
-	if err := lfsDstHandler.Cleanup(); err != nil {
+	if err := dstHandler.Cleanup(); err != nil {
 		t.Errorf("cleaning up destination handler: %v", err)
 	}
 
 	t.Log("test complete")
 }
 
-// ToOCITestFn returns a function used to run and validate caching for ToOCI operations.
-func ToOCITestFn(ctx context.Context, t *testing.T, src string, dst oras.GraphTarget, cacheDir, srcServerURL string,
-	reachableGitOids, reachableLFSOids []string, tt lfsTest) func(t *testing.T) {
-	t.Helper()
+//nolint:gocognit
+func ToFromOCICacheTestFunc(ctx context.Context, tt lfsTest, target oras.GraphTarget, existingDesc ocispec.Descriptor,
+	srcHandler *ToOCI, srcRepo, srcServer string,
+	dstHandler *FromOCI, dstRepo, dstServer string,
+	toOCICacheDir, fromOCICacheDir string,
+	reachableGitOids, reachableLFSOids []string) func(t *testing.T) {
 	return func(t *testing.T) {
 		t.Helper()
-		toOCIFStorePath := t.TempDir()
-		toOCIFStore, err := file.New(toOCIFStorePath)
-		if err != nil {
-			t.Fatalf("initializing to ocicache file store: %v", err)
-		}
-		defer toOCIFStore.Close()
-		toOCICmdOpts := cmd.Options{
-			LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: srcServerURL},
-		}
-		toOCICache, err := cache.NewCache(ctx, cacheDir, toOCIFStorePath, toOCIFStore, &toOCICmdOpts)
-		if err != nil {
-			t.Fatalf("initializing to oci base cache: %v", err)
-		}
+		var newDesc ocispec.Descriptor
+		t.Run(tt.t.name+": ToOCI-Cache", func(t *testing.T) {
+			toOCIFStorePath := t.TempDir()
+			toOCIFStore, err := file.New(toOCIFStorePath)
+			if err != nil {
+				t.Fatalf("initializing to ocicache file store: %v", err)
+			}
+			defer toOCIFStore.Close()
+			toOCICmdOpts := cmd.Options{
+				LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: srcServer},
+			}
+			toOCICache, err := cache.NewCache(ctx, toOCICacheDir, toOCIFStorePath, toOCIFStore, &toOCICmdOpts)
+			if err != nil {
+				t.Fatalf("initializing to oci base cache: %v", err)
+			}
 
-		toOCICacheLink, err := toOCICache.NewLink(ctx, tt.t.args.tag, toOCICmdOpts)
-		if err != nil {
-			t.Errorf("establishing to oci new cache link: %v", err)
-		}
+			toOCICacheLink, err := toOCICache.NewLink(ctx, toOCICmdOpts)
+			if err != nil {
+				t.Errorf("establishing to oci new cache link: %v", err)
+			}
 
-		syncOpts := SyncOptions{IntermediateDir: toOCIFStorePath, IntermediateStore: toOCIFStore, Cache: toOCICacheLink} // new intermediate dir, same to-oci cache dir
-		toOCITester, err := NewToOCI(ctx, dst, tt.t.args.tag, src, tt.t.args.argRevList, syncOpts, &toOCICmdOpts)
-		if err != nil {
-			t.Errorf("creating ToOCI: %v", err)
-		}
-		defer toOCITester.Cleanup() //nolint
+			syncOpts := SyncOptions{IntermediateDir: toOCIFStorePath, IntermediateStore: toOCIFStore, Cache: toOCICacheLink} // new intermediate dir, same to-oci cache dir
+			toOCITester, err := NewToOCI(ctx, target, existingDesc, srcRepo, tt.t.args.argRevList, syncOpts, &toOCICmdOpts)
+			if err != nil {
+				t.Errorf("creating ToOCI: %v", err)
+			}
+			defer toOCITester.Cleanup() //nolint
 
-		_, err = toOCITester.Run(ctx)
-		if err != nil {
-			t.Errorf("ToOCI() error = %v, wantErr %v", err, tt.t.wantErr)
-		}
+			newDesc, err = toOCITester.Run(ctx)
+			if err != nil {
+				t.Errorf("ToOCI() error = %v, wantErr %v", err, tt.t.wantErr)
+			}
 
-		if err := validateToOCICache(toOCITester.syncOpts.Cache.CachePath(), len(reachableGitOids), len(reachableLFSOids)); err != nil {
-			t.Errorf("resulting cache is invalid: %v", err)
-		}
+			if err := validateToOCICache(toOCITester.syncOpts.Cache.CachePath(), len(reachableGitOids), len(reachableLFSOids)); err != nil {
+				t.Errorf("resulting cache is invalid: %v", err)
+			}
 
-		if err := toOCITester.Cleanup(); err != nil {
-			t.Errorf("cleaning up toOCITester handler: %v", err)
-		}
-	}
-}
+			if err := toOCITester.Cleanup(); err != nil {
+				t.Errorf("cleaning up toOCITester handler: %v", err)
+			}
 
-// FromOCITestFn returns a function used to run and validate caching for FromOCI operations.
-func FromOCITestFn(ctx context.Context, t *testing.T, src oras.GraphTarget, dst string, cacheDir, dstServerURL string,
-	reachableGitOids, reachableLFSOids []string, tt lfsTest) func(t *testing.T) {
-	t.Helper()
-	return func(t *testing.T) {
-		t.Helper()
-		fromOCIFStorePath := t.TempDir()
-		fromOCIFStore, err := file.New(fromOCIFStorePath)
-		if err != nil {
-			t.Fatalf("initializing from oci cache file store: %v", err)
-		}
-		defer fromOCIFStore.Close()
-		fromOCICmdOpts := cmd.Options{
-			LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: dstServerURL},
-		}
-		fromOCICache, err := cache.NewCache(ctx, cacheDir, fromOCIFStorePath, fromOCIFStore, &fromOCICmdOpts)
-		if err != nil {
-			t.Fatalf("initializing from oci base cache: %v", err)
-		}
+			if err := target.Tag(ctx, newDesc, tt.t.args.tag); err != nil {
+				t.Fatalf("tagging new sync manifest: error = %s", err)
+			}
+		})
 
-		fromOCICacheLink, err := fromOCICache.NewLink(ctx, tt.t.args.tag, fromOCICmdOpts)
-		if err != nil {
-			t.Errorf("establishing from oci new cache link: %v", err)
-		}
+		t.Run(tt.t.name+": FromOCI-Cache", func(t *testing.T) {
+			fromOCIFStorePath := t.TempDir()
+			fromOCIFStore, err := file.New(fromOCIFStorePath)
+			if err != nil {
+				t.Fatalf("initializing from oci cache file store: %v", err)
+			}
+			defer fromOCIFStore.Close()
+			fromOCICmdOpts := cmd.Options{
+				LFSOptions: &cmd.LFSOptions{WithLFS: true, ServerURL: dstServer},
+			}
+			fromOCICache, err := cache.NewCache(ctx, fromOCICacheDir, fromOCIFStorePath, fromOCIFStore, &fromOCICmdOpts)
+			if err != nil {
+				t.Fatalf("initializing from oci base cache: %v", err)
+			}
 
-		syncOpts := SyncOptions{IntermediateDir: fromOCIFStorePath, IntermediateStore: fromOCIFStore, Cache: fromOCICacheLink} // new intermediate dir, same from-oci cache dir
-		fromOCITester, err := NewFromOCI(ctx, src, tt.t.args.tag, dst, syncOpts, &fromOCICmdOpts)
-		if err != nil {
-			t.Errorf("creating FromOCI: %v", err)
-		}
-		defer fromOCITester.Cleanup() //nolint
+			fromOCICacheLink, err := fromOCICache.NewLink(ctx, fromOCICmdOpts)
+			if err != nil {
+				t.Errorf("establishing from oci new cache link: %v", err)
+			}
 
-		updatedRefs, err := fromOCITester.Run(ctx)
-		if err != nil {
-			t.Fatalf("from oci: %v", err)
-		}
-		t.Logf("updated refs: %s", updatedRefs)
+			syncOpts := SyncOptions{IntermediateDir: fromOCIFStorePath, IntermediateStore: fromOCIFStore, Cache: fromOCICacheLink} // new intermediate dir, same from-oci cache dir
+			fromOCITester, err := NewFromOCI(ctx, target, newDesc, dstRepo, syncOpts, &fromOCICmdOpts)
+			if err != nil {
+				t.Errorf("creating FromOCI: %v", err)
+			}
+			defer fromOCITester.Cleanup() //nolint
 
-		if err := validateFromOCICache(ctx, fromOCITester.syncOpts.Cache.CachePath(), len(reachableGitOids), len(reachableLFSOids)); err != nil {
-			t.Errorf("resulting cache is invalid: %v", err)
-		}
+			updatedRefs, err := fromOCITester.Run(ctx)
+			if err != nil {
+				t.Fatalf("from oci: %v", err)
+			}
+			t.Logf("updated refs: %s", updatedRefs)
 
-		if err := fromOCITester.Cleanup(); err != nil {
-			t.Errorf("cleaning up fromOCITester handler: %v", err)
-		}
+			if err := validateFromOCICache(ctx, fromOCITester.syncOpts.Cache.CachePath(), len(reachableGitOids), len(reachableLFSOids)); err != nil {
+				t.Errorf("resulting cache is invalid: %v", err)
+			}
+
+			if err := fromOCITester.Cleanup(); err != nil {
+				t.Errorf("cleaning up fromOCITester handler: %v", err)
+			}
+		})
 	}
 }
 

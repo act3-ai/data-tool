@@ -27,11 +27,13 @@ type FromOCI struct {
 	dstGitRemote string
 }
 
-// NewFromOCI returns a FromOCI object after validating git and/or git-lfs compatibility.
-func NewFromOCI(ctx context.Context, target oras.GraphTarget, tag, dstGitRemote string, syncOpts SyncOptions, cmdOpts *cmd.Options) (*FromOCI, error) {
+// NewFromOCI returns a FromOCI object after validating git and/or git-lfs compatibility. Unlike NewToOCI, the base manifest descriptor is not optional.
+func NewFromOCI(ctx context.Context, target oras.GraphTarget, desc ocispec.Descriptor, dstGitRemote string, syncOpts SyncOptions, cmdOpts *cmd.Options) (*FromOCI, error) {
 	fromOCI := &FromOCI{
 		sync{
-			base:     syncBase{},
+			base: syncBase{
+				manDesc: desc,
+			},
 			lfs:      syncLFS{},
 			syncOpts: syncOpts,
 		},
@@ -40,7 +42,6 @@ func NewFromOCI(ctx context.Context, target oras.GraphTarget, tag, dstGitRemote 
 
 	fromOCI.ociHelper = &oci.Helper{
 		Target:     target,
-		Tag:        tag,
 		FStore:     syncOpts.IntermediateStore,
 		FStorePath: syncOpts.IntermediateDir,
 	}
@@ -75,7 +76,7 @@ func (f *FromOCI) Run(ctx context.Context) ([]string, error) {
 	u := ui.FromContextOrNoop(ctx)
 
 	log.InfoContext(ctx, "Fetching commit manifest and config")
-	manifestDesc, err := f.FetchBaseManifestConfig(ctx)
+	err := f.FetchBaseManifestConfig(ctx)
 	switch {
 	case err != nil:
 		return nil, fmt.Errorf("fetching commit manifest and config: %w", err)
@@ -109,7 +110,7 @@ func (f *FromOCI) Run(ctx context.Context) ([]string, error) {
 
 	switch {
 	case f.syncOpts.Cache != nil:
-		err := f.syncOpts.Cache.UpdateFromOCI(ctx, f.ociHelper.Target, manifestDesc)
+		err := f.syncOpts.Cache.UpdateFromOCI(ctx, f.ociHelper.Target, f.base.manDesc)
 		if err == nil {
 			log.InfoContext(ctx, "utilizing cache", "path", f.syncOpts.Cache)
 			break
@@ -120,7 +121,7 @@ func (f *FromOCI) Run(ctx context.Context) ([]string, error) {
 
 	default:
 		log.InfoContext(ctx, "no cache specified")
-		err := f.updateFromOCI(ctx, manifestDesc)
+		err := f.updateFromOCI(ctx, f.base.manDesc)
 		if err != nil {
 			return nil, fmt.Errorf("updating intermediate repo from OCI: %w", err)
 		}
@@ -137,7 +138,7 @@ func (f *FromOCI) Run(ctx context.Context) ([]string, error) {
 	// the git references.
 	if f.cmdHelper.WithLFS {
 		log.InfoContext(ctx, "Updating git LFS tracked files")
-		err := f.runLFS(ctx, refList, manifestDesc, remoteLFSFiles)
+		err := f.runLFS(ctx, refList, f.base.manDesc, remoteLFSFiles)
 		if err != nil && !errors.Is(err, errdef.ErrNotFound) {
 			return updated, fmt.Errorf("running LFS: %w", err)
 		}

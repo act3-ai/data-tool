@@ -8,7 +8,6 @@ import (
 	"os"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	oras "oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/errdef"
@@ -54,55 +53,50 @@ type SyncOptions struct {
 }
 
 // FetchBaseManifestConfig fetches the base sync manifest and config, populating the Original with the
-// results or initializing it with empty fields. Returns a descriptor to the commit manifest if it exists.
-func (s *sync) FetchBaseManifestConfig(ctx context.Context) (ocispec.Descriptor, error) {
+// results or initializing it with empty fields.
+func (s *sync) FetchBaseManifestConfig(ctx context.Context) error {
 	log := logger.FromContext(ctx)
 
-	var err error
-	var manifestBytes []byte
-
-	if !s.syncOpts.Clean {
-		log.InfoContext(ctx, "Fetching manifest", "tag", s.ociHelper.Tag)
-		s.base.manDesc, manifestBytes, err = oras.FetchBytes(ctx, s.ociHelper.Target, s.ociHelper.Tag, oras.FetchBytesOptions{})
-	} else {
-		log.InfoContext(ctx, "Starting with a fresh base manifest")
+	manifestBytes, err := content.FetchAll(ctx, s.ociHelper.Target, s.base.manDesc)
+	if err != nil {
+		return fmt.Errorf("fetching base manifest: %w", err)
 	}
 
 	switch {
 	case s.syncOpts.Clean || errors.Is(err, errdef.ErrNotFound):
 		s.base.config.Refs.Tags = make(map[string]oci.ReferenceInfo, 0)
 		s.base.config.Refs.Heads = make(map[string]oci.ReferenceInfo, 0)
-		return s.base.manDesc, errdef.ErrNotFound // propagate the error and handle accordingly, this can be ignored in ToOCI, but not in FromOCI
+		return errdef.ErrNotFound // propagate the error and handle accordingly, this can be ignored in ToOCI, but not in FromOCI
 	case err != nil:
-		return s.base.manDesc, fmt.Errorf("fetching base manifest: %w", err)
+		return fmt.Errorf("fetching base manifest: %w", err)
 	}
 
 	log.InfoContext(ctx, "Using existing manifest")
 	err = json.Unmarshal(manifestBytes, &s.base.manifest)
 	if err != nil {
-		return s.base.manDesc, fmt.Errorf("unmarshaling current base manifest: %w", err)
+		return fmt.Errorf("unmarshaling current base manifest: %w", err)
 	}
 
 	// check types
 	if s.base.manifest.ArtifactType != oci.ArtifactTypeSyncManifest { // likely error if we check artifact type in descriptor and not manifest itself
-		return s.base.manDesc, fmt.Errorf("expected base manifest artifact type %s, got %s", oci.ArtifactTypeSyncManifest, s.base.manDesc.ArtifactType)
+		return fmt.Errorf("expected base manifest artifact type %s, got %s", oci.ArtifactTypeSyncManifest, s.base.manDesc.ArtifactType)
 	}
 	if s.base.manifest.Config.MediaType != oci.MediaTypeSyncConfig {
-		return s.base.manDesc, fmt.Errorf("expected base config media type %s, got %s", oci.MediaTypeSyncConfig, s.base.manifest.Config.MediaType)
+		return fmt.Errorf("expected base config media type %s, got %s", oci.MediaTypeSyncConfig, s.base.manifest.Config.MediaType)
 	}
 
 	log.InfoContext(ctx, "Fetching manifest config", "configDigest", s.base.manifest.Config.Digest.String())
 	currentConfigBytes, err := content.FetchAll(ctx, s.ociHelper.Target, s.base.manifest.Config)
 	if err != nil {
-		return s.base.manDesc, fmt.Errorf("fetching manifest config: %w", err)
+		return fmt.Errorf("fetching manifest config: %w", err)
 	}
 
 	err = json.Unmarshal(currentConfigBytes, &s.base.config)
 	if err != nil {
-		return s.base.manDesc, fmt.Errorf("unmarshaling current manifest configuration: %w", err)
+		return fmt.Errorf("unmarshaling current manifest configuration: %w", err)
 	}
 
-	return s.base.manDesc, nil
+	return nil
 }
 
 // FetchLFSManifestConfig copies all predecessor manifests with the LFS manifest media type, returning a pointer to an OCI CAS storage

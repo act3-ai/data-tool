@@ -2,10 +2,12 @@ package git
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
 	"oras.land/oras-go/v2/content/file"
+	"oras.land/oras-go/v2/errdef"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/git"
 	"gitlab.com/act3-ai/asce/data/tool/internal/git/cache"
@@ -71,7 +73,7 @@ func (action *ToOCI) Run(ctx context.Context) error {
 		}
 
 		// init cache link
-		link, err := objCache.NewLink(ctx, repo.Reference.Reference, cmdOpts)
+		link, err := objCache.NewLink(ctx, cmdOpts)
 		if err != nil {
 			// continue without caching
 			goto Recover
@@ -87,18 +89,30 @@ Recover:
 		Cache:             cacheLink,
 	}
 
-	toOCI, err := git.NewToOCI(ctx, repo, repo.Reference.Reference, action.GitRemote, action.RevList, syncOpts, &cmdOpts)
+	existingDesc, err := repo.Resolve(ctx, repo.Reference.Reference)
+	if err != nil && !errors.Is(err, errdef.ErrNotFound) {
+		return fmt.Errorf("resolving git manifest descriptor: %w", err)
+	}
+
+	toOCI, err := git.NewToOCI(ctx, repo, existingDesc, action.GitRemote, action.RevList, syncOpts, &cmdOpts)
 	if err != nil {
 		return fmt.Errorf("prepparing to run to-oci action: %w", err)
 	}
 	defer toOCI.Cleanup() //nolint
 
 	log.InfoContext(ctx, "Starting ToOCI action")
-	commitManDesc, err := toOCI.Run(ctx)
+	newDesc, err := toOCI.Run(ctx)
 	if err != nil {
 		return fmt.Errorf("syncing (Git) %q to (OCI) %q: %w", action.GitRemote, action.Repo, err)
 	}
-	rootUI.Infof("Commit Manifest digest: %s", commitManDesc.Digest)
+	rootUI.Infof("Commit Manifest digest: %s", newDesc.Digest)
+
+	log.DebugContext(ctx, "Tagging base manifest")
+
+	err = repo.Tag(ctx, newDesc, repo.Reference.Reference)
+	if err != nil {
+		return fmt.Errorf("tagging base manifest: %w", err)
+	}
 
 	if err := toOCI.Cleanup(); err != nil {
 		return fmt.Errorf("cleaning up toOCI: %w", err)
