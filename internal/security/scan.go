@@ -18,10 +18,10 @@ import (
 	"github.com/act3-ai/go-common/pkg/logger"
 )
 
-// ErrorVirusFound defines the error type when virus scanning yields any positive result.
-type ErrorVirusFound struct{}
+// VirusFoundError defines the error type when virus scanning yields any positive result.
+type VirusFoundError struct{}
 
-func (e *ErrorVirusFound) Error() string {
+func (e *VirusFoundError) Error() string {
 	return "virus found"
 }
 

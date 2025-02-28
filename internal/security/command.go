@@ -64,32 +64,6 @@ func clamavBytes(ctx context.Context, data io.ReadCloser, filename string) (*Vir
 	return nil, nil
 }
 
-func clamavFile(ctx context.Context, filename string) (*VirusScanResults, error) {
-	cmd := exec.CommandContext(ctx, "clamscan", filename, "--no-summary", "--infected", "--stdout")
-	res, err := cmd.CombinedOutput()
-	foundPattern := regexp.MustCompile(`^\s*(.+?)\s+FOUND\b`)
-	output := string(res)
-	if match := foundPattern.FindStringSubmatch(output); len(match) > 1 {
-		lines := strings.Split(strings.TrimSpace(match[1]), ":")
-		return &VirusScanResults{
-			File:    filename,
-			Finding: lines[1],
-		}, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("scanning data: %s %w", res, err)
-	}
-
-	if len(res) != 0 {
-		lines := strings.Split(strings.TrimSpace(string(res)), ":")
-		return &VirusScanResults{
-			File:    filename,
-			Finding: lines[1],
-		}, nil
-	}
-	return nil, nil
-}
-
 func grypeReference(ctx context.Context, reference string) (*VulnerabilityScanResults, error) {
 	vulnerabilities := VulnerabilityScanResults{}
 	cmd := exec.CommandContext(ctx, "grype", reference, "-o", "json")
