@@ -253,7 +253,7 @@ func getClamAVChecksum(ctx context.Context) ([]ClamavDatabase, error) {
 
 func clamavGitArtifact(ctx context.Context,
 	cachePath string,
-	layers []ocispec.Descriptor,
+	desc ocispec.Descriptor,
 	repository oras.GraphTarget,
 	reference string) ([]*VirusScanResults, error) {
 
@@ -263,59 +263,67 @@ func clamavGitArtifact(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(tmpDir)
+	fmt.Println("TEMP DIRECTORY: ", tmpDir)
+	// defer os.RemoveAll(tmpDir)
 
-	cmd := exec.CommandContext(ctx, "git", "init", "--bare")
-	cmd.Dir = tmpDir
-	if res, err := cmd.CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("failed to initialize empty repository: %w\n%s", err, string(res))
+	intermediateDir, err := generateTempDir(cachePath)
+	if err != nil {
+		return nil, err
 	}
-	toOCIFStore, err := file.New(tmpDir)
+	defer os.RemoveAll(intermediateDir)
+
+	destRepo, err := gitcmd.NewHelper(ctx, tmpDir, &gitcmd.Options{})
+	err = destRepo.Init(ctx, "--bare")
+	if err != nil {
+		return nil, fmt.Errorf("setting up git rebuild dir: %v", err)
+	}
+
+	// intermediateRepo, err := gitcmd.NewHelper(ctx, intermediateDir, &gitcmd.Options{})
+
+	toOCIFStore, err := file.New(intermediateDir)
 	if err != nil {
 		return nil, fmt.Errorf("creating file store: %w", err)
 	}
-	f, err := gitoci.NewFromOCI(ctx, repository, "", tmpDir, gitoci.SyncOptions{
-		Clean:             true,
+	f, err := gitoci.NewFromOCI(ctx, repository, desc, destRepo.Dir(), gitoci.SyncOptions{
+		Clean:             false,
 		UserAgent:         "ace-dt",
-		IntermediateDir:   tmpDir,
+		IntermediateDir:   intermediateDir,
 		IntermediateStore: toOCIFStore,
-	}, &gitcmd.Options{GitOptions: gitcmd.GitOptions{Force: true}, LFSOptions: &gitcmd.LFSOptions{WithLFS: true}})
+	}, &gitcmd.Options{GitOptions: gitcmd.GitOptions{Force: true}, LFSOptions: &gitcmd.LFSOptions{WithLFS: false}})
 	if err != nil {
 		return nil, err
 	}
-	list, err := f.FetchBaseManifestConfig(ctx)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println("*** ", list)
+	// TODO force copy LFS files to destRepo... WithLFS true
 	refs, err := f.Run(ctx)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("/// ", refs)
-	cmd = exec.CommandContext(ctx, "git", "fetch", ".", "refs/heads/*:refs/heads/*")
-	cmd.Dir = tmpDir
-	if res, err := cmd.CombinedOutput(); err != nil {
-		fmt.Println("~~ ", string(res))
-		return nil, fmt.Errorf("failed to fetch git bundle: %w\n%s", err, string(res))
-	}
-	// list commit hashes
-	cmd = exec.CommandContext(ctx, "git", "log", "--all")
-	cmd.Dir = tmpDir
-	reslog, err := cmd.CombinedOutput()
-	fmt.Println("!!! ", string(reslog), err)
-	if err := fs.WalkDir(os.DirFS(tmpDir), ".", func(path string, d fs.DirEntry, err error) error {
-		fmt.Println(path, d.Name())
-		// if !d.IsDir() {
-		// 	res, err := clamavFile(ctx, filepath.Join(path, d.Name()))
-		// 	if err != nil {
-		// 		return err
-		// 	}
-		// 	if res != nil {
-		// 		// res.LayerDigest = layer.Digest.String()
-		// 		clamavResults = append(clamavResults, res)
-		// 	}
-		// }
+
+	fmt.Println(refs)
+	// cmd = exec.CommandContext(ctx, "git", "fetch", ".", "refs/heads/*:refs/heads/*")
+	// cmd.Dir = tmpDir
+	// if res, err := cmd.CombinedOutput(); err != nil {
+	// 	fmt.Println("~~ ", string(res))
+	// 	return nil, fmt.Errorf("failed to fetch git bundle: %w\n%s", err, string(res))
+	// }
+	// // list commit hashes
+	// cmd = exec.CommandContext(ctx, "git", "log", "--all")
+	// cmd.Dir = tmpDir
+	// reslog, err := cmd.CombinedOutput()
+	// fmt.Println("!!! ", string(reslog), err)
+	// TODO maybe this could be run concurrently? But clamav uses a lot of memory so only in the case where there is a daemon running
+	if err := fs.WalkDir(os.DirFS(destRepo.Dir()), ".", func(path string, d fs.DirEntry, err error) error {
+		fmt.Println("!!! ", path, d.Name())
+		if !d.IsDir() {
+			res, err := clamavFile(ctx, filepath.Join(destRepo.Dir(), path))
+			if err != nil {
+				return err
+			}
+			if res != nil {
+				// res.LayerDigest = layer.Digest.String()
+				clamavResults = append(clamavResults, res)
+			}
+		}
 		return nil
 	}); err != nil {
 		return nil, err
