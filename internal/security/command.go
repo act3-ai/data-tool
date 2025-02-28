@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/fs"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -17,12 +16,9 @@ import (
 
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/content/file"
 
 	cfgdef "github.com/act3-ai/bottle-schema/pkg/apis/data.act3-ace.io/v1"
 	"github.com/act3-ai/data-tool/internal/actions/pypi"
-	gitoci "github.com/act3-ai/data-tool/internal/git"
-	gitcmd "github.com/act3-ai/data-tool/internal/git/cmd"
 	"github.com/act3-ai/data-tool/internal/ui"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -249,148 +245,6 @@ func getClamAVChecksum(ctx context.Context) ([]ClamavDatabase, error) {
 		}
 	}
 	return clamavDBChecksums, nil
-}
-
-func clamavGitArtifact(ctx context.Context,
-	cachePath string,
-	desc ocispec.Descriptor,
-	repository oras.GraphTarget,
-	reference string) ([]*VirusScanResults, error) {
-
-	var clamavResults []*VirusScanResults
-	// initialize the temporary directory
-	tmpDir, err := generateTempDir(cachePath)
-	if err != nil {
-		return nil, err
-	}
-	fmt.Println("TEMP DIRECTORY: ", tmpDir)
-	// defer os.RemoveAll(tmpDir)
-
-	intermediateDir, err := generateTempDir(cachePath)
-	if err != nil {
-		return nil, err
-	}
-	defer os.RemoveAll(intermediateDir)
-
-	destRepo, err := gitcmd.NewHelper(ctx, tmpDir, &gitcmd.Options{})
-	err = destRepo.Init(ctx, "--bare")
-	if err != nil {
-		return nil, fmt.Errorf("setting up git rebuild dir: %v", err)
-	}
-
-	// intermediateRepo, err := gitcmd.NewHelper(ctx, intermediateDir, &gitcmd.Options{})
-
-	toOCIFStore, err := file.New(intermediateDir)
-	if err != nil {
-		return nil, fmt.Errorf("creating file store: %w", err)
-	}
-	f, err := gitoci.NewFromOCI(ctx, repository, desc, destRepo.Dir(), gitoci.SyncOptions{
-		Clean:             false,
-		UserAgent:         "ace-dt",
-		IntermediateDir:   intermediateDir,
-		IntermediateStore: toOCIFStore,
-	}, &gitcmd.Options{GitOptions: gitcmd.GitOptions{Force: true}, LFSOptions: &gitcmd.LFSOptions{WithLFS: false}})
-	if err != nil {
-		return nil, err
-	}
-	// TODO force copy LFS files to destRepo... WithLFS true
-	refs, err := f.Run(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	fmt.Println(refs)
-	// cmd = exec.CommandContext(ctx, "git", "fetch", ".", "refs/heads/*:refs/heads/*")
-	// cmd.Dir = tmpDir
-	// if res, err := cmd.CombinedOutput(); err != nil {
-	// 	fmt.Println("~~ ", string(res))
-	// 	return nil, fmt.Errorf("failed to fetch git bundle: %w\n%s", err, string(res))
-	// }
-	// // list commit hashes
-	// cmd = exec.CommandContext(ctx, "git", "log", "--all")
-	// cmd.Dir = tmpDir
-	// reslog, err := cmd.CombinedOutput()
-	// fmt.Println("!!! ", string(reslog), err)
-	// TODO maybe this could be run concurrently? But clamav uses a lot of memory so only in the case where there is a daemon running
-	if err := fs.WalkDir(os.DirFS(destRepo.Dir()), ".", func(path string, d fs.DirEntry, err error) error {
-		fmt.Println("!!! ", path, d.Name())
-		if !d.IsDir() {
-			res, err := clamavFile(ctx, filepath.Join(destRepo.Dir(), path))
-			if err != nil {
-				return err
-			}
-			if res != nil {
-				// res.LayerDigest = layer.Digest.String()
-				clamavResults = append(clamavResults, res)
-			}
-		}
-		return nil
-	}); err != nil {
-		return nil, err
-	}
-	// for _, layer := range layers {
-	// 	// force fetch to cache?
-	// 	_, err := repository.Fetch(ctx, layer)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("fetching the layer: %w", err)
-	// 	}
-
-	// 	r, err := clamavGitBundle(ctx, tmpDir, filepath.Join(cachePath, "blobs", string(layer.Digest.Algorithm()), layer.Digest.Encoded()))
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	if r != nil {
-	// 		r.LayerDigest = layer.Digest.String()
-	// 		clamavResults = append(clamavResults, r)
-	// 	}
-	// 	// continue
-	// 	// clamavGitBundle(ctx, tmpDir)
-	// }
-	return clamavResults, nil
-}
-
-func clamavGitBundle(ctx context.Context, tmpDir, bundlePath string) (*VirusScanResults, error) {
-	// fetch the bundle to the temporary directory
-	cmd := exec.CommandContext(ctx, "git", "fetch", bundlePath, "refs/heads/*:refs/heads/*")
-	cmd.Dir = tmpDir
-	if res, err := cmd.CombinedOutput(); err != nil {
-		return nil, fmt.Errorf("failed to fetch git bundle: %w\n%s", err, string(res))
-	}
-	// list commit hashes
-	cmd = exec.CommandContext(ctx, "git", "log", "--all")
-	cmd.Dir = tmpDir
-	res, err := cmd.CombinedOutput()
-	if err != nil {
-		return nil, fmt.Errorf("failed to log git commits for bundle: %w\n%s", err, string(res))
-	}
-	regex := regexp.MustCompile(`[a-f0-9]{40}`)
-	commitHashes := regex.FindAllString(string(res), -1)
-	for _, hash := range commitHashes {
-		cmd = exec.CommandContext(ctx, "git", "ls-tree", "-r", hash)
-		cmd.Dir = tmpDir
-		res, err := cmd.CombinedOutput()
-		if err != nil {
-			return nil, fmt.Errorf("failed to ls-tree commit hash in bundle: %w\n%s", err, string(res))
-		}
-		// use regex to find the blob digest and filename
-		regex := regexp.MustCompile(`\b[0-9a-f]{40}\b\s.+`)
-		blobHashes := regex.FindAllString(string(res), -1)
-		for _, blob := range blobHashes {
-			blob = strings.TrimSpace(blob)
-			blobFile := strings.Split(blob, "\t")
-			// TODO scan file not scan in memory
-			cmd = exec.CommandContext(ctx, "git", "cat-file", "-p", blobFile[0])
-			cmd.Dir = tmpDir
-			res, err := cmd.CombinedOutput()
-			if err != nil {
-				return nil, fmt.Errorf("getting blob from git bundle: %w\n%s", err, string(res))
-			}
-			r := bytes.NewReader(res)
-			rc := io.NopCloser(r)
-			return clamavBytes(ctx, rc, blobFile[1])
-		}
-	}
-	return nil, nil
 }
 
 func clamavBottle(ctx context.Context, cfg io.ReadCloser, layers []ocispec.Descriptor, repository oras.GraphTarget) ([]*VirusScanResults, error) {

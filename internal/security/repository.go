@@ -376,7 +376,9 @@ func scanManifestForViruses(ctx context.Context,
 
 	switch manifest.Config.MediaType {
 	case gitoci.MediaTypeSyncConfig:
-		return clamavGitArtifact(ctx, cachePath, desc, repository, desc.Digest.String())
+		slog.InfoContext(ctx, "Git Artifact Scanning is not supported at this time")
+		return nil, nil
+		// return clamavGitArtifact(ctx, cachePath, desc, repository, desc.Digest.String())
 	case mediatype.MediaTypeBottleConfig:
 		return clamavBottle(ctx, rcCfg, manifest.Layers, repository)
 	default:
