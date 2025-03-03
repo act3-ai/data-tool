@@ -1,6 +1,6 @@
 include:
   - project: devsecops/cicd/pipeline
-    ref: v21.0.2
+    ref: v21.0.4
     file:
       - main.yml
       - homebrew.yml
