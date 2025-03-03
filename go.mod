@@ -24,7 +24,7 @@ require (
 	gitlab.com/act3-ai/asce/data/schema v1.2.14
 	gitlab.com/act3-ai/asce/go-common v0.0.0-20250207222538-c9e7dd31dd43
 	go.etcd.io/bbolt v1.4.0
-	golang.org/x/exp v0.0.0-20250218142911-aa4b98e5adaa
+	golang.org/x/exp v0.0.0-20250228200357-dead58393ab7
 	golang.org/x/net v0.35.0
 	golang.org/x/sync v0.11.0
 	golang.org/x/term v0.29.0
