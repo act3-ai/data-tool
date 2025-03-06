@@ -24,9 +24,9 @@ require (
 	gitlab.com/act3-ai/asce/data/schema v1.2.14
 	gitlab.com/act3-ai/asce/go-common v0.0.0-20250301173836-59817e757a36
 	go.etcd.io/bbolt v1.4.0
-	golang.org/x/exp v0.0.0-20250228200357-dead58393ab7
+	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
 	golang.org/x/net v0.35.0
-	golang.org/x/sync v0.11.0
+	golang.org/x/sync v0.12.0
 	golang.org/x/term v0.29.0
 	golang.org/x/text v0.22.0
 	k8s.io/apimachinery v0.32.2
@@ -83,7 +83,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.33.0 // indirect
-	golang.org/x/mod v0.23.0 // indirect
+	golang.org/x/mod v0.24.0 // indirect
 	golang.org/x/oauth2 v0.25.0 // indirect
 	google.golang.org/protobuf v1.36.3 // indirect
 	k8s.io/api v0.32.2 // indirect
