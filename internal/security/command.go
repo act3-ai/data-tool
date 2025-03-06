@@ -68,7 +68,7 @@ func getGrypeDBChecksum(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("getting the grype db checksum: %w", err)
 	}
-	pattern := `Checksum:\s*(sha256:[a-f0-9]+)`
+	pattern := `Checksum:\s*([a-z0-9\:]+)`
 	re := regexp.MustCompile(pattern)
 	checksum := re.FindSubmatch(res)
 	return string(checksum[1]), nil
