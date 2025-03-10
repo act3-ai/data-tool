@@ -2,6 +2,7 @@
 package security
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -40,7 +41,9 @@ func newScanCommand(tool *securityActions.Action) *cobra.Command {
 			if action.SourceFile == "" && action.GatherArtifactReference == "" {
 				return fmt.Errorf("either --source-file or --gathered-image must be specified")
 			}
-			return action.Run(cmd.Context())
+			return ui.RunUI(cmd.Context(), uiOptions, func(ctx context.Context) error {
+				return action.Run(ctx)
+			})
 		},
 	}
 	cmd.Flags().StringVar(&action.SourceFile, "source-file", "", "Define a sources.list file to scan for vulnerabilities")

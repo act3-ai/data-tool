@@ -1,6 +1,7 @@
 package security
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,6 +10,8 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+
+	"git.act3-ace.com/ace/data/tool/internal/ui"
 )
 
 func syftReference(ctx context.Context, reference string) ([]byte, error) {
@@ -31,12 +34,22 @@ func grypeReference(ctx context.Context, reference string) (*Results, error) {
 		"GRYPE_DB_AUTO_UPDATE=false",
 	)
 	res, err := cmd.CombinedOutput()
+
 	if err != nil {
 		if strings.Contains(string(res), "oci-registry: unknown layer media type:") {
 			return &vulnerabilities, nil
 		}
 		return nil, fmt.Errorf("error executing command: %s\n%w\n%s", cmd, err, res)
 	}
+
+	// catch grype warnings
+	i := bytes.Index(res, []byte("{")) // where warnings end and json begins
+	warnings := string(res[:i])
+	if warnings != "" {
+		ui.FromContextOrNoop(ctx).Info("Found grype warnings", warnings)
+		res = res[i:]
+	}
+
 	if err := json.Unmarshal(res, &vulnerabilities); err != nil {
 		return nil, fmt.Errorf("parsing vulnerabilities: %w", err)
 	}
@@ -55,6 +68,15 @@ func grypeSBOM(ctx context.Context, sbom io.ReadCloser) (*Results, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error executing command: %s\n %w\n output: %s", cmd, err, string(res))
 	}
+
+	// catch grype warnings
+	i := bytes.Index(res, []byte("{")) // where warnings end and json begins
+	warnings := string(res[:i])
+	if warnings != "" {
+		ui.FromContextOrNoop(ctx).Info("Found grype warnings", warnings)
+		res = res[i:]
+	}
+
 	if err := json.Unmarshal(res, &vulnerabilities); err != nil {
 		return nil, fmt.Errorf("parsing vulnerabilities: %w", err)
 	}
