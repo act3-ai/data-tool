@@ -22,7 +22,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	gitlab.com/act3-ai/asce/data/schema v1.2.15
-	gitlab.com/act3-ai/asce/go-common v0.0.0-20250301173836-59817e757a36
+	gitlab.com/act3-ai/asce/go-common v0.0.0-20250321204844-734a59daa6c2
 	go.etcd.io/bbolt v1.4.0
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
 	golang.org/x/net v0.37.0
