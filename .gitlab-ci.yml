@@ -46,7 +46,7 @@ functional test:
       alias: registry
       # entrypoint: ["something"]
       # command: ["start"]
-    - name: ${CI_REGISTRY}/ace/data/telemetry:latest
+    - name: ${CI_REGISTRY}/ace/data/telemetry:v3.0.2
       alias: telemetry
       command: ["serve", "-v"]
       variables:
@@ -89,7 +89,7 @@ integration test:
   services:
     - name: ${IMAGE_REPO_BASE}docker.io/library/registry:2
       alias: registry
-    - name: ${CI_REGISTRY}/ace/data/telemetry:latest
+    - name: ${CI_REGISTRY}/ace/data/telemetry:v3.0.2
       alias: telemetry
       command: ["serve", "-v"]
   before_script:

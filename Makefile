@@ -95,7 +95,7 @@ bench:
 .PHONY: start-services
 start-services: stop-services
 	$(CONTAINER_RUNTIME) run $(CONTAINER_RUN_ARGS) -d -p 127.0.0.1::5000 -e REGISTRY_STORAGE_DELETE_ENABLED=true --name $(REGISTRY_CONTAINER) docker.io/library/registry:2
-	$(CONTAINER_RUNTIME) run $(CONTAINER_RUN_ARGS) -d -p 127.0.0.1::8100 -e ACE_TELEMETRY_LISTEN=:8100 -e ACE_TELEMETRY_DSN=file:/tmp/test.db --name $(TELEMETRY_CONTAINER) --pull always reg.git.act3-ace.com/ace/data/telemetry:latest serve -v
+	$(CONTAINER_RUNTIME) run $(CONTAINER_RUN_ARGS) -d -p 127.0.0.1::8100 -e ACE_TELEMETRY_LISTEN=:8100 -e ACE_TELEMETRY_DSN=file:/tmp/test.db --name $(TELEMETRY_CONTAINER) --pull always reg.git.act3-ace.com/ace/data/telemetry:v3.0.2 serve -v
 
 	# Get the ports for the services
 	echo -n TEST_REGISTRY= >> .env.test
