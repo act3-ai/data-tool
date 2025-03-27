@@ -1,0 +1,35 @@
+{
+  "name": "tool",
+  "engineVersion": "v0.17.1",
+  "sdk": {
+    "source": "go"
+  },
+  "dependencies": [
+    {
+      "name": "go",
+      "source": "github.com/sagikazarmark/daggerverse/go@go/v0.9.0",
+      "pin": "d9ba06776c4c1ccf6f329bd862b9b439c4582ab6"
+    },
+    {
+      "name": "golangci-lint",
+      "source": "github.com/sagikazarmark/daggerverse/golangci-lint@golangci-lint/v0.6.0",
+      "pin": "126b5fbbdad70dbf2a8689600baec2eb78c05ef4"
+    },
+    {
+      "name": "registry-config",
+      "source": "github.com/sagikazarmark/daggerverse/registry-config@registry-config/v0.5.0",
+      "pin": "d814d0d7c421348f51cdda96870a05ca2aa8e96a"
+    },
+    {
+      "name": "shellcheck",
+      "source": "github.com/dagger/dagger/modules/shellcheck@v0.14.0",
+      "pin": "ec9686a4b922e278614ed1754d308c75eaa59586"
+    },
+    {
+      "name": "wolfi",
+      "source": "github.com/dagger/dagger/modules/wolfi@v0.16.2",
+      "pin": "b3e6f765a547b22edc61a24336177348b9f00d94"
+    }
+  ],
+  "source": ".dagger"
+}
