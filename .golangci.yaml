@@ -43,11 +43,11 @@ linters:
           files:
             - '**/pkg/transfer/*.go'
           deny:
-            - pkg: git.act3-ace.com/ace/data/tool/internal/transfer/bottle
+            - pkg: gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle
               desc: pkg/transfer should not depend on bottles
-            - pkg: git.act3-ace.com/ace/data/tool/internal/actions/bottle
+            - pkg: gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle
               desc: pkg/transfer should not depend on bottles
-            - pkg: git.act3-ace.com/ace/data/tool/internal/bottle
+            - pkg: gitlab.com/act3-ai/asce/data/tool/internal/bottle
               desc: pkg/transfer should not depend on bottles
     exhaustive:
       default-signifies-exhaustive: true
@@ -120,7 +120,7 @@ linters:
         - (*github.com/sourcegraph/conc/pool.Pool).Wait()
       ignore-sig-regexps:
         - fmt\..?(P|p)rint.*\(
-        - \(git.act3-ace.com/ace/data/tool/internal/.*
+        - \(gitlab.com/act3-ai/asce/data/tool/internal/.*
       ignore-package-globs:
         - encoding/*
         - git.act3-ace.com/*
@@ -146,7 +146,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - git.act3-ace.com/ace
+        - gitlab.com/act3-ai/asce
   exclusions:
     generated: lax
     paths:
