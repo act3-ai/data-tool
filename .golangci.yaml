@@ -123,7 +123,7 @@ linters:
         - \(gitlab.com/act3-ai/asce/data/tool/internal/.*
       ignore-package-globs:
         - encoding/*
-        - git.act3-ace.com/*
+        - gitlab.com/*
   exclusions:
     generated: lax
     presets:
