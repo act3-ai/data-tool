@@ -10,7 +10,7 @@ import (
 
 	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
 )
 
 func formatPlatformString(platform *ocispec.Platform) string {

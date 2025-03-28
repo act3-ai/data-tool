@@ -9,7 +9,7 @@ import (
 
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 
-	"git.act3-ace.com/ace/data/tool/internal/security"
+	"gitlab.com/act3-ai/asce/data/tool/internal/security"
 )
 
 // GetListofSBOMS accepts a mirror gather artifact and/or image string reference and creates a slice of string slices

@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror"
-	"git.act3-ace.com/ace/data/tool/internal/security"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
+	"gitlab.com/act3-ai/asce/data/tool/internal/security"
 )
 
 // Diff represents the mirror ls action.

@@ -13,7 +13,7 @@ import (
 
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 
-	"git.act3-ace.com/ace/data/tool/internal/mirror"
+	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
 )
 
 // BatchSerialize represents the mirror batch-serialize action.

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	sbom "git.act3-ace.com/ace/data/tool/internal/sbom"
-	"git.act3-ace.com/ace/data/tool/internal/security"
+	sbom "gitlab.com/act3-ai/asce/data/tool/internal/sbom"
+	"gitlab.com/act3-ai/asce/data/tool/internal/security"
 )
 
 // List represents the sbom list action.

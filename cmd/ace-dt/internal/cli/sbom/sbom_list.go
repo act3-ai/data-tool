@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	sbomActions "git.act3-ace.com/ace/data/tool/internal/actions/sbom"
+	sbomActions "gitlab.com/act3-ai/asce/data/tool/internal/actions/sbom"
 )
 
 // NewSBOMListCommand creates a new sbom list sub-command.

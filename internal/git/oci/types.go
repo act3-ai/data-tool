@@ -3,7 +3,7 @@ package oci
 import (
 	"github.com/opencontainers/go-digest"
 
-	"git.act3-ace.com/ace/data/tool/internal/git/cmd"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
 )
 
 const (

@@ -13,7 +13,7 @@ import (
 
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 
-	security "git.act3-ace.com/ace/data/tool/internal/security"
+	security "gitlab.com/act3-ai/asce/data/tool/internal/security"
 )
 
 // FetchImageSBOM accepts a reference, repository, and optional platforms and returns a map of platform-->SBOM ReadCloser for printing to stdout or saving to file.

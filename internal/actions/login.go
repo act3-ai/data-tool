@@ -13,7 +13,7 @@ import (
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/go-common/pkg/redact"
 
-	"git.act3-ace.com/ace/data/tool/internal/secret"
+	"gitlab.com/act3-ai/asce/data/tool/internal/secret"
 )
 
 // Login represents the login action.

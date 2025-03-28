@@ -13,8 +13,8 @@ import (
 
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 
-	"git.act3-ace.com/ace/data/tool/internal/ref"
-	sbom "git.act3-ace.com/ace/data/tool/internal/sbom"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	sbom "gitlab.com/act3-ai/asce/data/tool/internal/sbom"
 )
 
 // FetchSBOM represents the scan action.

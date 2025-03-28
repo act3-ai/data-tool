@@ -18,9 +18,9 @@ import (
 	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 
-	"git.act3-ace.com/ace/data/tool/internal/archive"
-	"git.act3-ace.com/ace/data/tool/internal/bottle/label"
-	"git.act3-ace.com/ace/data/tool/internal/util"
+	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
+	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
+	"gitlab.com/act3-ai/asce/data/tool/internal/util"
 )
 
 // SaveOptions is a structure for supplying options to the SaveUpdatesToSet function. By default, all options
