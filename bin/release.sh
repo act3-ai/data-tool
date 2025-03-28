@@ -185,7 +185,7 @@ approve)
 
 publish)
     fullVersion=v$(cat VERSION)
-    repo=reg.git.act3-ace.com/ace/data/ace-dt
+    repo=registry.gitlab.com/act3-ai/asce/data/tool
     platforms=linux/amd64,linux/arm64
     
     # publish release
