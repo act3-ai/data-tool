@@ -9,7 +9,14 @@ prepare - prepare a release locally by producing the changelog, notes, assets, e
 approve - commit, tag, and push your approved release.
 publish - publish the release to GitLab by uploading assets, images, helm chart, etc.
 
-Dependencies: dagger, ace-dt, oras, and OCI registry access.
+Dependencies: dagger, ace-dt, oras, and gitlab.com OCI registry access.
+
+Environment Variables with Defaults:
+    - ACE_DT_RELEASE_NETRC=~/.netrc
+
+Environment Variables without Defaults:
+    - GITLAB_REG_TOKEN
+    - GITLAB_REG_USER
 EOF
     exit 1
 }
@@ -19,6 +26,14 @@ if [ "$#" != "1" ]; then
 fi
 
 set -x
+
+registry=registry.gitlab.com
+registryRepo=$registry/act3-ai/asce/data/tool
+netrcPath=${ACE_DT_RELEASE_NETRC:=~/.netrc}
+
+# TODO: Gitlab.com doesn't like custom artifact types, e.g. bottles.
+# For now we must store them elsewhere.
+privateRegistry=reg.git.act3-ace.com
 
 # Extract the major version of a release.
 parseMajor() {
@@ -148,22 +163,23 @@ prepare)
     dagger call lint all
 
     # run unit, functional, and integration tests
-    dagger call with-registry-auth --address=reg.git.act3-ace.com --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN with-netrc --netrc=file:~/.netrc test all
+    # TODO: Gitlab.com doesn't accept bottles, so we must store them elsewhere for now.
+    dagger call with-registry-auth --address=$privateRegistry --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN with-netrc --netrc=file:$netrcPath test all
 
     # update changelog, release notes, semantic version
     dagger call release prepare export --path=.
 
     # govulncheck
-    dagger call with-netrc --netrc=file:~/.netrc vuln-check
+    dagger call with-netrc --netrc=file:$netrcPath vuln-check
 
     # generate docs
     dagger call apidocs export --path=./docs/apis/config.dt.act3-ace.io
-    dagger call with-netrc --netrc=file:~/.netrc clidocs export --path=./docs/cli
+    dagger call with-netrc --netrc=file:$netrcPath clidocs export --path=./docs/cli
 
     version=$(cat VERSION)
 
     # build for all supported platforms
-    dagger call with-netrc --netrc=file:~/.netrc build-platforms --version="$version" export --path=./bin
+    dagger call with-netrc --netrc=file:$netrcPath build-platforms --version="$version" export --path=./bin
 
     echo "Please review the local changes, especially releases/$version.md"
     ;;
@@ -185,25 +201,24 @@ approve)
 
 publish)
     fullVersion=v$(cat VERSION)
-    repo=registry.gitlab.com/act3-ai/asce/data/tool
     platforms=linux/amd64,linux/arm64
     
     # publish release
-    dagger call with-registry-auth --address=reg.git.act3-ace.com --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN publish --token=env:GITLAB_REG_TOKEN
+    dagger call with-registry-auth --address=$registry --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN publish --token=env:GITLAB_REG_TOKEN
 
     # upload release assets (binaries)
     dagger call release upload-assets --version="$fullVersion" --assets=./bin --token=env:GITLAB_REG_TOKEN
 
     # publish image
-    imageRepoRef="${repo}:${fullVersion}"
-    dagger call with-registry-auth --address=reg.git.act3-ace.com --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN with-netrc --netrc=file:~/.netrc image-index --version="$fullVersion" --platforms="$platforms" --address "$imageRepoRef"
+    imageRepoRef="${registryRepo}:${fullVersion}"
+    dagger call with-registry-auth --address=$registry --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN with-netrc --netrc=file:$netrcPath image-index --version="$fullVersion" --platforms="$platforms" --address "$imageRepoRef"
 
     # shellcheck disable=SC2046
-    oras tag "$(oras discover "$imageRepoRef" | head -n 1)" $(resolveExtraTags "$repo" "$fullVersion")
+    oras tag "$(oras discover "$imageRepoRef" | head -n 1)" $(resolveExtraTags "$registryRepo" "$fullVersion")
 
     # scan images with ace-dt
     echo "$imageRepoRef" > artifacts.txt
-    dagger call with-registry-auth --address=reg.git.act3-ace.com --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN scan --sources artifacts.txt
+    dagger call with-registry-auth --address=$registry --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN scan --sources artifacts.txt
 
     # notify everyone
     # TODO: uncomment me
