@@ -177,7 +177,7 @@ func pull(ctx context.Context, target content.ReadOnlyStorage, desc ocispec.Desc
 		return nil, err
 	}
 
-	partSelector, err := pullOpts.PartSelectorOptions.New(ctx)
+	partSelector, err := pullOpts.New(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("initializing part selector func: %w", err)
 	}

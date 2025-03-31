@@ -98,7 +98,7 @@ func (fss *partStatuses) AddEntry(e PartInfo, s PartStatus, dirpaths []string) {
 // Display outputs a set of file statuses.
 func (fss *partStatuses) Display(out *strings.Builder) {
 	for _, f := range fss.Cached {
-		_, err := out.WriteString(fmt.Sprintf("File cached with name: %v\n", f.GetName()))
+		_, err := fmt.Fprintf(out, "File cached with name: %v\n", f.GetName())
 		if err != nil {
 			// expect string builder to be properly passed, if err: panic
 			panic(err)
@@ -106,14 +106,14 @@ func (fss *partStatuses) Display(out *strings.Builder) {
 	}
 
 	for _, f := range fss.Changed {
-		_, err := out.WriteString(fmt.Sprintf("File changed with name: %v\n", f.GetName()))
+		_, err := fmt.Fprintf(out, "File changed with name: %v\n", f.GetName())
 		if err != nil {
 			// expect string builder to be properly passed, if err: panic
 			panic(err)
 		}
 		if l, ok := fss.DirDetails[f.GetName()]; ok {
 			for _, p := range l {
-				_, err := out.WriteString(fmt.Sprintf("directory details: %v\n", p))
+				_, err := fmt.Fprintf(out, "directory details: %v\n", p)
 				if err != nil {
 					// expect string builder to be properly passed, if err: panic
 					panic(err)
@@ -123,7 +123,7 @@ func (fss *partStatuses) Display(out *strings.Builder) {
 	}
 
 	for _, f := range fss.New {
-		_, err := out.WriteString(fmt.Sprintf("New file with name: %v\n", f.GetName()))
+		_, err := fmt.Fprintf(out, "New file with name: %v\n", f.GetName())
 		if err != nil {
 			// expect string builder to be properly passed, if err: panic
 			panic(err)
@@ -131,7 +131,7 @@ func (fss *partStatuses) Display(out *strings.Builder) {
 	}
 
 	for _, f := range fss.Deleted {
-		_, err := out.WriteString(fmt.Sprintf("File deleted with name: %v\n", f.GetName()))
+		_, err := fmt.Fprintf(out, "File deleted with name: %v\n", f.GetName())
 		if err != nil {
 			// expect string builder to be properly passed, if err: panic
 			panic(err)

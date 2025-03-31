@@ -81,7 +81,7 @@ func (action *Archive) Run(ctx context.Context, sourceFile, destFile string, exi
 	}
 
 	// run the gather function
-	idxDesc, err := mirror.Gather(ctx, action.DataTool.Version(), gatherOpts)
+	idxDesc, err := mirror.Gather(ctx, action.Version(), gatherOpts)
 	if err != nil {
 		return err
 	}
@@ -100,5 +100,5 @@ func (action *Archive) Run(ctx context.Context, sourceFile, destFile string, exi
 		WithManifestJSON:    action.WithManifestJSON,
 	}
 	// serialize it
-	return mirror.Serialize(ctx, destFile, action.Checkpoint, action.DataTool.Version(), options)
+	return mirror.Serialize(ctx, destFile, action.Checkpoint, action.Version(), options)
 }

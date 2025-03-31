@@ -138,7 +138,7 @@ func ExamplePull() {
 	if err != nil {
 		panic(fmt.Sprintf("Bottle pull failed: %v\n", err))
 	}
-	fmt.Fprintf(os.Stdout, "Success") //nolint
+	fmt.Fprintf(os.Stdout, "Success")
 
 	// Output: Success
 }
@@ -181,7 +181,7 @@ func ExamplePull_partselection() {
 	if err != nil {
 		panic(fmt.Sprintf("Bottle pull failed: %v\n", err))
 	}
-	fmt.Fprintf(os.Stdout, "Success") //nolint
+	fmt.Fprintf(os.Stdout, "Success")
 
 	// Output: Success
 }

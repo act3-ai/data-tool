@@ -59,5 +59,5 @@ func (action *Serialize) Run(ctx context.Context, ref string, destFile string, e
 		WithManifestJSON:    action.WithManifestJSON,
 	}
 
-	return mirror.Serialize(ctx, destFile, action.Checkpoint, action.DataTool.Version(), opts)
+	return mirror.Serialize(ctx, destFile, action.Checkpoint, action.Version(), opts)
 }

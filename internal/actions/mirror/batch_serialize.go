@@ -169,7 +169,7 @@ func (action *BatchSerialize) Run(ctx context.Context, gatherList, syncDir strin
 		}
 		fileName = filepath.Join(syncDir, strings.Join([]string{fileName, extension}, "."))
 		log.InfoContext(ctx, "serializing artifact to file:", "artifactName", imgName, "file", fileName)
-		if err := mirror.Serialize(ctx, fileName, "", action.DataTool.Version(), opts); err != nil {
+		if err := mirror.Serialize(ctx, fileName, "", action.Version(), opts); err != nil {
 			return err
 		}
 		// iterate the counter if serialize is successful

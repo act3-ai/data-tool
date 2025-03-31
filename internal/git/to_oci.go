@@ -65,7 +65,7 @@ func NewToOCI(ctx context.Context, target oras.GraphTarget, desc ocispec.Descrip
 
 // Cleanup cleans up any temporary files created during the ToOCI process.
 func (t *ToOCI) Cleanup() error {
-	err := t.sync.cleanup()
+	err := t.cleanup()
 	if err != nil {
 		return fmt.Errorf("cleaning up sync: %w", err)
 	}
@@ -99,9 +99,9 @@ func (t *ToOCI) Run(ctx context.Context) (ocispec.Descriptor, error) {
 	}
 
 	// see where the current sync is at
-	if t.sync.syncOpts.Clean || t.sync.base.manDesc.Digest == "" {
-		t.sync.base.config.Refs.Tags = make(map[string]oci.ReferenceInfo, 0)
-		t.sync.base.config.Refs.Heads = make(map[string]oci.ReferenceInfo, 0)
+	if t.syncOpts.Clean || t.base.manDesc.Digest == "" {
+		t.base.config.Refs.Tags = make(map[string]oci.ReferenceInfo, 0)
+		t.base.config.Refs.Heads = make(map[string]oci.ReferenceInfo, 0)
 	} else {
 		err := t.FetchBaseManifestConfig(ctx)
 		if err != nil && !errors.Is(err, errdef.ErrNotFound) {
@@ -153,7 +153,7 @@ func (t *ToOCI) Run(ctx context.Context) (ocispec.Descriptor, error) {
 
 	if t.cmdHelper.WithLFS { // we always set this to true, unless the git-lfs command was not found
 		log.InfoContext(ctx, "updating LFS manifest")
-		lfsManDesc, err := t.runLFS(ctx, t.sync.base.manDesc, newManDesc)
+		lfsManDesc, err := t.runLFS(ctx, t.base.manDesc, newManDesc)
 		switch {
 		case errors.Is(err, cmd.ErrLFSNotEnabled):
 			log.InfoContext(ctx, "repository does not have LFS enabled")
@@ -167,7 +167,7 @@ func (t *ToOCI) Run(ctx context.Context) (ocispec.Descriptor, error) {
 	} else {
 		// even if we don't sync LFS files try to update the lfs manifest's subject, if it exists
 		log.InfoContext(ctx, "Attempting to update LFS manifest's subject to new descriptor")
-		if err := t.updateLFSManSubject(ctx, t.sync.base.manDesc, newManDesc); err != nil {
+		if err := t.updateLFSManSubject(ctx, t.base.manDesc, newManDesc); err != nil {
 			return ocispec.Descriptor{}, fmt.Errorf("updating LFS manifest's subject: %w", err)
 		}
 	}
@@ -405,7 +405,7 @@ StatusCheck:
 				break
 			}
 
-			remote, err := t.reconsructExisting(ctx, t.sync.base.manDesc)
+			remote, err := t.reconsructExisting(ctx, t.base.manDesc)
 			if err != nil {
 				return "", fmt.Errorf("reconstructing existing repository state from OCI: %w", err)
 			}
@@ -421,7 +421,7 @@ StatusCheck:
 
 			fallthrough
 		case existingRepo != "":
-			refsToBadObj = t.sync.headRefsFromCommit(badObj.Object())
+			refsToBadObj = t.headRefsFromCommit(badObj.Object())
 			replacements = make([]string, 0, len(refsToBadObj))
 			for _, ref := range refsToBadObj {
 				out, err := t.cmdHelper.MergeBase(ctx, ref, path.Join(existingRepo, ref)) // references don't use OS-specific path separators

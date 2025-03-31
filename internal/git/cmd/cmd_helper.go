@@ -120,7 +120,7 @@ func (c *Helper) RemoteCommitsRefs(ctx context.Context, remote string, argRevLis
 // IsAncestor returns nil if the parent commit is an ancestor of the child commit, ErrNotAncestor
 // if not, and the original git error if one occurs.
 func (c *Helper) IsAncestor(ctx context.Context, parent, child Commit) error {
-	out, err := c.Git.MergeBase(ctx, "--is-ancestor", string(parent), string(child))
+	out, err := c.MergeBase(ctx, "--is-ancestor", string(parent), string(child))
 	var exitErr *exec.ExitError
 	switch {
 	case errors.As(err, &exitErr) && exitErr.ExitCode() == 1:

@@ -13,6 +13,7 @@ import (
 	"oras.land/oras-go/v2/registry"
 
 	"git.act3-ace.com/ace/data/telemetry/v3/pkg/types"
+
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
 )

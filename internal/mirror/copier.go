@@ -161,7 +161,7 @@ func copyFilterOnPlatformManifest(ctx context.Context, c *Copier) ([]ocispec.Des
 	}
 
 	// this allows signatures, helm charts, bottles, etc to still be pushed because they have special config media types.
-	if !(img.Config.MediaType == ocispec.MediaTypeImageConfig) {
+	if img.Config.MediaType != ocispec.MediaTypeImageConfig {
 		platformDescriptors = append(platformDescriptors, c.root)
 		// return the root descriptor and copy it normally.
 		return platformDescriptors, Copy(ctx, c)

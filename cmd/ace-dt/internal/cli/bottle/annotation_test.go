@@ -18,19 +18,19 @@ func Test_Functional_Annotate(t *testing.T) {
 	helper := NewTestHelper(t, rootCmd)
 
 	myPartName := "testPart1.txt"
-	helper.BottleHelper.AddBottlePart(myPartName)
+	helper.AddBottlePart(myPartName)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.CommandHelper.RunCommand("annotate", "list")
-	helper.CommandHelper.RunCommand("annotate", "test=true")
-	helper.CommandHelper.RunCommand("annotate", "list")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.RunCommand("annotate", "list")
+	helper.RunCommand("annotate", "test=true")
+	helper.RunCommand("annotate", "list")
 
-	helper.BottleHelper.Load()
-	assert.Equal(t, "true", helper.BottleHelper.Bottle.Definition.Annotations["test"])
+	helper.Load()
+	assert.Equal(t, "true", helper.Bottle.Definition.Annotations["test"])
 
-	helper.CommandHelper.RunCommand("annotate", "test-")
-	helper.BottleHelper.Load()
-	assert.Equal(t, "", helper.BottleHelper.Bottle.Definition.Annotations["test"])
+	helper.RunCommand("annotate", "test-")
+	helper.Load()
+	assert.Equal(t, "", helper.Bottle.Definition.Annotations["test"])
 }

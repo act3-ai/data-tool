@@ -19,9 +19,9 @@ func Test_Functional_SignBasic(t *testing.T) {
 	ctx := context.Background()
 
 	// prep a sample bottle
-	helper.BottleHelper.AddArbitraryFileParts(2)
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
+	helper.AddArbitraryFileParts(2)
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
 
 	// prep a private key
 	privKeyPath := filepath.Join(testingDir, "testing.key")
@@ -30,5 +30,5 @@ func Test_Functional_SignBasic(t *testing.T) {
 		t.Fatalf("generating key pair: %v", err)
 	}
 
-	helper.CommandHelper.RunCommand("sign", "--key-path", privKeyPath, "--key-api", "no-kms", "--user-id", "testingUser", "--key-id", "BottleKey")
+	helper.RunCommand("sign", "--key-path", privKeyPath, "--key-api", "no-kms", "--user-id", "testingUser", "--key-id", "BottleKey")
 }

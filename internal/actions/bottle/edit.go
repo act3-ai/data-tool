@@ -68,9 +68,10 @@ func (action *Edit) Run(ctx context.Context, out io.Writer) error {
 
 			userAnswer := promptForMoreEdit(out)
 
-			if userAnswer == preserveEdit {
+			switch userAnswer {
+			case preserveEdit:
 				keepEditing = true
-			} else if userAnswer == discardEdit {
+			case discardEdit:
 				keepEditing = false
 				if err := os.Remove(editFile); err != nil {
 					return fmt.Errorf("failed to remove temporary file %s from bottle folder %s: %w", editFile, bottlePath, err)
@@ -168,7 +169,7 @@ func checkBottle(ctx context.Context, bottlePath string, filePath string) error 
 		if err != nil {
 			return err
 		}
-		return btl.Definition.ValidateWithContext(ctx) //nolint:wrapcheck
+		return btl.Definition.ValidateWithContext(ctx)
 	}
 
 	btl, err := bottle.LoadBottle(bottlePath,
@@ -178,5 +179,5 @@ func checkBottle(ctx context.Context, bottlePath string, filePath string) error 
 	if err != nil {
 		return err
 	}
-	return btl.Definition.ValidateWithContext(ctx) //nolint:wrapcheck
+	return btl.Definition.ValidateWithContext(ctx)
 }

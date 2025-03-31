@@ -42,9 +42,9 @@ func Test_Functional_PullBasic(t *testing.T) {
 	helper.SendBottleToReg(remoteBottle.RootDir, remoteBottle.RegRef)
 	helper.PruneCache()
 
-	helper.CommandHelper.RunCommand("pull", remoteBottle.RegRef, "--bottle-dir", helper.BottleHelper.RootDir)
+	helper.RunCommand("pull", remoteBottle.RegRef, "--bottle-dir", helper.RootDir)
 
-	helper.EqualBottles(remoteBottle.RootDir, helper.BottleHelper.RootDir)
+	helper.EqualBottles(remoteBottle.RootDir, helper.RootDir)
 }
 
 func Test_Functional_PullWriteBottleID(t *testing.T) {
@@ -68,13 +68,13 @@ func Test_Functional_PullWriteBottleID(t *testing.T) {
 	helper.SendBottleToReg(remoteBottle.RootDir, remoteBottle.RegRef)
 	helper.PruneCache()
 
-	bottleIDFile := filepath.Join(helper.BottleHelper.RootDir, ".dt", "bottleid")
-	helper.CommandHelper.RunCommand("pull", remoteBottle.RegRef, "--bottle-dir", helper.BottleHelper.RootDir)
+	bottleIDFile := filepath.Join(helper.RootDir, ".dt", "bottleid")
+	helper.RunCommand("pull", remoteBottle.RegRef, "--bottle-dir", helper.RootDir)
 
-	helper.BottleHelper.Load()
+	helper.Load()
 	helper.VerifyBottleIDFile(bottleIDFile)
 
-	helper.EqualBottles(remoteBottle.RootDir, helper.BottleHelper.RootDir)
+	helper.EqualBottles(remoteBottle.RootDir, helper.RootDir)
 }
 
 func Test_Functional_PullName(t *testing.T) {
@@ -101,9 +101,9 @@ func Test_Functional_PullName(t *testing.T) {
 	helper.SendBottleToReg(remoteBottle.RootDir, remoteBottle.RegRef)
 	helper.PruneCache()
 
-	helper.CommandHelper.RunCommand("pull", remoteBottle.RegRef, "--bottle-dir", helper.BottleHelper.RootDir, "--part", labeledPart)
+	helper.RunCommand("pull", remoteBottle.RegRef, "--bottle-dir", helper.RootDir, "--part", labeledPart)
 
-	numLocalParts, err := helper.GetNumLocalParts(helper.BottleHelper.RootDir)
+	numLocalParts, err := helper.GetNumLocalParts(helper.RootDir)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, numLocalParts)
 }
@@ -134,9 +134,9 @@ func Test_Functional_PullSelector(t *testing.T) {
 	helper.SendBottleToReg(remoteBottle.RootDir, remoteBottle.RegRef)
 	helper.PruneCache()
 
-	helper.CommandHelper.RunCommand("pull", remoteBottle.RegRef, "--bottle-dir", helper.BottleHelper.RootDir, "-l", "test=true")
+	helper.RunCommand("pull", remoteBottle.RegRef, "--bottle-dir", helper.RootDir, "-l", "test=true")
 
-	numLocalParts, err := helper.GetNumLocalParts(helper.BottleHelper.RootDir)
+	numLocalParts, err := helper.GetNumLocalParts(helper.RootDir)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, numLocalParts)
 }
@@ -156,9 +156,9 @@ func Test_Functional_PullFail(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.BottleHelper.SetTempBottleRef(rootReg)
+	helper.SetTempBottleRef(rootReg)
 
-	err := helper.CommandHelper.RunCommandWithError("pull", helper.BottleHelper.RegRef, "--bottle-dir", helper.BottleHelper.RootDir)
+	err := helper.RunCommandWithError("pull", helper.RegRef, "--bottle-dir", helper.RootDir)
 	assert.ErrorIs(t, err, errdef.ErrNotFound)
 }
 
@@ -202,16 +202,16 @@ func Test_Functional_Pull_Versions(t *testing.T) {
 		for _, ver := range versions {
 			t.Run(d+"_"+ver, func(t *testing.T) {
 				helper := NewTestHelper(t, rootCmd)
-				helper.BottleHelper.SetTempBottleRef(rootReg)
+				helper.SetTempBottleRef(rootReg)
 
-				ref := helper.BottleHelper.RegRef + "-" + ver
+				ref := helper.RegRef + "-" + ver
 
 				desc, err := pushImage(context.TODO(), filepath.Join(base, "oci-"+ver), ref)
 				require.NoError(t, err)
 				t.Logf("pushed image with manifest ID %s", desc.Digest)
 
-				dir := filepath.Join(helper.BottleHelper.RootDir, ver)
-				helper.CommandHelper.RunCommand("pull", ref, "--bottle-dir", dir)
+				dir := filepath.Join(helper.RootDir, ver)
+				helper.RunCommand("pull", ref, "--bottle-dir", dir)
 				options := fsutil.DefaultComparisonOpts
 				options.Mode = false // TODO need a bitmask for mode comparison not just a boolean
 				assert.NoError(t, fsutil.EqualFilesystem(dataDir, os.DirFS(dir), options))

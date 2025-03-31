@@ -61,7 +61,7 @@ func NewFromOCI(ctx context.Context, target oras.GraphTarget, desc ocispec.Descr
 
 // Cleanup cleans up any temporary files created during the FromOCI process.
 func (f *FromOCI) Cleanup() error {
-	err := f.sync.cleanup()
+	err := f.cleanup()
 	if err != nil {
 		return fmt.Errorf("cleaning up sync: %w", err)
 	}
@@ -387,18 +387,18 @@ func (f *FromOCI) updateFromOCI(ctx context.Context, manDesc ocispec.Descriptor)
 
 // GetTagRefs returns the ReferenceInfo for tags from the commit manifest's config.
 func (f *FromOCI) GetTagRefs() (map[string]oci.ReferenceInfo, error) {
-	if f.sync.base.config.Refs.Tags == nil {
+	if f.base.config.Refs.Tags == nil {
 		return nil, fmt.Errorf("tag reference info map in config has not been initialized")
 	}
-	return f.sync.base.config.Refs.Tags, nil
+	return f.base.config.Refs.Tags, nil
 }
 
 // GetHeadRefs returns the ReferenceInfo for heads from the commit manifest's config.
 func (f *FromOCI) GetHeadRefs() (map[string]oci.ReferenceInfo, error) {
-	if f.sync.base.config.Refs.Heads == nil {
+	if f.base.config.Refs.Heads == nil {
 		return nil, fmt.Errorf("head reference info map in config has not been initialized")
 	}
-	return f.sync.base.config.Refs.Heads, nil
+	return f.base.config.Refs.Heads, nil
 }
 
 // RefList returns a list of all refences in the commit manifest's config, filtering out

@@ -41,7 +41,7 @@ func NewTestHelper(tb testing.TB, cmd *cobra.Command) *TestHelper {
 }
 
 func (h *TestHelper) getContext() context.Context {
-	return h.CommandHelper.Context()
+	return h.Context()
 }
 
 // CheckRegForBottle returns an error if no bottle is found on the registry,
@@ -71,15 +71,15 @@ func (h *TestHelper) CheckRegForBottle(regRef string, expectedDigest digest.Dige
 
 // RemoveBottleFromReg deletes the given bottle reference from the registry.
 func (h *TestHelper) RemoveBottleFromReg(regRef string) error {
-	return h.CommandHelper.RunCommandWithError("delete", regRef)
+	return h.RunCommandWithError("delete", regRef)
 }
 
 // SaveBottle will either init or commit a bottle. Saves any updates to local filesystem.
 func (h *TestHelper) SaveBottle(btlDir string) error {
-	err := h.CommandHelper.RunCommandWithError("--bottle-dir", btlDir, "init")
+	err := h.RunCommandWithError("--bottle-dir", btlDir, "init")
 	if errors.Is(err, bottle.ErrBottleAlreadyInit) {
 		// ErrFilesystem is returned if bottle is already init, so we need to try to commit
-		if err := h.CommandHelper.RunCommandWithError("--bottle-dir", btlDir, "init"); err != nil {
+		if err := h.RunCommandWithError("--bottle-dir", btlDir, "init"); err != nil {
 			return err
 		}
 	} else {
@@ -98,7 +98,7 @@ func (h *TestHelper) SendBottleToReg(btlDir string, registry string) {
 func (h *TestHelper) sendBottleToReg(btlDir string, registry string) error {
 	if err := bottle.CheckIfCanInitialize(btlDir, false); err == nil {
 		// bottle needs init
-		err := h.CommandHelper.RunCommandWithError("--bottle-dir", btlDir, "init")
+		err := h.RunCommandWithError("--bottle-dir", btlDir, "init")
 		if err != nil {
 			return err
 		}
@@ -106,10 +106,10 @@ func (h *TestHelper) sendBottleToReg(btlDir string, registry string) error {
 		return err
 	}
 	// bottle push
-	return h.CommandHelper.RunCommandWithError("push", registry, "--bottle-dir", btlDir)
+	return h.RunCommandWithError("push", registry, "--bottle-dir", btlDir)
 }
 
-// VerifyBottleIDFile compares bottle id in f.BottleHelper.Bottle to given bottleID file
+// VerifyBottleIDFile compares bottle id in f.Bottle to given bottleID file
 // Expects bottle to be loaded with BottleHelper.load().
 func (h *TestHelper) VerifyBottleIDFile(path string) {
 	h.t.Helper()
@@ -117,7 +117,7 @@ func (h *TestHelper) VerifyBottleIDFile(path string) {
 }
 
 func (h *TestHelper) verifyBottleIDFile(path string) error {
-	btlDigest := h.BottleHelper.Bottle.GetBottleID()
+	btlDigest := h.Bottle.GetBottleID()
 	d, err := os.ReadFile(path)
 	if err != nil {
 		return fmt.Errorf("error reading bottle id file: %w", err)
@@ -127,7 +127,7 @@ func (h *TestHelper) verifyBottleIDFile(path string) error {
 		return err
 	}
 	// TODO we should use this instead
-	// return h.BottleHelper.Bottle.VerifyBottleID(dgst)
+	// return h.Bottle.VerifyBottleID(dgst)
 	if btlDigest != dgst {
 		return fmt.Errorf("bottle digest does not match bottle id file digest. %v != %v", btlDigest, dgst)
 	}
@@ -153,15 +153,15 @@ func (h *TestHelper) GetNumLocalParts(bottleDir string) (int, error) {
 // RequirePartNum is a shortcut to compare expected partNum the amount of parts in a bottle, post bottle load.
 func (h *TestHelper) RequirePartNum(partNum int) {
 	h.t.Helper()
-	h.BottleHelper.Load()
-	require.Equal(h.BottleHelper.t, partNum, h.BottleHelper.Bottle.NumParts())
+	h.Load()
+	require.Equal(h.t, partNum, h.Bottle.NumParts())
 }
 
 // EqualBottles compares bottle directories for equality
 // checks bottle ID and the file and directory names.
 func (h *TestHelper) EqualBottles(bottleDir1 string, bottleDir2 string) {
-	h.BottleHelper.t.Helper()
-	a := assert.New(h.BottleHelper.t)
+	h.t.Helper()
+	a := assert.New(h.t)
 
 	btl1, err := bottle.LoadBottle(bottleDir1, bottle.WithLocalLabels())
 	a.NoError(err)

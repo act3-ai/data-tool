@@ -253,19 +253,19 @@ func (cfg *Configuration) CredStore() credentials.Store {
 func WithRegistryConfig(regCfg v1alpha1.RegistryConfig) ConfigOverrideFunction {
 	return func(ctx context.Context, c *v1alpha1.Configuration) error {
 		// sanity checks
-		if c.ConfigurationSpec.RegistryConfig.Configs == nil {
-			c.ConfigurationSpec.RegistryConfig.Configs = make(map[string]v1alpha1.Registry)
+		if c.RegistryConfig.Configs == nil {
+			c.RegistryConfig.Configs = make(map[string]v1alpha1.Registry)
 		}
-		if c.ConfigurationSpec.RegistryConfig.EndpointConfig == nil {
-			c.ConfigurationSpec.RegistryConfig.EndpointConfig = make(map[string]v1alpha1.EndpointConfig)
+		if c.RegistryConfig.EndpointConfig == nil {
+			c.RegistryConfig.EndpointConfig = make(map[string]v1alpha1.EndpointConfig)
 		}
 
 		// overwrites an existing entry
 		for k, v := range regCfg.Configs {
-			c.ConfigurationSpec.RegistryConfig.Configs[k] = v
+			c.RegistryConfig.Configs[k] = v
 		}
 		for k, v := range regCfg.EndpointConfig {
-			c.ConfigurationSpec.RegistryConfig.EndpointConfig[k] = v
+			c.RegistryConfig.EndpointConfig[k] = v
 		}
 		return nil
 	}

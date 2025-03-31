@@ -32,7 +32,7 @@ func Test_Functional_ShowBottle(t *testing.T) {
 
 	// TODO we are missing the case where the bottle is local
 
-	helper.CommandHelper.RunCommand("show", remoteBottle.RegRef)
+	helper.RunCommand("show", remoteBottle.RegRef)
 }
 
 func Test_Functional_ShowSelector(t *testing.T) {
@@ -61,7 +61,7 @@ func Test_Functional_ShowSelector(t *testing.T) {
 	helper.SendBottleToReg(remoteBottle.RootDir, remoteBottle.RegRef)
 	helper.PruneCache()
 
-	helper.CommandHelper.RunCommand("show", remoteBottle.RegRef, "-l", "test=true")
+	helper.RunCommand("show", remoteBottle.RegRef, "-l", "test=true")
 }
 
 func Test_Functional_ShowFail(t *testing.T) {
@@ -79,8 +79,8 @@ func Test_Functional_ShowFail(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.BottleHelper.SetTempBottleRef(rootReg)
+	helper.SetTempBottleRef(rootReg)
 
-	err := helper.CommandHelper.RunCommandWithError("show", helper.BottleHelper.RegRef)
+	err := helper.RunCommandWithError("show", helper.RegRef)
 	assert.ErrorIs(t, err, errdef.ErrNotFound)
 }

@@ -71,11 +71,11 @@ type DestStoreInfo struct {
 
 // GraphTarget implements registry.GraphTargeter
 func (d *DestStoreInfo) GraphTarget(ctx context.Context, ref string) (oras.GraphTarget, error) {
-	switch {
-	case ref == srcInfo.Ref:
+	switch ref {
+	case srcInfo.Ref:
 		// this case hits when we discover our virtual parts in another target
 		return d.VirtualTarget, nil
-	case ref == destInfo.Ref:
+	case destInfo.Ref:
 		// this case hits when we're simply connecting to the destination target
 		return d.Store.Target, nil
 	default:
@@ -90,11 +90,11 @@ func (d *DestStoreInfo) ParseEndpointReference(reference string) (orasreg.Refere
 
 // ReadOnlyGraphTarget implements registry.GraphTargeter
 func (d *DestStoreInfo) ReadOnlyGraphTarget(ctx context.Context, ref string) (oras.ReadOnlyGraphTarget, error) {
-	switch {
-	case ref == srcInfo.Ref:
+	switch ref {
+	case srcInfo.Ref:
 		// this case hits when we discover our virtual parts in another target
 		return d.VirtualTarget, nil
-	case ref == destInfo.Ref:
+	case destInfo.Ref:
 		// this case hits when we're simply connecting to the destination target
 		return d.Store.Target, nil
 	default:

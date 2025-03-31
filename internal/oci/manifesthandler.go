@@ -210,7 +210,7 @@ func MakeManifest(config ocispec.Descriptor, layers []ocispec.Descriptor, artifa
 		manifest.ArtifactType = artifactType
 	}
 	if err := validation.ValidateManifest(manifest); err != nil {
-		return nil, err //nolint:wrapcheck
+		return nil, err
 	}
 	return json.Marshal(manifest)
 }

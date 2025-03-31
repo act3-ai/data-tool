@@ -331,7 +331,7 @@ func modifyFile(path, text string) error {
 	}
 	defer f.Close()
 
-	_, err = f.Write([]byte(fmt.Sprintf("%s\n", text)))
+	_, err = fmt.Fprintf(f, "%s\n", text)
 	if err != nil {
 		return fmt.Errorf("modifying file: %w", err)
 	}

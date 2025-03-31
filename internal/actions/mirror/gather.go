@@ -67,7 +67,7 @@ func (action *Gather) Run(ctx context.Context, sourceFile string, dest string) e
 	}
 
 	// run the gather function
-	idxDesc, err := mirror.Gather(ctx, action.DataTool.Version(), opts)
+	idxDesc, err := mirror.Gather(ctx, action.Version(), opts)
 	if err != nil {
 		return fmt.Errorf("gathering artifacts: %w", err)
 	}

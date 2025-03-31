@@ -239,7 +239,7 @@ func (c *Link) resolveUncachedBundles(ctx context.Context, layers []ocispec.Desc
 		if layerNumResolver[refInfo.Layer] < layerCutoff {
 			// fullTagRef := path.Join(cmd.TagRefPrefix, tag)
 			// refCommits, err := c.CmdHelper.ShowRefs(fullTagRef) // returned slice should be of length 1
-			err := c.CmdHelper.Git.CatFile(ctx, "-e", string(refInfo.Commit))
+			err := c.CmdHelper.CatFile(ctx, "-e", string(refInfo.Commit))
 			if err != nil {
 				// oid DNE
 				layerCutoff = layerNumResolver[refInfo.Layer]
@@ -252,7 +252,7 @@ func (c *Link) resolveUncachedBundles(ctx context.Context, layers []ocispec.Desc
 		if layerNumResolver[refInfo.Layer] < layerCutoff {
 			// fullHeadRef := path.Join(cmd.HeadRefPrefix, head)
 			// refCommits, err := c.CmdHelper.ShowRefs(fullHeadRef) // returned slice should be of length 1
-			err := c.CmdHelper.Git.CatFile(ctx, "-e", string(refInfo.Commit))
+			err := c.CmdHelper.CatFile(ctx, "-e", string(refInfo.Commit))
 			if err != nil {
 				// oid DNE
 				layerCutoff = layerNumResolver[refInfo.Layer]

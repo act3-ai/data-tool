@@ -127,8 +127,8 @@ func (pc *PredecessorCacher) addAsPredecessor(ctx context.Context, desc ocispec.
 	log := logger.FromContext(ctx)
 	var subjectDigest digest.Digest
 	var subjectMediaType string
-	switch {
-	case desc.MediaType == ocispec.MediaTypeImageManifest:
+	switch desc.MediaType {
+	case ocispec.MediaTypeImageManifest:
 		manBytes, err := orascontent.FetchAll(ctx, pc.Storage, desc)
 		if err != nil {
 			return fmt.Errorf("fetching manifest from storage: %w", err)
@@ -144,7 +144,7 @@ func (pc *PredecessorCacher) addAsPredecessor(ctx context.Context, desc ocispec.
 			subjectDigest = manifest.Subject.Digest
 			subjectMediaType = manifest.Subject.MediaType
 		}
-	case desc.MediaType == ocispec.MediaTypeImageIndex:
+	case ocispec.MediaTypeImageIndex:
 		manBytes, err := orascontent.FetchAll(ctx, pc.Storage, desc)
 		if err != nil {
 			return fmt.Errorf("fetching manifest from storage: %w", err)

@@ -140,7 +140,7 @@ func (mj *ManifestJSON) addManifestFromIndex(ctx context.Context, fetcher conten
 	// if the user really wants a certain platform, they should have used gather with
 	// the appropriate flags; as such, this is really just a fallback and we expect to hit
 	// the previous case instead
-	var chosen ocispec.Descriptor = idx.Manifests[0]
+	var chosen = idx.Manifests[0]
 	for _, img := range idx.Manifests {
 		if img.Platform.OS == "linux" && img.Platform.Architecture == "amd64" {
 			chosen = img

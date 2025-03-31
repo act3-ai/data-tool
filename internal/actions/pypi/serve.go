@@ -55,5 +55,5 @@ func (action *Serve) Run(ctx context.Context, repository string) error {
 		Handler:      handler,
 	}
 
-	return httputil.Serve(ctx, srv, 10*time.Second) //nolint:wrapcheck
+	return httputil.Serve(ctx, srv, 10*time.Second)
 }

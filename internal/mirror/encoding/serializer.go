@@ -102,7 +102,7 @@ func NewOCILayoutSerializerWithLedger(dest, ledger io.Writer, compression string
 // Close will close the serializer.
 func (ow *OCILayoutSerializer) Close() error {
 	// we want to close the tar writer and then the zstd writer
-	err := ow.tw.Writer.Close()
+	err := ow.tw.Close()
 	if err != nil {
 		return fmt.Errorf("closing tar writer: %w", err)
 	}
@@ -117,7 +117,7 @@ func (ow *OCILayoutSerializer) Close() error {
 // Flush finishes writing the current pending data.
 func (ow *OCILayoutSerializer) Flush() error {
 	// we want to flush the tar writer and then the compression writer (if exists)
-	err := ow.tw.Writer.Flush()
+	err := ow.tw.Flush()
 	if err != nil {
 		return fmt.Errorf("flushing tar writer: %w", err)
 	}

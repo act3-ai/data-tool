@@ -223,7 +223,7 @@ func archivePart(ctx context.Context, btlPartMutex sync.Locker, progress *ui.Pro
 
 	// Skip if the part is already archived / compressed or marked oci RAW
 	mt := part.GetMediaType()
-	if !(mediatype.IsArchived(mt) || mediatype.IsCompressed(mt)) || mediatype.IsRaw(mt) {
+	if (!mediatype.IsArchived(mt) && !mediatype.IsCompressed(mt)) || mediatype.IsRaw(mt) {
 		logger.V(log, 1).InfoContext(ctx, "Skipping archive because of format", "mediaType", mt)
 		return nil
 	}

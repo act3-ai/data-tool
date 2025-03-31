@@ -16,11 +16,11 @@ func Test_Functional_StatusBasic(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.BottleHelper.AddArbitraryFileParts(10)
+	helper.AddArbitraryFileParts(10)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.CommandHelper.RunCommand("commit")
-	helper.CommandHelper.RunCommand("status")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.RunCommand("commit")
+	helper.RunCommand("status")
 }
