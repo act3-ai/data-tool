@@ -145,6 +145,8 @@ func build(ctx context.Context,
 		Build(dagger.GoWithSourceBuildOpts{
 			Pkg:      "./cmd/ace-dt",
 			Platform: platform,
+			Ldflags:  []string{"-s", "-w", fmt.Sprintf("-X 'main.version=%s'", version)},
+			Trimpath: true,
 		}).
 		WithName(name)
 }
