@@ -21,13 +21,12 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry/remote/credentials"
 
-	telemv1alpha2 "git.act3-ace.com/ace/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
-	"git.act3-ace.com/ace/data/telemetry/v3/pkg/client"
-	"git.act3-ace.com/ace/data/telemetry/v3/pkg/types"
-	"git.act3-ace.com/ace/go-auth/pkg/oauth2/device"
-
 	latest "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
 	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
+	telemv1alpha2 "gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
+	"gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/client"
+	"gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/oauth2/device"
+	"gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/types"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"

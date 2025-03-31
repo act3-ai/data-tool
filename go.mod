@@ -3,8 +3,6 @@ module gitlab.com/act3-ai/asce/data/tool
 go 1.23.5
 
 require (
-	git.act3-ace.com/ace/data/telemetry/v3 v3.0.2
-	git.act3-ace.com/ace/go-auth v0.0.0-20250131153712-a991d7d2a8e6
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/adrg/xdg v0.5.3
 	github.com/djherbis/atime v1.1.0
@@ -22,6 +20,7 @@ require (
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	gitlab.com/act3-ai/asce/data/schema v1.2.15
+	gitlab.com/act3-ai/asce/data/telemetry/v3 v3.1.2
 	gitlab.com/act3-ai/asce/go-common v0.0.0-20250321204844-734a59daa6c2
 	go.etcd.io/bbolt v1.4.0
 	golang.org/x/exp v0.0.0-20250305212735-054e65f0b394
@@ -68,7 +67,7 @@ require (
 	github.com/neilotoole/slogt v1.1.0 // indirect
 	github.com/notaryproject/notation-plugin-framework-go v1.0.0 // indirect
 	github.com/notaryproject/tspclient-go v1.0.0 // indirect
-	github.com/prometheus/client_golang v1.20.5 // indirect
+	github.com/prometheus/client_golang v1.21.1 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.62.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect

@@ -14,8 +14,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/credentials"
 
-	telemv1alpha2 "git.act3-ace.com/ace/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
-
+	telemv1alpha2 "gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
 	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
 	dtreg "gitlab.com/act3-ai/asce/data/tool/internal/registry"
 	regcache "gitlab.com/act3-ai/asce/data/tool/internal/registry/cache"

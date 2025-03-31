@@ -161,7 +161,7 @@ When a bottled is pushed, the OCI image of the data is sent to the registry (or 
 
 #### Push with Telemetry
 
-If one or more telemetry servers are configured, event data (when and who pushed the bottle) as well as bottle metadata are automatically tracked. The bottle will subsequently be discoverable by others who have access to the telemetry server(s), often using metrics or labels (see [Labels and Selectors](https://telemetry.lion.act3-ace.ai/www/about.html#labels-and-selectors)). The telemetry server only stores metadata about the bottle. The bottle itself is stored in the OCI registry, which also handles access control to the data. For more information on telemetry visit the [Telemetry Write-up](https://git.act3-ace.com/ace/data/telemetry/-/blob/main/docs/writeup.md?ref_type=heads).
+If one or more telemetry servers are configured, event data (when and who pushed the bottle) as well as bottle metadata are automatically tracked. The bottle will subsequently be discoverable by others who have access to the telemetry server(s), often using metrics or labels (see [Labels and Selectors](https://telemetry.lion.act3-ace.ai/www/about.html#labels-and-selectors)). The telemetry server only stores metadata about the bottle. The bottle itself is stored in the OCI registry, which also handles access control to the data. For more information on telemetry visit the [Telemetry Write-up](https://gitlab.com/act3-ai/asce/data/telemetry/-/blob/main/docs/writeup.md?ref_type=heads).
 
 See the [Configuration Guide](../../get-started/configuration-guide.md) to configure one or more telemetry servers.
 

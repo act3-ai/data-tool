@@ -8,11 +8,10 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/notaryproject/notation-go/verifier/truststore"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"github.com/notaryproject/notation-go/verifier/truststore"
-
-	telemsig "git.act3-ace.com/ace/data/telemetry/v3/pkg/signature"
+	telemsig "gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/signature"
 )
 
 // PublicKeyProvider returns a PublicKey associated with a digital signature.
