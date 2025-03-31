@@ -20,8 +20,8 @@ import (
 
 const (
 	// repository information
-	gitlabHost    = "https://git.act3-ace.com"
-	gitlabProject = "ace/data/tool"
+	gitlabHost    = "https://gitlab.com"
+	gitlabProject = "act3-ai/asce/data/tool"
 
 	// images
 	imageGitlabCLI  = "registry.gitlab.com/gitlab-org/cli:latest"
@@ -30,7 +30,7 @@ const (
 	imageSyft       = "anchore/syft:latest"
 	imageUbuntu     = "docker.io/library/ubuntu:24.04"
 	imageRegistry   = "docker.io/library/registry:3.0.0-rc.3"
-	imageTelemetry  = "reg.git.act3-ace.com/ace/data/telemetry/slim:latest"
+	imageTelemetry  = "registry.gitlab.com/act3-ai/asce/data/telemetry/slim:latest"
 	imageGo         = "golang:latest" // github.com/sagikazarmark/daggerverse/go convention
 	imageChainguard = "cgr.dev/chainguard/static"
 	imagePostgres   = "postgres:17-alpine"

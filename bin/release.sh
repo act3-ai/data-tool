@@ -164,7 +164,7 @@ prepare)
 
     # run unit, functional, and integration tests
     # TODO: Gitlab.com doesn't accept bottles, so we must store them elsewhere for now.
-    dagger call with-registry-auth --address=$privateRegistry --username="$GITLAB_REG_USER_PRIVATE" --secret=env:GITLAB_REG_TOKEN_PRIVATE with-netrc --netrc=file:$netrcPath test all
+    dagger call with-registry-auth --address=$privateRegistry --username="$GITLAB_REG_USER_PRIVATE" --secret=env:GITLAB_REG_TOKEN_PRIVATE with-registry-auth --address=$registry --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN with-netrc --netrc=file:$netrcPath test all
 
     # update changelog, release notes, semantic version
     dagger call release prepare export --path=.
