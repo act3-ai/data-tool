@@ -42,23 +42,14 @@ func setup(t *testing.T, fileMap fsmap) (string, []string) {
 	return dir, files
 }
 
-func Test_ExtractZstdFakePath(t *testing.T) {
-	fileMap := fsmap{fileNameCompressed: nil}
-	dir, files := setup(t, fileMap)
-	assert.NoError(t, os.Remove(files[0]))
-
-	for _, file := range files {
-		err := ExtractZstd(context.Background(), file, filepath.Join(dir, fileName))
-		assert.Errorf(t, err, "Expected error when extracting from a file that does not exist: %s", file)
-	}
-}
-
 func Test_ExtractZstdBasic(t *testing.T) {
 	fileMap := fsmap{fileNameCompressed: dataCompressed}
 	dir, files := setup(t, fileMap)
 
 	for _, file := range files {
-		assert.NoError(t, ExtractZstd(context.Background(), file, filepath.Join(dir, fileName)))
+		f, err := os.Open(file)
+		assert.NoError(t, err)
+		assert.NoError(t, ExtractZstd(context.Background(), f, filepath.Join(dir, fileName)))
 	}
 }
 
@@ -67,22 +58,13 @@ func Test_ExtractZstComparison(t *testing.T) {
 	dir, files := setup(t, fileMap)
 
 	for _, file := range files {
-		assert.NoError(t, ExtractZstd(context.Background(), file, filepath.Join(dir, fileName)))
+		f, err := os.Open(file)
+		assert.NoError(t, err)
+		assert.NoError(t, ExtractZstd(context.Background(), f, filepath.Join(dir, fileName)))
 		// Check file to see if its data matches dataUncompressed
 		data, readErr := os.ReadFile(filepath.Join(dir, fileName))
 		assert.NoError(t, readErr)
 		assert.Equal(t, dataUncompressed, data)
-	}
-}
-
-func Test_ExtractTarZstdFakePath(t *testing.T) {
-	fileMap := fsmap{fileNameCompressed: nil}
-	dir, files := setup(t, fileMap)
-	assert.NoError(t, os.Remove(files[0]))
-
-	for _, file := range files {
-		err := ExtractTarZstd(context.Background(), file, filepath.Join(dir, fileName))
-		assert.Error(t, err, "Expected error when extracting from a file that does not exist: %s", file)
 	}
 }
 
@@ -91,7 +73,9 @@ func Test_ExtractTarZstdBasic(t *testing.T) {
 	dir, files := setup(t, fileMap)
 
 	for _, file := range files {
-		assert.NoError(t, ExtractTarZstd(context.Background(), file, dir))
+		f, err := os.Open(file)
+		assert.NoError(t, err)
+		assert.NoError(t, ExtractTarZstd(context.Background(), f, dir))
 	}
 
 	// Check file to see if its data matches dataUncompressed

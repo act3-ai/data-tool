@@ -1,6 +1,8 @@
 {
   "assignees": [
-    "cgrund"
+    "njoslin"
   ],
-  "ignorePaths": ["**/testdata/**"]
+  "ignorePaths": ["**/testdata/**"],
+  "postUpdateOptions":["gomodTidy"],
+  "prHourlyLimit":10
 }

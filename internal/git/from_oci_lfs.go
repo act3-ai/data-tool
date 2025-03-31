@@ -7,8 +7,11 @@ import (
 	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	oras "oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/errdef"
 
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/oci"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
@@ -17,15 +20,15 @@ import (
 // and pushes the changes to the remote git reference.
 //
 // runLFS should only be called after Run.
-func (f *FromOCI) runLFS(ctx context.Context, refList []string, commitManifest ocispec.Descriptor) error {
+func (f *FromOCI) runLFS(ctx context.Context, refList []string, commitManifest ocispec.Descriptor, remoteLFSFiles []string) error {
 	log := logger.FromContext(ctx)
 
-	if err := f.cmdHelper.ConfigureLFS(); err != nil {
+	if err := f.cmdHelper.ConfigureLFS(ctx); err != nil {
 		return fmt.Errorf("configuring LFS: %w", err)
 	}
 
 	log.InfoContext(ctx, "Fetching LFS manifest and config")
-	err := f.FetchLFSManifestConfig(ctx, commitManifest, false)
+	lfsManDesc, err := f.FetchLFSManifestConfig(ctx, commitManifest, false)
 	switch {
 	case errors.Is(err, errdef.ErrNotFound):
 		return fmt.Errorf("LFS manifest does not exist: %w", err)
@@ -35,13 +38,14 @@ func (f *FromOCI) runLFS(ctx context.Context, refList []string, commitManifest o
 		return fmt.Errorf("no LFS layers present, LFS rebuild is not possible")
 	}
 
-	log.InfoContext(ctx, "Fetching LFS files from registry")
-	if err := f.fetchLFSFilesOCI(ctx); err != nil { // caching handled here
-		return fmt.Errorf("fetching LFS files from LFS manifest layers: %w", err)
+	log.InfoContext(ctx, "Fetching LFS files from remote")
+	err = f.updateLFSFromOCI(ctx, lfsManDesc, remoteLFSFiles)
+	if err != nil {
+		return fmt.Errorf("updating LFS files from OCI: %w", err)
 	}
 
 	log.InfoContext(ctx, "Pushing to git remote")
-	if err := f.pushLFSRemote(refList, f.dstGitRemote); err != nil {
+	if err := f.pushLFSRemote(ctx, f.dstGitRemote, refList...); err != nil {
 		return fmt.Errorf("pushing to remote: %w", err)
 	}
 
@@ -49,51 +53,74 @@ func (f *FromOCI) runLFS(ctx context.Context, refList []string, commitManifest o
 	return nil
 }
 
-// fetchLFSFilesOCI fetches the necessary LFS layers in the OCI manifest.
-// Handles caching if it is used.
-func (f *FromOCI) fetchLFSFilesOCI(ctx context.Context) error {
-	log := logger.FromContext(ctx)
-	u := ui.FromContextOrNoop(ctx)
+// pushLFSRemote pushes all LFS files to the remote, followed by a standard git push.
+func (f *FromOCI) pushLFSRemote(ctx context.Context, gitRemote string, refList ...string) error {
+	if len(refList) == 0 {
+		refList = []string{"--all"}
+	}
 
-	switch {
-	case f.syncOpts.CacheDir != "":
-		log.InfoContext(ctx, "Updating cache with git-lfs files")
-		err := f.cache.UpdateLFSFromOCI(ctx, f.ociHelper.Target, f.cmdHelper.Options, f.lfs.manifest.Layers)
-		if err != nil {
-			log.DebugContext(ctx, "Cache failed to update git-lfs objects", "error", err)
-			u.Infof("Failed to update cache with git-lfs objects, continuing without caching...")
-		} else {
-			log.InfoContext(ctx, "Linking cache lfs files to intermediate repository")
-			if err := f.cmdHelper.Config("--add", "lfs.storage", filepath.Join(f.cache.CachePath(), "lfs")); err != nil {
-				return fmt.Errorf("setting lfs.storage config to cache: %w", err)
-			}
-			break
-		}
-		fallthrough // recover to default if cache fails
-	default:
-		for _, layerDesc := range f.lfs.manifest.Layers {
-			oid := layerDesc.Digest.Hex()
-			oidPath := filepath.Join(f.cmdHelper.Dir(), f.cmdHelper.ResolveLFSOIDPath(oid))
-			log.InfoContext(ctx, "Fetching git-lfs object to intermediate repo without caching", "oidPath", oidPath)
-			if err := f.ociHelper.CopyLFSFromOCI(ctx, oidPath, layerDesc); err != nil {
-				return fmt.Errorf("")
-			}
-		}
+	// push LFS files
+	if err := f.cmdHelper.LFS.Push(ctx, gitRemote, refList...); err != nil {
+		return fmt.Errorf("pushing git lfs files to remote: %w", err)
 	}
 
 	return nil
 }
 
-// pushLFSRemote pushes all LFS files to the remote, followed by a standard git push.
-func (f *FromOCI) pushLFSRemote(refList []string, gitRemote string) error {
-	// push LFS files
-	if err := f.cmdHelper.LFS.Push(gitRemote, refList...); err != nil {
-		return fmt.Errorf("pushing git lfs files to remote: %w", err)
-	}
+// updateLFSFromOCI copies the minimum number of LFS files needed from an OCI repository, caching them accordingly.
+func (f *FromOCI) updateLFSFromOCI(ctx context.Context, lfsManDesc ocispec.Descriptor, remoteLFSFiles []string) error {
+	log := logger.FromContext(ctx)
+	u := ui.FromContextOrNoop(ctx)
 
-	// regular git push
-	if err := f.pushRemote(gitRemote, refList, f.cmdHelper.Force); err != nil {
-		return fmt.Errorf("pushing commits and refs to remote: %w", err)
+	switch {
+	case f.syncOpts.Cache != nil:
+		_, err := f.syncOpts.Cache.UpdateLFSFromOCI(ctx, f.ociHelper.Target, lfsManDesc)
+		if err != nil {
+			log.DebugContext(ctx, "Cache failed to update git-lfs objects", "error", err)
+			u.Infof("Failed to update cache with git-lfs objects, continuing without caching...")
+		} else {
+			// log.InfoContext(ctx, "cached LFS files from OCI", "oids", cachedOIDs)
+			log.InfoContext(ctx, "Linking cache lfs files to intermediate repository")
+			if err := f.cmdHelper.Config(ctx, "--add", "lfs.storage", filepath.Join(f.syncOpts.Cache.CachePath(), "lfs")); err != nil {
+				return fmt.Errorf("setting lfs.storage config to cache: %w", err) // TODO: recover?
+			}
+			break
+		}
+		fallthrough // recover to default if cache fails
+
+	default:
+		// we can still optimize some even if caching is not used.
+		resolver := make(map[string]struct{}, len(remoteLFSFiles))
+		for _, oid := range remoteLFSFiles {
+			resolver[oid] = struct{}{}
+		}
+
+		// compare new LFS manifest to the LFS files at the remote destination
+		existingLFSFiles := make(map[string]int64, len(remoteLFSFiles))  // LFS files to skip
+		newDescs := make([]ocispec.Descriptor, 0, len(existingLFSFiles)) // LFS files to fetch
+		for _, layer := range f.lfs.manifest.Layers {
+			_, ok := resolver[layer.Annotations[ocispec.AnnotationTitle]] // safer to use title instead of digest, for cryptographic agility
+			if ok {
+				existingLFSFiles[layer.Annotations[ocispec.AnnotationTitle]] = layer.Size // tricking LFS to think a file exists requires a file of the same size
+			} else {
+				newDescs = append(newDescs, layer)
+			}
+		}
+
+		// do not update local copy of remote repo until existing LFS files are resolved
+		if err := cmd.CreateFakeLFSFiles(f.cmdHelper.Dir(), existingLFSFiles); err != nil {
+			return fmt.Errorf("creating fake LFS files: %w", err)
+		}
+
+		copyOpts := oras.CopyGraphOptions{
+			// TODO: Using oras' default concurrency (3), until plumbing arrives here...
+			PostCopy:       oci.PostCopyLFS(f.ociHelper.FStorePath, f.syncOpts.IntermediateDir),
+			FindSuccessors: oci.FindSuccessorsLFS(newDescs),
+		}
+
+		if err := oras.CopyGraph(ctx, f.ociHelper.Target, f.ociHelper.FStore, lfsManDesc, copyOpts); err != nil {
+			return fmt.Errorf("copying LFS files as OCI layers: %w", err)
+		}
 	}
 
 	return nil

@@ -4,127 +4,214 @@ package security
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
-	"os/exec"
-	"path"
 	"strings"
 	"sync"
 
-	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/errgroup"
 	"oras.land/oras-go/v2"
-	"oras.land/oras-go/v2/content"
-	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
-const (
-	// ArtifactTypeNotarySignature represents the typical artifact type returned from notary signature artifacts.
-	ArtifactTypeNotarySignature = "application/vnd.cncf.notary.signature"
-	// MediaTypeSBOM represents a custom SBOM media type for ace artifacts.
-	MediaTypeSBOM = "application/vnd.act3-ace.sbom.v1+json"
-)
-
-// ArtifactDetails contains all of the details needed for a given artifact.
-type ArtifactDetails struct {
-	repository           *remote.Repository
-	Source               mirror.Source
-	Platforms            []string
-	Size                 int64
-	IsOCICompliant       bool
-	Predecessors         []ocispec.Descriptor
-	SignatureDigest      string
-	SBOMDigest           string
-	SBOM                 map[string][]byte
-	OriginatingReference string // only needed for gather artifacts
+// ScanOptions defines the options needed to run the scan operation.
+type ScanOptions struct {
+	SourceFile              string
+	GatherArtifactReference string
+	Output                  []string
+	SaveReport              string
+	VulnerabilityLevel      string
+	DryRun                  bool
+	PushReport              bool
 }
 
-type detailsStorage struct {
-	details []ArtifactDetails
-	mu      sync.Mutex
-}
-
-// ResolveScanReferences will fetch the artifact details for each image in a source file or a mirror (gather) artifact.
-func ResolveScanReferences(ctx context.Context,
-	sourceFile, artifactReference string,
+// ScanArtifacts will fetch the artifact details for each image in a source file or a mirror (gather) artifact.
+// It will then generate SBOMs for the reference if dryRun is false, upload them to the target repository, and use them for scanning.
+// If dryRun is set to true, the artifacts will be scanned by reference.
+// It returns a slice of results (derived from grype's json results) for the artifacts.
+func ScanArtifacts(ctx context.Context,
+	opts ScanOptions,
 	repoFunction func(context.Context, string) (*remote.Repository, error),
-	concurrency int,
-	dryRun bool,
-) ([]ArtifactDetails, error) {
-	storage := detailsStorage{
-		details: []ArtifactDetails{},
-		mu:      sync.Mutex{},
+	concurrency int) ([]*ArtifactDetails, error) {
+
+	if opts.SourceFile == "" && opts.GatherArtifactReference == "" {
+		return nil, fmt.Errorf("either sourcefile or gather artifact must be chosen but not both")
 	}
-	switch {
-	case sourceFile != "":
-		sources, err := mirror.ProcessSourcesFile(ctx, sourceFile, selectors.LabelSelectorSet{}, concurrency)
-		if err != nil {
-			return nil, err
-		}
-		g, gctx := errgroup.WithContext(ctx)
-		g.SetLimit(concurrency)
-		for _, source := range sources {
-			g.Go(func() error {
-				// dryRun is manually overridden (set to true) for source-file input so we don't try to send SBOM's to directories in which we cannot push.
-				sourceDetails, err := getManifestDetails(gctx, source.Name, repoFunction, true)
-				if err != nil {
-					return err
-				}
-				storage.mu.Lock()
-				storage.details = append(storage.details, *sourceDetails)
-				storage.mu.Unlock()
-				return nil
-			})
-		}
-		if err := g.Wait(); err != nil {
-			return nil, err
-		}
-
-	case artifactReference != "":
-		sources, err := extractSourcesFromMirrorArtifact(ctx, artifactReference, repoFunction)
-		if err != nil {
-			return nil, err
-		}
-		g, gctx := errgroup.WithContext(ctx)
-		g.SetLimit(concurrency)
-		for originalReference, source := range sources {
-			g.Go(func() error {
-				sourceDetails, err := getManifestDetails(gctx, source.Name, repoFunction, dryRun)
-				if err != nil {
-					return err
-				}
-				sourceDetails.OriginatingReference = originalReference
-				storage.mu.Lock()
-				storage.details = append(storage.details, *sourceDetails)
-				storage.mu.Unlock()
-				return nil
-			})
-		}
-		if err := g.Wait(); err != nil {
-			return nil, err
-		}
-
-	default:
-		return nil, fmt.Errorf("must pass either a source file or a remote reference to a Gather artifact")
-	}
-
-	return storage.details, nil
+	return scan(ctx, opts, repoFunction, concurrency)
 }
 
-func extractSourcesFromMirrorArtifact(ctx context.Context, reference string, repoFunction func(context.Context, string) (*remote.Repository, error)) (map[string]mirror.Source, error) {
-	sources := make(map[string]mirror.Source)
-	repo, err := repoFunction(ctx, reference)
+func scan(ctx context.Context, //nolint:gocognit
+	opts ScanOptions,
+	repoFunction func(context.Context, string) (*remote.Repository, error),
+	concurrency int) ([]*ArtifactDetails, error) {
+
+	log := logger.FromContext(ctx)
+	mu := sync.Mutex{}
+	var repository *remote.Repository
+
+	if opts.GatherArtifactReference != "" {
+		repo, err := repoFunction(ctx, opts.GatherArtifactReference)
+		if err != nil {
+			return nil, err
+		}
+		repository = repo
+	}
+	m, err := FormatSources(ctx, opts.SourceFile, opts.GatherArtifactReference, repository, concurrency)
+	if err != nil {
+		return nil, fmt.Errorf("extracting sources from artifact: %w", err)
+	}
+	results := make([]*ArtifactDetails, len(m))
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(concurrency)
+
+	// get the grype db checksum
+	checksum, err := getGrypeDBChecksum(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	for i, source := range m {
+		g.Go(func() error {
+
+			res := Results{
+				Matches: []Matches{},
+			}
+
+			if repository == nil || opts.SourceFile != "" {
+				repo, err := repoFunction(ctx, source[1])
+				if err != nil {
+					return err
+				}
+				repository = repo
+			}
+			// this is for filtering
+			matches := make(map[string]Matches)
+			log.InfoContext(ctx, "fetching manifest details", "artifact", source[1], "originatingReference", source[0])
+			artifactDetails, err := GetArtifactDetails(gctx, source[1], repository)
+			if err != nil {
+				return fmt.Errorf("getting artifact details for %s: %w", source[0], err)
+			}
+
+			// skip helm charts and git artifacts
+			if artifactDetails.isNotScanSupported {
+				return nil
+			}
+
+			artifactDetails.originatingReference = source[0]
+			// load the predecessor digests
+			artifactDetails.handlePredecessors(checksum)
+			if artifactDetails.resultsReport != nil {
+				// there is an existing report, we should pull it and compare checksums
+				existingReportManifest, err := artifactDetails.FetchExistingResultsReportManifest(ctx)
+				if err != nil {
+					return err
+				}
+				// we can skip scanning and just return those results
+				// fetch the blob and unmarshal it into an ArtifactScanReport
+				// there should only be one blob
+				log.InfoContext(ctx, "Found an existing and current results report", "reference", artifactDetails.originatingReference)
+				blob := existingReportManifest.Layers[0]
+
+				var scanReport ArtifactScanReport
+				rc, err := artifactDetails.repository.Fetch(ctx, blob)
+				if err != nil {
+					return fmt.Errorf("fetching the results for %s: %w", artifactDetails.originatingReference, err)
+				}
+				decoder := json.NewDecoder(rc)
+				if err := decoder.Decode(&scanReport); err != nil {
+					return fmt.Errorf("decoding the scan report for %s: %w", artifactDetails.originatingReference, err)
+				}
+				// return scan report
+				artifactDetails.CalculatedResults = scanReport
+				mu.Lock()
+				results[i] = artifactDetails
+				mu.Unlock()
+				return nil
+
+			}
+
+			switch {
+			case !opts.DryRun && artifactDetails.manifestDigestSBOM == "":
+				log.InfoContext(ctx, "Generating SBOM(s)...", "reference", artifactDetails.originatingReference)
+				grypeResults, err := GenerateSBOM(ctx, source[1], checksum, artifactDetails.repository, opts.PushReport)
+				if err != nil {
+					return err
+				}
+
+				for _, r := range grypeResults {
+					freshMatches, err := filterResults(r, opts.VulnerabilityLevel)
+					if err != nil {
+						return err
+					}
+					for k, v := range freshMatches {
+						matches[k] = v
+					}
+				}
+
+			case artifactDetails.manifestDigestSBOM != "":
+				log.Info("SBOM Manifest found", "reference", artifactDetails.originatingReference, "digest", artifactDetails.manifestDigestSBOM)
+				grypeRes, err := extractAndGrypeSBOMs(gctx, artifactDetails.desc, artifactDetails.repository, artifactDetails.manifestDigestSBOM, checksum, opts.PushReport)
+				if err != nil {
+					return err
+				}
+				// filter the matches (there will be duplicates for multi-architecture images)
+				for _, r := range grypeRes {
+					freshMatches, err := filterResults(&r, opts.VulnerabilityLevel)
+					if err != nil {
+						return err
+					}
+					for k, v := range freshMatches {
+						matches[k] = v
+					}
+				}
+
+			default:
+				// use the reference from the *remote.Repository created by getManifestDetails, ensuring our reference
+				// contains the correct endpoint if it was changed
+				result, err := grypeReference(gctx, source[1])
+				if err != nil {
+					return fmt.Errorf("gryping reference %s: %w", source[0], err)
+				}
+				res = *result
+			}
+
+			for _, v := range matches {
+				res.Matches = append(res.Matches, v)
+			}
+
+			calculatedResults, err := calculateResults(&res)
+			if err != nil {
+				return err
+			}
+			// add results to struct
+			artifactDetails.CalculatedResults = *calculatedResults
+			mu.Lock()
+			results[i] = artifactDetails
+			mu.Unlock()
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return nil, err
+	}
+
+	// filter out any nil values (caused by artifacts that are unsupported like helm charts and git bundle artifacts)
+	filteredResults := []*ArtifactDetails{}
+	for _, v := range results {
+		if v != nil {
+			filteredResults = append(filteredResults, v)
+		}
+	}
+	return filteredResults, nil
+
+}
+
+func extractSourcesFromMirrorArtifact(ctx context.Context, reference string, repo *remote.Repository) ([][]string, error) {
+	sources := [][]string{}
 	// fetch the reference index
 	_, data, err := oras.FetchBytes(ctx, repo, repo.Reference.ReferenceOrDefault(), oras.DefaultFetchBytesOptions)
 	if err != nil {
@@ -134,231 +221,23 @@ func extractSourcesFromMirrorArtifact(ctx context.Context, reference string, rep
 	if err := json.Unmarshal(data, &idx); err != nil {
 		return nil, fmt.Errorf("unmarshalling artifact index: %w", err)
 	}
-
 	for _, manifest := range idx.Manifests {
 		// create a source
-		sources[manifest.Annotations[ref.AnnotationSrcRef]] = mirror.Source{
-			Name:   strings.Join([]string{reference, manifest.Digest.String()}, "@"),
-			Labels: nil,
-		}
+		sources = append(sources, []string{manifest.Annotations[ref.AnnotationSrcRef], strings.Join([]string{reference, manifest.Digest.String()}, "@")})
 	}
 	return sources, nil
 }
 
-func getManifestDetails(ctx context.Context, reference string, repoFunction func(context.Context, string) (*remote.Repository, error), dryRun bool) (*ArtifactDetails, error) {
-	maniDetails := &ArtifactDetails{}
-	maniDetails.Source.Name = reference
-	maniDetails.SBOM = make(map[string][]byte)
-	var platforms []string
-	var size int64
-	var predecessors []ocispec.Descriptor
-	r, err := registry.ParseReference(reference)
+// FetchExistingResultsReportManifest fetches the artifact's existing scan report.
+func (ad *ArtifactDetails) FetchExistingResultsReportManifest(ctx context.Context) (*ocispec.Manifest, error) {
+	report := ocispec.Manifest{}
+	rc, err := ad.repository.Fetch(ctx, *ad.resultsReport)
 	if err != nil {
-		return maniDetails, fmt.Errorf("error parsing ref %s: %w", reference, err)
+		return nil, fmt.Errorf("fetching existing results for %s: %w", ad.originatingReference, err)
 	}
-	repo, err := repoFunction(ctx, reference)
-	if err != nil {
-		return maniDetails, err
+	decoder := json.NewDecoder(rc)
+	if err := decoder.Decode(&report); err != nil {
+		return nil, fmt.Errorf("decoding results report for %s: %w", ad.originatingReference, err)
 	}
-	maniDetails.repository = repo
-	d, data, err := oras.FetchBytes(ctx, repo, r.ReferenceOrDefault(), oras.DefaultFetchBytesOptions)
-	if err != nil {
-		return maniDetails, fmt.Errorf("fetching the manifest bytes: %w", err)
-	}
-	maniDetails.IsOCICompliant = encoding.IsOCICompliant(d.MediaType)
-	p, err := repo.Predecessors(ctx, d)
-	if err != nil {
-		return nil, fmt.Errorf("fetching predecessors: %w", err)
-	}
-
-	// Fetch predecessors/SBOMs/Signatures
-	predecessors = append(predecessors, p...)
-
-	if encoding.IsIndex(d.MediaType) {
-		var idx ocispec.Index
-		err = json.Unmarshal(data, &idx)
-		if err != nil {
-			return nil, err
-		}
-		size += d.Size
-		for _, man := range idx.Manifests {
-			var img ocispec.Manifest
-			manDesc, manData, err := oras.FetchBytes(ctx, repo, man.Digest.String(), oras.DefaultFetchBytesOptions)
-			if err != nil {
-				return nil, fmt.Errorf("fetching the manifest bytes: %w", err)
-			}
-			if err := json.Unmarshal(manData, &img); err != nil {
-				return nil, err
-			}
-			size += manDesc.Size
-			for _, blob := range img.Layers {
-				size += blob.Size
-			}
-			p, err := repo.Predecessors(ctx, man)
-			if err != nil {
-				return maniDetails, fmt.Errorf("fetching predecessors: %w", err)
-			}
-			// Fetch predecessors/SBOMs/Signatures
-			predecessors = append(predecessors, p...)
-			platformString := formatPlatformString(man.Platform)
-			platforms = append(platforms, platformString)
-		}
-	} else {
-		size += d.Size
-		if d.Platform != nil {
-			platformString := formatPlatformString(d.Platform)
-			platforms = append(platforms, platformString)
-		} else {
-			// pull the config and see if we can decode from there
-			var img ocispec.Manifest
-			if err := json.Unmarshal(data, &img); err != nil {
-				return nil, err
-			}
-			_, rc, err := repo.Blobs().FetchReference(ctx, img.Config.Digest.String())
-			if err != nil {
-				return nil, fmt.Errorf("fetching reference %s: %w", img.Config.Digest.String(), err)
-			}
-			var platform ocispec.Platform
-			if err = json.NewDecoder(rc).Decode(&platform); err != nil && errors.Is(io.EOF, err) {
-				return nil, fmt.Errorf("decoding platform %+v: %w", &platform, err)
-			}
-			platformString := formatPlatformString(&platform)
-			platforms = append(platforms, platformString)
-		}
-	}
-	maniDetails.Platforms = platforms
-	maniDetails.Size = size
-	maniDetails.Predecessors = predecessors
-
-	if err := maniDetails.handlePredecessors(ctx, dryRun); err != nil {
-		return nil, err
-	}
-	return maniDetails, nil
+	return &report, nil
 }
-
-func formatPlatformString(platform *ocispec.Platform) string {
-	if platform != nil {
-		return path.Join(platform.OS, platform.Architecture, platform.Variant)
-	}
-	return ""
-}
-
-func (ad *ArtifactDetails) handlePredecessors(ctx context.Context, dryRun bool) error {
-	var hasSBOM bool
-	for _, p := range ad.Predecessors {
-		if p.ArtifactType == ArtifactTypeNotarySignature {
-			ad.SignatureDigest = p.Digest.String()
-		} else {
-			// try and extract sbom
-			_, manifestBytesSBOM, err := oras.FetchBytes(ctx, ad.repository, p.Digest.String(), oras.DefaultFetchBytesOptions)
-			if err != nil {
-				return fmt.Errorf("fetching SBOM manifest bytes for %s: %w", p.Digest.String(), err)
-			}
-			var man ocispec.Manifest
-			if err := json.Unmarshal(manifestBytesSBOM, &man); err != nil {
-				continue
-			}
-			for _, l := range man.Layers {
-				b, err := content.FetchAll(ctx, ad.repository, l)
-				if err != nil {
-					return fmt.Errorf("fetching layer for %s: %w", ad.Source.Name, err)
-				}
-				ad.SBOM[l.Digest.String()] = b
-				hasSBOM = true
-			}
-
-		}
-	}
-	// if there is no SBOM present and it is not a dry run, generate and upload SBOM for the artifact
-	if !hasSBOM && !dryRun {
-		digestSBOM, b, err := GenerateSBOM(ctx, ad.Source.Name, ad.repository)
-		if err != nil {
-			return fmt.Errorf("error uploading SBOM for reference %s: %w", ad.Source.Name, err)
-		}
-		ad.SBOM[digestSBOM] = b
-		ad.SBOMDigest = digestSBOM
-	}
-	return nil
-}
-
-// GenerateSBOM will generate and attach an SBOM for a given artifact.
-// Returns the digest of the SBOM and the bytes or an error.
-func GenerateSBOM(ctx context.Context, reference string, repository oras.GraphTarget) (string, []byte, error) {
-	// fetch the main descriptor
-	desc, err := repository.Resolve(ctx, reference)
-	if err != nil {
-		return "", nil, fmt.Errorf("error resolving descriptor for %s: %w", reference, err)
-	}
-
-	// exec out to syft to generate the SBOM
-	cmd := exec.CommandContext(ctx, "syft", "scan", reference, "-o", "syft-json")
-	res, err := cmd.CombinedOutput()
-	if err != nil {
-		return "", nil, fmt.Errorf("error executing command: %s\n %w\n output: %s", cmd, err, string(res))
-	}
-
-	// Upload the SBOM... create a manifest and encode SBOM into a layer.
-	// The SBOM manifest Subject field must point to the digest of the main reference passed.
-	descSBOM, err := oras.PushBytes(ctx, repository, ocispec.MediaTypeImageLayer, res)
-	if err != nil {
-		return "", nil, fmt.Errorf("pushing SBOM: %w", err)
-	}
-
-	// create an empty config and push it
-	config := ocispec.ImageConfig{}
-	cfg, err := json.Marshal(config)
-	if err != nil {
-		return "", nil, fmt.Errorf("marshalling empty config: %w", err)
-	}
-	descCfg, err := oras.PushBytes(ctx, repository, ocispec.MediaTypeEmptyJSON, cfg)
-	if err != nil {
-		return "", nil, fmt.Errorf("pushing empty config: %w", err)
-	}
-
-	// create the SBOM manifest
-	manifest := ocispec.Manifest{
-		Versioned: specs.Versioned{
-			SchemaVersion: 2,
-		},
-		MediaType: ocispec.MediaTypeImageManifest,
-		Config:    descCfg,
-		Layers:    []ocispec.Descriptor{descSBOM},
-		Subject:   &desc,
-	}
-
-	man, err := json.Marshal(manifest)
-	if err != nil {
-		return "", nil, fmt.Errorf("marshalling the SBOM manifest: %w", err)
-	}
-
-	// push the SBOM to the repository
-	_, err = oras.PushBytes(ctx, repository, ocispec.MediaTypeImageManifest, man)
-	if err != nil {
-		return "", nil, fmt.Errorf("pushing SBOM manifest: %w", err)
-	}
-
-	return descSBOM.Digest.String(), res, nil
-}
-
-// TODO: add tag support?
-// get all tags
-// err = repo.Tags(context.Background(), r.ReferenceOrDefault(), func(tags []string) error {
-
-// 	baseVersion, _ := semver.NewVersion(r.ReferenceOrDefault())
-// 	// if err != nil {
-// 	// 	// return err
-// 	// }
-// 	if len(tags) > 0 {
-// 		newVersion, _ := semver.NewVersion(tags[len(tags)-1])
-// 		// if err != nil {
-// 		// 	// return err
-// 		// }
-// 		if newVersion != nil {
-// 			fmt.Printf("New tag available for %s! Current version: %s --> Newer Version: %s\n", reference, baseVersion, newVersion)
-// 		}
-// 	}
-// 	return nil
-// })
-// if err != nil {
-// 	return err
-// }

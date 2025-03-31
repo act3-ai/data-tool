@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"sync"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -14,9 +15,9 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
+	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
 	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
-	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
@@ -25,7 +26,10 @@ import (
 // Resolve uses the source ReadOnlyGraphTargeter to resolve an OCI reference to a manifest descriptor.
 // At minimum the reference must include the "<registry>/<repository>" section of an OCI reference.
 func Resolve(ctx context.Context, reference string, src reg.ReadOnlyGraphTargeter, transferOpts TransferOptions) (oras.ReadOnlyGraphTarget, ocispec.Descriptor, error) {
-	// resolve reference
+	// if the ReadOnlyGraphTargeter is an ReadOnlyEndpointGraphTargeter we'll perform
+	// endpoint resolution implicitly. However, reference remains the same as the original.
+	// If an oras registry.ParseReference is wanted for the resolved endpoint, use the
+	// ReadOnlyEndpointGraphTargeter interface instead.
 	target, err := src.ReadOnlyGraphTarget(ctx, reference)
 	if err != nil {
 		return nil, ocispec.Descriptor{}, fmt.Errorf("creating graph target for ref '%s': %w", reference, err)
@@ -44,6 +48,7 @@ func Resolve(ctx context.Context, reference string, src reg.ReadOnlyGraphTargete
 		bic = cache.NewCache("")
 	}
 
+	// record the original source reference, not the potentially resolved endpoint
 	err = recordSource(ctx, bic, target, reference, desc)
 	if err != nil {
 		return nil, ocispec.Descriptor{}, fmt.Errorf("recoding bottle source: %w", err)
@@ -118,7 +123,7 @@ func Pull(ctx context.Context, src content.ReadOnlyStorage, desc ocispec.Descrip
 	log := logger.FromContext(ctx)
 
 	log.InfoContext(ctx, "verifying pull directory", "pullPath", pullPath)
-	if err := bottle.VerifyPullDir(pullPath, desc); err != nil {
+	if err := bottle.VerifyPullDir(pullPath); err != nil {
 		return fmt.Errorf("invalid pull directory: %w", err)
 	}
 
@@ -172,22 +177,30 @@ func pull(ctx context.Context, target content.ReadOnlyStorage, desc ocispec.Desc
 		return nil, err
 	}
 
-	partSelector, err := pullOpts.PartSelectorOptions.New(ctx)
+	partSelector, err := pullOpts.New(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("initializing part selector func: %w", err)
 	}
 
-	dataCache := storage.NewDataStore(btl)
+	// protects btl.Parts, which is updated with the part modification times when finalized.
+	var btlPartMutex sync.Mutex
 	copyOptions := oras.CopyGraphOptions{
-		Concurrency:    pullOpts.concurrency(),
-		PreCopy:        prePullParts(progress),
-		PostCopy:       postPullParts(progress, btl, dataCache),
-		OnCopySkipped:  onPullSkipped(progress, btl, dataCache),
+		Concurrency: pullOpts.concurrency(),
+		PreCopy:     prePullParts(progress),
+		// whether or not we copy/skip the part is irrelevant, in both cases
+		// we need to populate the bottle directory with the parts.
+		PostCopy:       postPull(progress, btl, &btlPartMutex),
+		OnCopySkipped:  postPull(progress, btl, &btlPartMutex),
 		FindSuccessors: selectPartSuccessors(btl, partSelector),
 	}
 
+	// ensure parts are not skipped, since CopyGraph will skip now that the manifest exists
+	dest := &orasutil.UnreliableStorage{
+		Storage: btl.GetCache(),
+	}
+
 	log.InfoContext(ctx, "copying bottle layers from remote", "layers", len(btl.Manifest.GetLayerDescriptors()))
-	err = oras.CopyGraph(ctx, target, dataCache, desc, copyOptions)
+	err = oras.CopyGraph(ctx, target, dest, desc, copyOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failure to copygraph for bottle: %w", err)
 	}
@@ -204,10 +217,6 @@ func pull(ctx context.Context, target content.ReadOnlyStorage, desc ocispec.Desc
 	}
 
 	log.InfoContext(ctx, "pull complete")
-	if err := dataCache.Close(); err != nil {
-		return btl, fmt.Errorf("closing datastore: %w", err)
-	}
-
 	return btl, nil
 }
 
@@ -217,15 +226,24 @@ func fetchBottleMetadata(ctx context.Context, btl *bottle.Bottle, target content
 	desc ocispec.Descriptor,
 ) error {
 	// get manifest data
-	if err := fetchBottleManifest(ctx, btl, target, desc); err != nil {
+	if err := handleBottleManifest(ctx, btl, target, desc); err != nil {
 		return fmt.Errorf("fetching bottle manifest: %w", err)
 	}
 
 	// get config data and apply pre- and post-config functions
-	if err := fetchBottleConfig(ctx, btl, target, btl.Manifest.GetConfigDescriptor()); err != nil {
+	if err := handleBottleConfig(ctx, btl, target, btl.Manifest.GetConfigDescriptor()); err != nil {
 		return fmt.Errorf("fetching bottle config: %w", err)
 	}
 
+	if err := verifyPull(btl); err != nil {
+		return fmt.Errorf("validating bottle manifest against configuration: %w", err)
+	}
+
+	return nil
+}
+
+// verifyPull validates a bottle's part configuration against the manifest layers.
+func verifyPull(btl *bottle.Bottle) error {
 	numParts := btl.NumParts()
 	numLayers := len(btl.Manifest.GetLayerDescriptors())
 	if numParts != numLayers {
@@ -235,19 +253,20 @@ func fetchBottleMetadata(ctx context.Context, btl *bottle.Bottle, target content
 	return nil
 }
 
-// fetchBottleManifest fetches a bottle's manifest and populates the appropriate manifest
+// handleBottleManifest fetches a bottle's manifest and populates the appropriate manifest
 // related fields.
-func fetchBottleManifest(ctx context.Context, btl *bottle.Bottle, target content.Fetcher,
-	desc ocispec.Descriptor,
-) error {
-	manBytes, err := content.FetchAll(ctx, target, desc)
+func handleBottleManifest(ctx context.Context, btl *bottle.Bottle, storage content.Fetcher,
+	desc ocispec.Descriptor) error {
+
+	// fetch from cache storage
+	manBytes, err := content.FetchAll(ctx, storage, desc)
 	if err != nil {
-		return fmt.Errorf("fetching bottle manifest: %w", err)
+		return fmt.Errorf("fetching bottle manifest from storage: %w", err)
 	}
 
 	manifestHandler := oci.ManifestFromData(ocispec.MediaTypeImageManifest, manBytes)
 	if manifestHandler.GetStatus().Error != nil {
-		return fmt.Errorf("constructing manifest handler from raw manifest: %w", err)
+		return fmt.Errorf("constructing manifest handler from raw manifest: %w", manifestHandler.GetStatus().Error)
 	}
 	btl.SetManifest(manifestHandler)
 
@@ -260,11 +279,10 @@ func fetchBottleManifest(ctx context.Context, btl *bottle.Bottle, target content
 	return nil
 }
 
-// fetchBottleConfig fetches a bottle's config and populates the appropriate config
+// handleBottleConfig fetches a bottle's config and populates the appropriate config
 // related fields.
-func fetchBottleConfig(ctx context.Context, btl *bottle.Bottle, src content.Fetcher,
-	desc ocispec.Descriptor,
-) error {
+func handleBottleConfig(ctx context.Context, btl *bottle.Bottle, src content.Fetcher,
+	desc ocispec.Descriptor) error {
 	cfgBytes, err := content.FetchAll(ctx, src, desc)
 	if err != nil {
 		return fmt.Errorf("fetching from remote: %w", err)
@@ -309,11 +327,9 @@ func prePullParts(progress *ui.Progress) func(ctx context.Context, desc ocispec.
 	}
 }
 
-// postPullParts returns a func for the oras.CopyGraphOptions option PostCopy func. It extracts a recently
-// cached part to its final destination.
-func postPullParts(progress *ui.Progress, btl *bottle.Bottle,
-	dataStore *storage.DataStore,
-) func(ctx context.Context, desc ocispec.Descriptor) error {
+// postPull returns a func for the oras.CopyGraphOptions option PostCopy/OnCopySkipped func. It extracts a recently
+// cached part to its final destination or appropriately handles the manifest or config.
+func postPull(progress *ui.Progress, btl *bottle.Bottle, btlPartMutex *sync.Mutex) func(ctx context.Context, desc ocispec.Descriptor) error {
 	return func(ctx context.Context, desc ocispec.Descriptor) error {
 		switch {
 		case desc.MediaType == ocispec.MediaTypeImageManifest:
@@ -321,10 +337,12 @@ func postPullParts(progress *ui.Progress, btl *bottle.Bottle,
 		case mediatype.IsBottleConfig(desc.MediaType):
 			// noop
 		case mediatype.IsLayer(desc.MediaType):
-			handled, err := dataStore.CopyFromCache(ctx, desc, btl.GetPartByLayerDescriptor(desc).GetName())
+			btlPartMutex.Lock()
+			name := btl.GetPartByLayerDescriptor(desc).GetName()
+			btlPartMutex.Unlock()
+			handled, err := bottle.CopyFromCache(ctx, btl, desc, name, btlPartMutex)
 			// update the progress after copy, even if the copy failed.
-			// TODO: progress doesn't really seem to be working...
-			progress.Update(desc.Size, desc.Size)
+			progress.Update(desc.Size, 0)
 			// now check for copy errors/failures
 			if err != nil {
 				return fmt.Errorf("failed to finalize part with digest %s: %w", desc.Digest, err)
@@ -405,35 +423,5 @@ func selectPartSuccessors(btl *bottle.Bottle, selector bottle.PartSelectorFunc) 
 			}
 		}
 		return selected, nil
-	}
-}
-
-// onPullSkipped handles the extraction of cached parts to their destinations when they're skipped
-// during a copy to the cache. This funcion is triggered whenever the cache hits, i.e. returns true
-// on existence check.
-func onPullSkipped(progress *ui.Progress, btl *bottle.Bottle, dataStore *storage.DataStore) func(ctx context.Context,
-	desc ocispec.Descriptor) error {
-	return func(ctx context.Context, desc ocispec.Descriptor) error {
-		switch {
-		case desc.MediaType == ocispec.MediaTypeImageManifest:
-			// noop
-		case mediatype.IsBottleConfig(desc.MediaType):
-			// noop
-		case mediatype.IsLayer(desc.MediaType):
-			handled, err := dataStore.CopyFromCache(ctx, desc, btl.GetPartByLayerDescriptor(desc).GetName())
-			progress.Update(desc.Size, desc.Size)
-			switch {
-			case err != nil:
-				return err
-			case !handled:
-				return fmt.Errorf("part not found in cache despite passing prior existence check %s", desc.Digest) // should be impossible
-			default:
-				logger.V(logger.FromContext(ctx), 1).InfoContext(ctx, "copied from cache")
-			}
-		default:
-			return fmt.Errorf("unsupported mediatype skipped '%s'", desc.MediaType)
-		}
-		// skip was safe
-		return nil
 	}
 }

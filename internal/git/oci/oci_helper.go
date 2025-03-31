@@ -3,81 +3,108 @@ package oci
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	oras "oras.land/oras-go/v2"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // Helper assists in pushing to or fetching from an OCI compliant registry.
 type Helper struct {
 	Target     oras.GraphTarget
-	Tag        string
 	FStore     *file.Store
 	FStorePath string
 }
 
-// NewOCIHelper returns a ociHelper object used in pushing to or fetching from an OCI compliant registry.
-// The OCI compliant registry must support the Referrer's API. This constructor initializes an oras filestore
-// which is the caller's responsibility to close, may be done with sync.cleanup().
-func NewOCIHelper(tmpDir string, target oras.GraphTarget, tag string) (*Helper, error) {
-	fs, err := file.New(tmpDir)
-	if err != nil {
-		return &Helper{}, fmt.Errorf("initializing filestore: %w", err)
-	}
+// PostCopyLFS returns a func for the oras.CopyGraphOptions option PostCopy func. It adds a hardlink from the
+// LFS file in fstorePath to the destRepoPath.
+func PostCopyLFS(fstorePath, destRepoPath string) func(ctx context.Context, desc ocispec.Descriptor) error {
+	return func(ctx context.Context, desc ocispec.Descriptor) error {
+		if desc.MediaType == MediaTypeLFSLayer {
+			oid := desc.Annotations[ocispec.AnnotationTitle] // oid filename
+			destPath := filepath.Join(destRepoPath, cmd.ResolveLFSOIDPath(oid))
+			logger.V(logger.FromContext(ctx), 1).InfoContext(ctx, "linking LFS file to intermediate dir", "objectID", oid, "destPath", destPath) //nolint:sloglint
 
-	return &Helper{
-		Target:     target,
-		Tag:        tag,
-		FStore:     fs,
-		FStorePath: tmpDir,
-	}, nil
+			// init nested dirs
+			err := os.MkdirAll(filepath.Dir(destPath), 0777)
+			if err != nil {
+				return fmt.Errorf("creating path to oid file: %w", err)
+			}
+
+			// link
+			srcPath := filepath.Join(fstorePath, oid)
+			if err := os.Link(srcPath, destPath); err != nil {
+				return fmt.Errorf("adding LFS file to cache: %w", err)
+			}
+		}
+		return nil
+	}
 }
 
-// CopyLFSFromOCI copies a git-lfs file stored as an OCI layer, written to objDest.
-//
-// TODO: This is inefficient and not a good interface. See issue https://git.act3-ace.com/ace/data/tool/-/issues/504.
-func (o *Helper) CopyLFSFromOCI(ctx context.Context, objDest string, layerDesc ocispec.Descriptor) error {
-	log := logger.FromContext(ctx)
+// FindSuccessorsLFS limits the LFS layers copied to the provided set.
+// Returns the default oras FindSuccessors result if no layers are provided.
+// Assumes any image manifest encountered is an LFS manifest.
+func FindSuccessorsLFS(lfsLayers []ocispec.Descriptor) func(ctx context.Context, fetcher content.Fetcher,
+	desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	return func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		log := logger.FromContext(ctx)
 
-	// prepare destination
-	oidDir := filepath.Dir(objDest)
+		var successors []ocispec.Descriptor
+		switch {
+		case ocispec.MediaTypeImageManifest == desc.MediaType && (lfsLayers != nil || len(lfsLayers) > 0): // only filter if layers are provided
+			// do we already have the artifact type?
+			at := desc.ArtifactType
+			if ArtifactTypeLFSManifest == at {
+				successors = lfsLayers
+				break
+			}
 
-	log.InfoContext(ctx, "initializing path to oid", "oidDir", oidDir)
-	err := os.MkdirAll(oidDir, 0o777)
-	if err != nil {
-		return fmt.Errorf("creating path to oid file: %w", err)
+			// resolve artifact type
+			manBytes, err := content.FetchAll(ctx, fetcher, desc)
+			if err != nil {
+				return nil, fmt.Errorf("fetching manifest: %w", err)
+			}
+
+			var manifest ocispec.Manifest
+			err = json.Unmarshal(manBytes, &manifest)
+			if err != nil {
+				return nil, fmt.Errorf("decoding manifest: %w", err)
+			}
+
+			at = manifest.ArtifactType
+			if ArtifactTypeLFSManifest == at {
+				successors = lfsLayers
+			}
+		default:
+			var err error
+			successors, err = content.Successors(ctx, fetcher, desc)
+			if err != nil {
+				return nil, fmt.Errorf("error finding successors for %s: %w", desc.Digest.String(), err)
+			}
+			log.InfoContext(ctx, "found successors of descriptor", "descriptor", desc, "successors", len(successors))
+
+		}
+		return successors, nil
 	}
+}
 
-	log.InfoContext(ctx, "creating oid file", "objDest", objDest)
-	oidFile, err := os.Create(objDest)
-	if err != nil {
-		return fmt.Errorf("creating oid file: %w", err)
+// FindSuccessorsBundles limits the bundle layers copied to the provided set.
+// Returns the default oras FindSuccessors result if no layers are provided.
+// Assumes any image manifest encounters is a base git manifest.
+func FindSuccessorsBundles(manDesc ocispec.Descriptor, bundleLayers []ocispec.Descriptor) func(ctx context.Context, fetcher content.Fetcher,
+	desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	return func(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+		if desc.MediaType == ocispec.MediaTypeImageManifest {
+			return bundleLayers, nil
+		}
+		return content.Successors(ctx, fetcher, desc)
 	}
-
-	// download
-	r, err := o.Target.Fetch(ctx, layerDesc)
-	if err != nil {
-		return fmt.Errorf("fetching LFS layer: %w", err)
-	}
-
-	n, err := io.Copy(oidFile, r)
-	if err != nil {
-		return fmt.Errorf("copying LFS layer to file: %w", err)
-	}
-	if n < layerDesc.Size {
-		return fmt.Errorf("total bytes copied from LFS layer does not equal LFS layer size, layerSize: %d, copied: %d", layerDesc.Size, n)
-	}
-
-	if err := oidFile.Close(); err != nil {
-		return fmt.Errorf("closing oid file: %w", err)
-	}
-
-	return nil
 }

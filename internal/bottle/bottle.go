@@ -16,22 +16,22 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
-
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
+	orascontent "oras.land/oras-go/v2/content"
+	orasoci "oras.land/oras-go/v2/content/oci"
 
 	bottle "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io"
 	cfgdef "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
 	sutil "gitlab.com/act3-ai/asce/data/schema/pkg/util"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
 	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
-	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
 )
 
@@ -64,7 +64,7 @@ type Bottle struct {
 	// cachePath is the cache directory
 	cachePath string
 
-	cacheManager         cache.MoteCache
+	cache                orascontent.GraphStorage
 	VirtualPartTracker   *VirtualParts
 	DisableCreateDestDir bool
 	disableCache         bool
@@ -82,31 +82,9 @@ func (btl *Bottle) ScratchPath() string {
 	return filepath.Join(btl.cachePath, "scratch")
 }
 
-// PartStatus is a bitmask for file status flags.
-type PartStatus uint8
-
-const (
-	// StatusExists indicates a file that is tracked.
-	StatusExists PartStatus = 1 << iota
-	// StatusCached indicates a file that exists in the cache based on the
-	// digest stored in the Bottle.
-	StatusCached
-	// StatusChanged indicates a file that has been modified more recently
-	// than the entry known last update.
-	StatusChanged
-	// StatusDigestMatch indicates a digest match.
-	StatusDigestMatch
-	// StatusNew indicates a discovered file that is currently untracked.
-	StatusNew
-	// StatusDeleted indicates tracked file that is no longer discovered.
-	StatusDeleted
-	// StatusVirtual indicates tracked file that is not stored locally, e.g. excluded with a selector on pull.
-	StatusVirtual
-)
-
 // GetPartStatus looks for an existing file entry based on the search file entry
 // information, and returns a status bitfield.
-func (btl *Bottle) GetPartStatus(search PartTrack) PartStatus {
+func (btl *Bottle) GetPartStatus(ctx context.Context, search PartTrack) PartStatus {
 	part := btl.partByName(search.GetName())
 	var status PartStatus
 
@@ -115,9 +93,10 @@ func (btl *Bottle) GetPartStatus(search PartTrack) PartStatus {
 	}
 
 	status |= StatusExists
-	if part.GetLayerDigest() != "" && btl.cacheManager.MoteExists(part.GetLayerDigest()) {
+	if exists, _ := btl.cache.Exists(ctx, ocispec.Descriptor{Digest: part.GetLayerDigest()}); exists {
 		status |= StatusCached
 	}
+
 	if btl.VirtualPartTracker != nil {
 		dig := search.GetLayerDigest()
 		if btl.VirtualPartTracker.HasContent(dig) {
@@ -228,6 +207,11 @@ func (btl *Bottle) UpdatePartMetadata(name string,
 	changed := false
 	if contentSize >= 0 && part.Size != contentSize {
 		part.Size = contentSize
+		// if we change the content size we need to re-digest,
+		// unless we're provided the new ones which will be updated below.
+		part.Digest = ""
+		part.LayerSize = 0
+		part.LayerDigest = ""
 		changed = true
 	}
 	if contentDigest != "" && part.Digest != contentDigest {
@@ -402,7 +386,9 @@ func (btl *Bottle) SetManifest(manifest oci.ManifestHandler) {
 		btl.Parts[i].LayerDigest = desc.Digest
 		btl.Parts[i].LayerSize = desc.Size
 		btl.Parts[i].MediaType = desc.MediaType
-		btl.Parts[i].Modified = time.Now()
+		// mod time is updated later as it must align with the
+		// mod time of the file itself, otherwise all future evaluations
+		// would be false positives.
 	}
 }
 
@@ -453,10 +439,10 @@ func (btl *Bottle) GetConfigPath() string {
 	return configFile(btl.GetPath())
 }
 
-// GetCache returns a MoteCache interface for working with local
+// GetCache returns a oras content.GraphStorage interface for working with local
 // cache data.
-func (btl *Bottle) GetCache() cache.MoteCache {
-	return btl.cacheManager
+func (btl *Bottle) GetCache() orascontent.GraphStorage {
+	return btl.cache
 }
 
 // GetBottleID returns a digest for the bottle configuration.
@@ -486,8 +472,8 @@ func (btl *Bottle) NumParts() int {
 }
 
 // GetParts returns a slice of PartTrack structures presented as a slice of FileInfo interfaces.
-func (btl *Bottle) GetParts() []storage.PartInfo {
-	parts := make([]storage.PartInfo, len(btl.Parts))
+func (btl *Bottle) GetParts() []PartInfo {
+	parts := make([]PartInfo, len(btl.Parts))
 	for i, v := range btl.Parts {
 		parts[i] = &v
 	}
@@ -495,7 +481,7 @@ func (btl *Bottle) GetParts() []storage.PartInfo {
 }
 
 // GetPartByLayerDescriptor returns a PartInfo for a part based on a descriptor from a manifest, matching by digest.
-func (btl *Bottle) GetPartByLayerDescriptor(descriptor ocispec.Descriptor) storage.PartInfo {
+func (btl *Bottle) GetPartByLayerDescriptor(descriptor ocispec.Descriptor) PartInfo {
 	for _, p := range btl.Parts {
 		if p.LayerDigest == descriptor.Digest {
 			return &p
@@ -505,7 +491,7 @@ func (btl *Bottle) GetPartByLayerDescriptor(descriptor ocispec.Descriptor) stora
 }
 
 // GetPartByName returns a single FileInfo matching the provided name.
-func (btl *Bottle) GetPartByName(partName string) storage.PartInfo {
+func (btl *Bottle) GetPartByName(partName string) PartInfo {
 	part := btl.partByName(partName)
 	if part == nil {
 		return nil
@@ -983,12 +969,22 @@ func NewBottle(options ...BOption) (*Bottle, error) {
 		}
 	}
 	if !btl.disableCache {
-		btl.cacheManager = cache.NewBottleFileCache(btl.cachePath)
-		if err := btl.cacheManager.Initialize(); err != nil {
-			return nil, err
+		storage, err := orasoci.NewStorage(btl.cachePath)
+		if err != nil {
+			return nil, fmt.Errorf("initializing cache storage: %w", err)
+		}
+
+		// setup optimization
+		optStorage, err := cache.NewFileMounter(btl.cachePath, storage)
+		if err != nil {
+			// non-fatal, but this should never fail
+			btl.cache = cache.NewPredecessorCacher(storage)
+		} else {
+			// support handling of signatures and other predecessors
+			btl.cache = cache.NewPredecessorCacher(optStorage)
 		}
 	} else {
-		btl.cacheManager = &cache.NilCache{}
+		btl.cache = &cache.NilCache{}
 	}
 
 	// if btl.VirtualPartTracker != nil {

@@ -6,7 +6,6 @@ import (
 	"io"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/status"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
@@ -36,7 +35,7 @@ func (action *Status) Run(ctx context.Context, out io.Writer) error {
 		return err
 	}
 
-	statusStr, _, err := status.InspectBottleFiles(ctx, btl, status.Options{WantDetails: action.Details})
+	statusStr, _, err := bottle.InspectBottleFiles(ctx, btl, bottle.Options{WantDetails: action.Details})
 	if err != nil {
 		return err
 	}

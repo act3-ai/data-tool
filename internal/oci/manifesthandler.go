@@ -11,9 +11,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/opencontainers/image-spec/specs-go"
-
 	"github.com/opencontainers/go-digest"
+	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"gitlab.com/act3-ai/asce/data/schema/pkg/validation"

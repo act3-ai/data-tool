@@ -24,15 +24,15 @@ func Test_Functional_SinglePart(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.BottleHelper.AddArbitraryFileParts(1)
+	helper.AddArbitraryFileParts(1)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.BottleHelper.SetTempBottleRef(rootReg)
-	helper.CommandHelper.RunCommand("push", helper.BottleHelper.RegRef)
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.SetTempBottleRef(rootReg)
+	helper.RunCommand("push", helper.RegRef)
 
-	assert.NoError(t, helper.CheckRegForBottle(helper.BottleHelper.RegRef, ""))
+	assert.NoError(t, helper.CheckRegForBottle(helper.RegRef, ""))
 }
 
 func Test_Functional_TwoParts(t *testing.T) {
@@ -50,15 +50,15 @@ func Test_Functional_TwoParts(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.BottleHelper.AddArbitraryFileParts(2)
+	helper.AddArbitraryFileParts(2)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.BottleHelper.SetTempBottleRef(rootReg)
-	helper.CommandHelper.RunCommand("push", helper.BottleHelper.RegRef)
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.SetTempBottleRef(rootReg)
+	helper.RunCommand("push", helper.RegRef)
 
-	assert.NoError(t, helper.CheckRegForBottle(helper.BottleHelper.RegRef, ""))
+	assert.NoError(t, helper.CheckRegForBottle(helper.RegRef, ""))
 }
 
 func Test_Functional_DirPart(t *testing.T) {
@@ -76,15 +76,15 @@ func Test_Functional_DirPart(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.BottleHelper.AddArbitraryDirParts(1)
+	helper.AddArbitraryDirParts(1)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.BottleHelper.SetTempBottleRef(rootReg)
-	helper.CommandHelper.RunCommand("push", helper.BottleHelper.RegRef)
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.SetTempBottleRef(rootReg)
+	helper.RunCommand("push", helper.RegRef)
 
-	assert.NoError(t, helper.CheckRegForBottle(helper.BottleHelper.RegRef, ""))
+	assert.NoError(t, helper.CheckRegForBottle(helper.RegRef, ""))
 }
 
 func Test_Functional_ManyParts(t *testing.T) {
@@ -102,15 +102,15 @@ func Test_Functional_ManyParts(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.BottleHelper.AddArbitraryFileParts(500)
+	helper.AddArbitraryFileParts(500)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.BottleHelper.SetTempBottleRef(rootReg)
-	helper.CommandHelper.RunCommand("push", helper.BottleHelper.RegRef)
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.SetTempBottleRef(rootReg)
+	helper.RunCommand("push", helper.RegRef)
 
-	assert.NoError(t, helper.CheckRegForBottle(helper.BottleHelper.RegRef, ""))
+	assert.NoError(t, helper.CheckRegForBottle(helper.RegRef, ""))
 }
 
 func Test_Functional_VeryCompressed(t *testing.T) {
@@ -128,15 +128,15 @@ func Test_Functional_VeryCompressed(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.BottleHelper.AddArbitraryFileParts(10)
+	helper.AddArbitraryFileParts(10)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.BottleHelper.SetTempBottleRef(rootReg)
-	helper.CommandHelper.RunCommand("push", helper.BottleHelper.RegRef, "-z=max")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.SetTempBottleRef(rootReg)
+	helper.RunCommand("push", helper.RegRef, "-z=max")
 
-	assert.NoError(t, helper.CheckRegForBottle(helper.BottleHelper.RegRef, ""))
+	assert.NoError(t, helper.CheckRegForBottle(helper.RegRef, ""))
 }
 
 func Test_Functional_LittleCompressed(t *testing.T) {
@@ -154,15 +154,15 @@ func Test_Functional_LittleCompressed(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.BottleHelper.AddArbitraryFileParts(10)
+	helper.AddArbitraryFileParts(10)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.BottleHelper.SetTempBottleRef(rootReg)
-	helper.CommandHelper.RunCommand("push", helper.BottleHelper.RegRef, "-z=min")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.SetTempBottleRef(rootReg)
+	helper.RunCommand("push", helper.RegRef, "-z=min")
 
-	assert.NoError(t, helper.CheckRegForBottle(helper.BottleHelper.RegRef, ""))
+	assert.NoError(t, helper.CheckRegForBottle(helper.RegRef, ""))
 }
 
 func Test_Functional_PushWriteBottleID(t *testing.T) {
@@ -180,18 +180,18 @@ func Test_Functional_PushWriteBottleID(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.BottleHelper.AddArbitraryFileParts(4)
+	helper.AddArbitraryFileParts(4)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.BottleHelper.SetTempBottleRef(rootReg)
-	bottleIDFile := filepath.Join(helper.BottleHelper.RootDir, ".dt", "bottleid")
-	helper.CommandHelper.RunCommand("push", helper.BottleHelper.RegRef)
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.SetTempBottleRef(rootReg)
+	bottleIDFile := filepath.Join(helper.RootDir, ".dt", "bottleid")
+	helper.RunCommand("push", helper.RegRef)
 
-	err := helper.CheckRegForBottle(helper.BottleHelper.RegRef, "")
+	err := helper.CheckRegForBottle(helper.RegRef, "")
 	assert.NoError(t, err)
-	helper.BottleHelper.Load()
+	helper.Load()
 	helper.VerifyBottleIDFile(bottleIDFile)
 }
 
@@ -217,16 +217,16 @@ func Test_Functional_Push_WithTelemetry(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.BottleHelper.AddArbitraryFileParts(1)
+	helper.AddArbitraryFileParts(1)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
+	helper.SetBottleDir(helper.RootDir)
 
-	helper.CommandHelper.RunCommand("init")
-	helper.BottleHelper.SetTempBottleRef(rootReg)
+	helper.RunCommand("init")
+	helper.SetTempBottleRef(rootReg)
 
 	// add the telem host to the config
-	helper.CommandHelper.RunCommand("push", helper.BottleHelper.RegRef, "--telemetry", telemetryURL)
+	helper.RunCommand("push", helper.RegRef, "--telemetry", telemetryURL)
 }
 
 func Test_Functional_Push_DeprecatesWithTelemetry(t *testing.T) {
@@ -251,31 +251,31 @@ func Test_Functional_Push_DeprecatesWithTelemetry(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.BottleHelper.AddArbitraryFileParts(1)
+	helper.AddArbitraryFileParts(1)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
+	helper.SetBottleDir(helper.RootDir)
 
-	helper.CommandHelper.RunCommand("init")
-	helper.BottleHelper.SetTempBottleRef(rootReg)
+	helper.RunCommand("init")
+	helper.SetTempBottleRef(rootReg)
 
 	// add the telem host to the config
-	helper.CommandHelper.RunCommand("push", helper.BottleHelper.RegRef, "--telemetry", telemetryURL)
+	helper.RunCommand("push", helper.RegRef, "--telemetry", telemetryURL)
 
 	// save bottleID for comparison later
-	helper.BottleHelper.Load()
-	bottleID := helper.BottleHelper.Bottle.GetBottleID()
+	helper.Load()
+	bottleID := helper.Bottle.GetBottleID()
 
 	// add a part to the bottle
-	helper.BottleHelper.AddArbitraryFileParts(1)
+	helper.AddArbitraryFileParts(1)
 
 	// push the new bottle to deprecate the previous one
-	helper.CommandHelper.RunCommand("push", helper.BottleHelper.RegRef, "--telemetry", telemetryURL)
+	helper.RunCommand("push", helper.RegRef, "--telemetry", telemetryURL)
 
 	// assert that the previous bottle was deprecated
-	helper.BottleHelper.Load()
-	assert.Len(t, helper.BottleHelper.Bottle.Definition.Deprecates, 1)
+	helper.Load()
+	assert.Len(t, helper.Bottle.Definition.Deprecates, 1)
 
 	// assert that the bottleID is deprecated by the new bottle
-	assert.Equal(t, bottleID, helper.BottleHelper.Bottle.Definition.Deprecates[0])
+	assert.Equal(t, bottleID, helper.Bottle.Definition.Deprecates[0])
 }

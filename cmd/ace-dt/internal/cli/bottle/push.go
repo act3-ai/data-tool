@@ -9,7 +9,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	telemv1alpha1 "gitlab.com/act3-ai/asce/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	telemv1alpha2 "gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
+
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/flag"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
 	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
@@ -52,7 +53,7 @@ by passing the --no-deprecate flag.`,
 	// Add flag overrides function to override config with flags
 	action.Config.AddConfigOverride(func(ctx context.Context, c *v1alpha1.Configuration) error {
 		if action.Telemetry.URL != "" {
-			c.Telemetry = []telemv1alpha1.Location{
+			c.Telemetry = []telemv1alpha2.Location{
 				{URL: redact.SecretURL(action.Telemetry.URL)},
 			}
 		}
@@ -66,8 +67,9 @@ by passing the --no-deprecate flag.`,
 To push the bottle TESTSET to the registry REGISTRY/REPO/NAME:TAG:
 	ace-dt bottle push REGISTRY/REPO/NAME:TAG -d ./TESTSET
 
-To add a telemetry server, and send metadata after the push, first use ace-dt config:
-	ace-dt config --telemetry.url host.url.com
+To add a telemetry server, and send metadata after the push, set the telemetry URL and username (see ace-dt config --help):
+	export ACE_DT_TELEMETRY_URL=http://127.0.0.1:8100
+	export ACE_DT_TELEMETRY_USERNAME=exampleuser
 Then push like normal:
 	ace-dt bottle push REGISTRY/REPO/NAME:TAG -d ./TESTSET
 

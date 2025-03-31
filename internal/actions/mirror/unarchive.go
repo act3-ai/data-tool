@@ -7,6 +7,7 @@ import (
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
 
+	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
@@ -30,26 +31,30 @@ type Unarchive struct {
 
 	// Scatter images filtered by labels in annotations
 	Selectors []string
+
+	// Reference is an optional reference to tag the image in disk storage. If not set, "latest" will be used.
+	Reference string
 }
 
 // Run runs the mirror unarchive action.
-func (action *Unarchive) Run(ctx context.Context, sourceFile, mappingSpec, reference string) error {
+func (action *Unarchive) Run(ctx context.Context, sourceFile, mappingSpec string) error {
 	log := logger.FromContext(ctx)
 	cfg := action.Config.Get(ctx)
 
-	// create the oci.Store
-	store, err := oci.NewWithContext(ctx, cfg.CachePath)
+	// must enable with predecessors before deserialize, if we want scatter to utilize it later
+	storage, err := oci.NewStorage(cfg.CachePath)
 	if err != nil {
-		return fmt.Errorf("error creating oci store: %w", err)
+		return fmt.Errorf("initializing cache storage: %w", err)
 	}
+	gstorage := cache.NewPredecessorCacher(storage)
 
 	rootUI := ui.FromContextOrNoop(ctx)
 
 	// create the deserialize options
 	deserializeOptions := mirror.DeserializeOptions{
-		DestTarget: store,
+		DestStorage: gstorage,
 		DestTargetReference: registry.Reference{
-			Reference: reference,
+			Reference: action.Reference,
 		},
 		SourceFile: sourceFile,
 		BufferSize: action.BufferSize,
@@ -60,17 +65,18 @@ func (action *Unarchive) Run(ctx context.Context, sourceFile, mappingSpec, refer
 	}
 
 	// run deserialize
-	if err := mirror.Deserialize(ctx, deserializeOptions); err != nil {
-		return err
+	idxDesc, err := mirror.Deserialize(ctx, deserializeOptions)
+	if err != nil {
+		return fmt.Errorf("deserializing: %w", err)
 	}
 
 	// create the scatter options
 	scatterOptions := mirror.ScatterOptions{
 		SubsetFile: action.SubsetFile,
-		Src:        store,
-		SrcString:  cfg.CachePath,
-		SrcReference: registry.Reference{
-			Reference: reference,
+		Source:     gstorage,
+		SourceDesc: idxDesc,
+		SourceReference: registry.Reference{
+			Reference: action.Reference,
 		},
 		MappingSpec:    mappingSpec,
 		Selectors:      action.Selectors,
@@ -78,7 +84,7 @@ func (action *Unarchive) Run(ctx context.Context, sourceFile, mappingSpec, refer
 		RootUI:         rootUI,
 		DryRun:         action.DryRun,
 		Recursive:      action.Recursive,
-		RepoFunc:       action.Config.Repository,
+		Targeter:       action.Config,
 	}
 
 	// run scatter

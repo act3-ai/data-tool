@@ -4,6 +4,7 @@ package encoding
 import (
 	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"path"
 	"time"
 
+	"github.com/klauspost/compress/zstd"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content"
@@ -20,12 +22,18 @@ import (
 
 const blobsDir = "blobs"
 
+// EncodedWriteCloser allows writing to file in tar format while still being able to close the underlying zstd or gzip writer.
+type EncodedWriteCloser struct {
+	*tar.Writer
+	closer io.WriteCloser
+}
+
 // when reading the checkpoint from file we add digests to the "existing" map until we reach a offset that is higher than action.ResumeFromOffset
 
 // OCILayoutSerializer handles writing of different types of data to the tar writer.
 type OCILayoutSerializer struct {
 	w          io.Writer
-	tw         *tar.Writer
+	tw         EncodedWriteCloser
 	blobsDir   bool                          // blobsDir created
 	algorithms map[digest.Algorithm]struct{} // algorithms that have already been created in the blobs directory in the tar archive
 
@@ -36,28 +44,85 @@ type OCILayoutSerializer struct {
 }
 
 // NewOCILayoutSerializer creates a new serializer.
-func NewOCILayoutSerializer(dest io.Writer) *OCILayoutSerializer {
-	return &OCILayoutSerializer{
+func NewOCILayoutSerializer(dest io.Writer, compression string) (*OCILayoutSerializer, error) {
+
+	serializer := &OCILayoutSerializer{
 		w:             dest,
-		tw:            tar.NewWriter(dest),
 		blobsDir:      false,
 		algorithms:    make(map[digest.Algorithm]struct{}),
 		existingBlobs: make(map[digest.Digest]ocispec.Descriptor),
 	}
+	switch compression {
+	case "":
+		// serializer.tw = tar.NewWriter(dest)
+		serializer.tw = EncodedWriteCloser{
+			tar.NewWriter(dest),
+			nil,
+		}
+	case "zstd":
+		zw, err := zstd.NewWriter(dest, zstd.WithEncoderLevel(zstd.SpeedBestCompression))
+		if err != nil {
+			return nil, fmt.Errorf("creating zstd writer: %w", err)
+		}
+		serializer.tw = EncodedWriteCloser{
+			tar.NewWriter(zw),
+			zw,
+		}
+	case "gzip":
+		gz, err := gzip.NewWriterLevel(dest, gzip.BestCompression)
+		if err != nil {
+			return nil, fmt.Errorf("creating gzip writer: %w", err)
+		}
+		serializer.tw = EncodedWriteCloser{
+			tar.NewWriter(gz),
+			gz,
+		}
+		// serializer.gz = gz
+	default:
+		serializer.tw = EncodedWriteCloser{
+			tar.NewWriter(dest),
+			nil,
+		}
+	}
+	return serializer, nil
 }
 
 // NewOCILayoutSerializerWithLedger serialized data to dest and writes the ledger to ledger.
-func NewOCILayoutSerializerWithLedger(dest, ledger io.Writer) *OCILayoutSerializer {
+func NewOCILayoutSerializerWithLedger(dest, ledger io.Writer, compression string) (*OCILayoutSerializer, error) {
 	cw := new(ioutil.WriterCounter)
-	serializer := NewOCILayoutSerializer(io.MultiWriter(dest, cw))
+	serializer, err := NewOCILayoutSerializer(io.MultiWriter(dest, cw), compression)
+	if err != nil {
+		return nil, fmt.Errorf("creating new serializer: %w", err)
+	}
 	serializer.count = cw
 	serializer.ledger = json.NewEncoder(ledger)
-	return serializer
+	return serializer, nil
 }
 
 // Close will close the serializer.
 func (ow *OCILayoutSerializer) Close() error {
-	return ow.tw.Close()
+	// we want to close the tar writer and then the zstd writer
+	err := ow.tw.Close()
+	if err != nil {
+		return fmt.Errorf("closing tar writer: %w", err)
+	}
+	if ow.tw.closer != nil {
+		if err = ow.tw.closer.Close(); err != nil {
+			return fmt.Errorf("failed to close encoded writer: %w", err)
+		}
+	}
+	return nil
+}
+
+// Flush finishes writing the current pending data.
+func (ow *OCILayoutSerializer) Flush() error {
+	// we want to flush the tar writer and then the compression writer (if exists)
+	err := ow.tw.Flush()
+	if err != nil {
+		return fmt.Errorf("flushing tar writer: %w", err)
+	}
+
+	return nil
 }
 
 // SaveOCILayout write the OCI layout file to the tar stream.
@@ -107,6 +172,15 @@ func (ow *OCILayoutSerializer) SaveIndex(index ocispec.Index) error {
 	return ow.writeFileBytes(ocispec.ImageIndexFile, data)
 }
 
+// SaveManifestJSON writes out the top level manifest.json file.
+func (ow *OCILayoutSerializer) SaveManifestJSON(mj ManifestJSON) error {
+	data, err := json.MarshalIndent(mj.Manifests, "", "  ")
+	if err != nil {
+		return err
+	}
+	return ow.writeFileBytes("manifest.json", data)
+}
+
 // SkipBlob tells the serializer to never write a blob with the given digest.
 func (ow *OCILayoutSerializer) SkipBlob(desc ocispec.Descriptor) {
 	ow.existingBlobs[desc.Digest] = desc
@@ -150,7 +224,7 @@ func (ow *OCILayoutSerializer) writeBlob(desc ocispec.Descriptor, r io.Reader) e
 	// Handle the checkpoint ledger
 	if ow.count != nil && ow.ledger != nil {
 		// might not be necessary
-		if err := ow.tw.Flush(); err != nil {
+		if err := ow.Flush(); err != nil {
 			return fmt.Errorf("ledger flushing tar: %w", err)
 		}
 

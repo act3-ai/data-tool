@@ -8,13 +8,15 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
+	"time"
 
 	"github.com/adrg/xdg"
+	"golang.org/x/net/proxy"
 	"oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
@@ -24,17 +26,19 @@ import (
 	"gitlab.com/act3-ai/asce/data/tool/internal/httplogger"
 	regcache "gitlab.com/act3-ai/asce/data/tool/internal/registry/cache"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // CreateRepoWithCustomConfig creates a remote.Repository object and sets it up based off
 // the custom parameters defined in registryConfig (inside ace-dt config file).
 func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig, ref string,
-	cache *regcache.RegistryCache, userAgent string, credStore credentials.Store,
-) (registry.Repository, error) {
-	// parse the reference
+	cache *regcache.RegistryCache, userAgent string, credStore credentials.Store) (registry.Repository, error) {
+	log := logger.FromContext(ctx)
+
+	// parse the original reference, without endpoint resolution
 	parsedRef, err := registry.ParseReference(ref)
 	if err != nil {
-		return nil, fmt.Errorf("invalid reference: %w", err)
+		return nil, fmt.Errorf("invalid reference %s: %w", ref, err)
 	}
 
 	// get the registry config and its existence
@@ -42,34 +46,28 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 	r := rc.Configs[parsedRef.Registry]
 
 	// does the registry exist in our cache?
-	reg, ok := cache.Exists(parsedRef.Registry)
+	cachedReg, ok := cache.Exists(parsedRef.Registry)
 	if ok {
 		// we need to pass reg to some repo function that handles the rest of the bits
-		return createRegistryRepository(ctx, reg, parsedRef)
+		if cachedReg.RemoteRegistry.Reference.Registry != parsedRef.Registry {
+			log.InfoContext(ctx, "using alternate endpoint defined by registry configuration", "original", parsedRef.Registry, "alternate", cachedReg.RemoteRegistry.Reference.Registry)
+		}
+		return createRegistryRepository(ctx, cachedReg, parsedRef)
 	}
 
-	fullRegistryPath := "https://" + parsedRef.Registry
-	var endpoints []string
-	if len(r.Endpoints) != 0 {
-		endpoints = append(endpoints, r.Endpoints...)
-	}
-	endpoints = append(endpoints, fullRegistryPath)
-
-	// handle endpoints
-	// TODO support more than first endpoint when registry.Ping is better supported by registries (nvcr.io and quay.io)
-	endpoint := endpoints[0]
-
-	// get the http client config
-	endpointURL, err := url.Parse(endpoint)
+	endpointURL, err := ResolveEndpoint(rc, parsedRef)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing endpoint URL: %w", err)
+		return nil, fmt.Errorf("resolving endpoint: %w", err) // only potential failure is url parsing
+	}
+	if endpointURL.Host != parsedRef.Registry {
+		log.InfoContext(ctx, "using alternate endpoint defined by registry configuration", "original", parsedRef.Registry, "alternate", endpointURL.Host)
 	}
 
 	var referrersType string
 	var endpointTLS *v1alpha1.TLS
 
 	// get the endpoint's config
-	ecfg, ok := rc.EndpointConfig[endpoint]
+	ecfg, ok := rc.EndpointConfig[endpointURL.String()]
 	if ok {
 		referrersType = ecfg.ReferrersType
 		endpointTLS = ecfg.TLS
@@ -103,19 +101,32 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 	}
 
 	// add the registry to the cache
-	cachedReg := regcache.Registry{
+	newReg := regcache.Registry{
 		RemoteRegistry: endpointReg,
 		ReferrersType:  referrersType,
 		RewritePull:    r.RewritePull,
 	}
-	cache.AddRegistryToCache(parsedRef.Registry, cachedReg)
-	return createRegistryRepository(ctx, cachedReg, parsedRef)
+	cache.AddRegistryToCache(parsedRef.Registry, newReg)
+	return createRegistryRepository(ctx, newReg, parsedRef)
 }
 
-// if a nil TLS is passed, return a client with a logging transport (if ACE_DT_HTTP_LOG is set) wrapped in a retry transport.
+// if a nil TLS is passed, return a client with a logging transport wrapped in a retry transport.
 // if a TLS config exists, search for TLS certs and append to client.
 func newHTTPClientWithOps(cfg *v1alpha1.TLS, hostName, customCertPath string) (*http.Client, error) {
-	transport := http.DefaultTransport
+	nd := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	// defaultTransport is a new instance of the default transport
+	var defaultTransport = &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           nd.DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
 
 	var certLocation string
 	if customCertPath == "" {
@@ -128,29 +139,35 @@ func newHTTPClientWithOps(cfg *v1alpha1.TLS, hostName, customCertPath string) (*
 		certLocation = customCertPath
 	}
 
-	if certLocation != "" {
-		ssl, err := fetchCertsFromLocation(certLocation)
-		if err != nil {
-			return nil, err
-		}
-		if cfg != nil {
-			ssl.InsecureSkipVerify = cfg.InsecureSkipVerify
-		}
-		transport = &http.Transport{
-			TLSClientConfig: ssl,
+	ssl, err := fetchCertsFromLocation(certLocation)
+	if err != nil {
+		return nil, err
+	}
+	if cfg != nil {
+		ssl.InsecureSkipVerify = cfg.InsecureSkipVerify
+	}
+
+	defaultTransport.TLSClientConfig = ssl
+
+	// get the proxy from the environment
+	dialer := proxy.FromEnvironment()
+
+	if dialer != nil {
+		defaultTransport.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+			return dialer.Dial(network, addr)
 		}
 	}
 
 	// log requests to the logger (if verbosity is high enough)
-	transport = &httplogger.LoggingTransport{
-		Base: transport,
+	lt := &httplogger.LoggingTransport{
+		Base: defaultTransport,
 	}
 
 	// we still want retry
-	transport = retry.NewTransport(transport)
+	rt := retry.NewTransport(lt)
 
 	return &http.Client{
-		Transport: transport,
+		Transport: rt,
 	}, nil
 }
 
@@ -185,29 +202,40 @@ func fetchCertsFromLocation(certDir string) (*tls.Config, error) {
 
 	tlscfg := &tls.Config{}
 
-	// Load client cert
-	cert, err := tls.LoadX509KeyPair(certFilePath, keyFilePath)
+	// add system level certs
+	caCertPool, err := x509.SystemCertPool()
 	if err != nil {
-		if !errors.Is(err, fs.ErrNotExist) {
-			return nil, fmt.Errorf("error reading the certificate and key files: %w", err)
-		}
-	}
-	tlscfg.Certificates = []tls.Certificate{cert}
-
-	// Load CA cert
-	caCert, err := os.ReadFile(caFilePath)
-	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			return tlscfg, nil
-		}
-		return nil, fmt.Errorf("error reading the caFile: %w", err)
+		return nil, fmt.Errorf("fetching system certs: %w", err)
 	}
 
-	// Only trust this CA for this host
-	caCertPool := x509.NewCertPool()
-	caCertPool.AppendCertsFromPEM(caCert)
+	if certDir != "" {
+
+		// Load client cert
+		cert, err := tls.LoadX509KeyPair(certFilePath, keyFilePath)
+		if err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				return nil, fmt.Errorf("error reading the certificate and key files: %w", err)
+			}
+		}
+		tlscfg.Certificates = []tls.Certificate{cert}
+
+		// Load CA cert
+		caCert, err := os.ReadFile(caFilePath)
+		if err != nil {
+			if errors.Is(err, fs.ErrNotExist) {
+				return tlscfg, nil
+			}
+			return nil, fmt.Errorf("error reading the caFile: %w", err)
+		}
+
+		// caCertPool := x509.NewCertPool()
+		// Only trust this CA for this host
+		caCertPool.AppendCertsFromPEM(caCert)
+
+	}
 
 	tlscfg.RootCAs = caCertPool
+
 	return tlscfg, nil
 }
 

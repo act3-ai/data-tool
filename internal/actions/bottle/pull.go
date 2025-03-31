@@ -27,7 +27,7 @@ func (action *Pull) Run(ctx context.Context, bottleRef string) error {
 	rootUI := ui.FromContextOrNoop(ctx)
 
 	cfg := action.Config.Get(ctx)
-	telemAdapt := telem.NewAdapter(cfg.Telemetry, cfg.TelemetryUserName)
+	telemAdapt := telem.NewAdapter(ctx, cfg.Telemetry, cfg.TelemetryUserName, telem.WithCredStore(action.Config.CredStore()))
 
 	log.InfoContext(ctx, "resolving reference with telemetry", "ref", bottleRef)
 	transferOpts := tbottle.TransferOptions{

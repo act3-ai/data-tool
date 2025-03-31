@@ -12,10 +12,11 @@ import (
 	"testing"
 
 	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
+	"oras.land/oras-go/v2/content/oci"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 	"gitlab.com/act3-ai/asce/go-common/pkg/test"
@@ -75,26 +76,25 @@ func (c *CommandHelper) PruneCache() {
 // PopulateCache dumps files into the file cache.
 func (c *CommandHelper) PopulateCache(num int) {
 	c.t.Helper()
-	cacheManager := cache.NewBottleFileCache(c.config.CachePath)
+	cache, err := oci.NewStorage(c.config.CachePath)
+	require.NoError(c.t, err)
 
 	rng := rand.New(c.r)
 
+	ctx := context.TODO() // Push throws away the context
 	data := make([]byte, 1000)
 	for i := 0; i < num; i++ {
 		_, err := rng.Read(data)
 		require.NoError(c.t, err)
 
-		d := digest.FromBytes(data)
-		_, err = cacheManager.CreateMote(d, "bogus", int64(len(data)))
+		desc := ocispec.Descriptor{
+			Digest:    digest.FromBytes(data),
+			MediaType: "application/octet-stream", // irrelevant
+			Size:      int64(len(data)),
+		}
+
+		err = cache.Push(ctx, desc, bytes.NewReader(data))
 		require.NoError(c.t, err)
-		// _, err = mote.Write(data)
-		// require.NoError(c.t, err)
-		// require.NoError(c.t, mote.Close())
-		writer, err := cacheManager.MoteWriter(d)
-		require.NoError(c.t, err)
-		_, err = writer.Write(data)
-		require.NoError(c.t, err)
-		require.NoError(c.t, writer.Close())
 	}
 }
 

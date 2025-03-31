@@ -1,10 +1,12 @@
-/bin
+/bin/*
+!/bin/release.sh
 /tool
 /coverage*.*
 /report.*
 /profile.cov
 /integration
 /site
+artifacts.txt
 
 ## Ignore logfiles
 /log

@@ -125,7 +125,7 @@ func newWheel(filename string) (*wheelDistribution, error) {
 	name := strings.TrimSuffix(filename, ".whl")
 	parts := strings.Split(name, "-")
 	n := len(parts)
-	if !(n == 5 || n == 6) {
+	if (n != 5) && (n != 6) {
 		return nil, fmt.Errorf("wheel %s has %d parts but should have 5 or 6: %w", filename, n, ErrInvalidPythonDistributionFilename)
 	}
 

@@ -20,12 +20,14 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	telemv1alpha1 "gitlab.com/act3-ai/asce/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	telemv1alpha2 "gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
+
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/git"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/mirror"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/oci"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/pypi"
+	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/sbom"
 	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/security"
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
@@ -79,6 +81,7 @@ The first configuration file present is used.  Others are ignored.
 		oci.NewOciCmd(action),
 		git.NewGitCmd(action),
 		security.NewSecurityCmd(action),
+		sbom.NewSBOMCmd(action),
 		newRunRecipe(),
 	)
 
@@ -155,7 +158,7 @@ func envOverrides(ctx context.Context, c *v1alpha1.Configuration) error {
 	name = "ACE_DT_TELEMETRY_URL"
 	if value, exists := os.LookupEnv(name); exists {
 		log.InfoContext(ctx, "Using environment variable", "name", name)
-		c.Telemetry = []telemv1alpha1.Location{
+		c.Telemetry = []telemv1alpha2.Location{
 			{URL: redact.SecretURL(value)},
 		}
 	}

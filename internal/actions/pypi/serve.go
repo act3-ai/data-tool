@@ -5,9 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
-
 	"gitlab.com/act3-ai/asce/go-common/pkg/httputil"
+	"gitlab.com/act3-ai/asce/go-common/pkg/httputil/promhttputil"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
@@ -33,20 +32,17 @@ func (action *Serve) Run(ctx context.Context, repository string) error {
 		return err
 	}
 
-	router := chi.NewRouter()
+	// router := chi.NewRouter()
+	mux := http.NewServeMux()
 
-	// add some middleware
-	router.Use(
-		// NOTE from a security perspective sharing your server version is considered a security issue by some, but not by me.
-		// The troubleshooting value out weights the security concerns.
+	handler := httputil.WrapHandler(mux,
 		httputil.ServerHeaderMiddleware(action.Config.UserAgent()),
-
 		httputil.TracingMiddleware,
 		httputil.LoggingMiddleware(logger.FromContext(ctx)),
-		httputil.PrometheusMiddleware,
+		promhttputil.PrometheusMiddleware,
 	)
 
-	myApp.Initialize(router)
+	myApp.Initialize(handler)
 
 	// graceful shutdown adapted from https://github.com/gorilla/mux#graceful-shutdown
 
@@ -56,7 +52,7 @@ func (action *Serve) Run(ctx context.Context, repository string) error {
 		WriteTimeout: time.Second * 15,
 		ReadTimeout:  time.Second * 15,
 		IdleTimeout:  time.Second * 60,
-		Handler:      router,
+		Handler:      handler,
 	}
 
 	return httputil.Serve(ctx, srv, 10*time.Second)

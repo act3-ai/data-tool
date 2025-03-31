@@ -17,11 +17,11 @@ func Test_Functional_Init(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.BottleHelper.AddArbitraryFileParts(8)
+	helper.AddArbitraryFileParts(8)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
 }
 
 func Test_Functional_Init_Force(t *testing.T) {
@@ -34,12 +34,12 @@ func Test_Functional_Init_Force(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.BottleHelper.AddArbitraryFileParts(8)
+	helper.AddArbitraryFileParts(8)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.CommandHelper.RunCommand("init", "--force")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.RunCommand("init", "--force")
 }
 
 func Test_Functional_Double_Init_Fail(t *testing.T) {
@@ -52,12 +52,12 @@ func Test_Functional_Double_Init_Fail(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.BottleHelper.AddArbitraryFileParts(8)
+	helper.AddArbitraryFileParts(8)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
 	// second init attempt fails
-	err := helper.CommandHelper.RunCommandWithError("init")
+	err := helper.RunCommandWithError("init")
 	assert.ErrorContains(t, err, "could not create bottle config at path")
 }

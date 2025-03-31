@@ -1,6 +1,8 @@
 package cmd
 
-import "errors"
+import (
+	"errors"
+)
 
 // ErrLFSNotEnabled indicates that no LFS files were found.
 var ErrLFSNotEnabled = errors.New("repository does not contain git LFS files")
@@ -21,3 +23,19 @@ var ErrEmptyBundle = errors.New("refusing to create empty bundle")
 var ErrNotAncestor = errors.New("parent is not an ancestor of child")
 
 var errInsufficientGitVersion = errors.New("detected git version does not meet minimum requirements")
+
+// BadObjectError indicates a git object does not exist.
+type BadObjectError struct {
+	err    error
+	object Commit
+}
+
+// Error returns the original error.
+func (e *BadObjectError) Error() string {
+	return e.err.Error()
+}
+
+// Object returns the bad object hash, as extracted from the original error.
+func (e *BadObjectError) Object() Commit {
+	return e.object
+}

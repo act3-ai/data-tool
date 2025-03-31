@@ -15,20 +15,19 @@ import (
 	"strings"
 	"testing"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
-	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
-
 	"github.com/google/go-containerregistry/pkg/registry"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
+	orasreg "oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 
+	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
-	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	tbtl "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
 	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 	tlog "gitlab.com/act3-ai/asce/go-common/pkg/test"
@@ -53,6 +52,11 @@ func (s *SrcStoreInfo) GraphTarget(ctx context.Context, ref string) (oras.GraphT
 	return s.Store.Target, nil
 }
 
+// ParseEndpointReference implements registry.EndpointParser.
+func (s *SrcStoreInfo) ParseEndpointReference(reference string) (orasreg.Reference, error) {
+	return orasreg.ParseReference(reference)
+}
+
 // ReadOnlyGraphTarget implements registry.GraphTargeter
 func (s *SrcStoreInfo) ReadOnlyGraphTarget(ctx context.Context, ref string) (oras.ReadOnlyGraphTarget, error) {
 	return s.Store.Target, nil
@@ -67,11 +71,11 @@ type DestStoreInfo struct {
 
 // GraphTarget implements registry.GraphTargeter
 func (d *DestStoreInfo) GraphTarget(ctx context.Context, ref string) (oras.GraphTarget, error) {
-	switch {
-	case ref == srcInfo.Ref:
+	switch ref {
+	case srcInfo.Ref:
 		// this case hits when we discover our virtual parts in another target
 		return d.VirtualTarget, nil
-	case ref == destInfo.Ref:
+	case destInfo.Ref:
 		// this case hits when we're simply connecting to the destination target
 		return d.Store.Target, nil
 	default:
@@ -79,13 +83,18 @@ func (d *DestStoreInfo) GraphTarget(ctx context.Context, ref string) (oras.Graph
 	}
 }
 
+// ParseEndpointReference implements registry.EndpointParser.
+func (d *DestStoreInfo) ParseEndpointReference(reference string) (orasreg.Reference, error) {
+	return orasreg.ParseReference(reference)
+}
+
 // ReadOnlyGraphTarget implements registry.GraphTargeter
 func (d *DestStoreInfo) ReadOnlyGraphTarget(ctx context.Context, ref string) (oras.ReadOnlyGraphTarget, error) {
-	switch {
-	case ref == srcInfo.Ref:
+	switch ref {
+	case srcInfo.Ref:
 		// this case hits when we discover our virtual parts in another target
 		return d.VirtualTarget, nil
-	case ref == destInfo.Ref:
+	case destInfo.Ref:
 		// this case hits when we're simply connecting to the destination target
 		return d.Store.Target, nil
 	default:
@@ -205,10 +214,7 @@ func push(t *testing.T, ctx context.Context, btlDir string, destInfo *DestStoreI
 		},
 	}
 
-	store := storage.NewDataStore(btl)
-	defer store.Close()
-
-	if err := tbtl.PushBottle(ctx, btl, store, destInfo, destInfo.Ref, pushOpts); err != nil {
+	if err := tbtl.PushBottle(ctx, btl, destInfo, destInfo.Ref, pushOpts); err != nil {
 		t.Fatalf("pushing bottle to source repository: error = %v", err)
 	}
 }

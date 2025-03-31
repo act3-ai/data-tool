@@ -68,7 +68,12 @@ func (bt *ByteTrackerFilter) Format(short bool) string {
 
 // FormatCompleted returns the final formatted completion message.
 func (bt *ByteTrackerFilter) FormatCompleted(dt time.Duration) string {
-	avgSpeed := float64(bt.complete) / float64(dt.Milliseconds())
+	t := float64(dt.Milliseconds())
+	if t == 0 {
+		// avoid panic if we're too fast
+		t = float64(dt.Microseconds() * 1000)
+	}
+	avgSpeed := float64(bt.complete) / t
 	return fmt.Sprintf("%s in %v (%s/s)",
 		print.Bytes(bt.complete),
 		dt.Round(time.Millisecond),

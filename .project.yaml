@@ -16,7 +16,7 @@ meta:
 blueprints:
   - ref: https://git.act3-ace.com/devsecops/blueprints/act3-base.git@v0.0.7
     inputs:
-      defaultAssignee: cgrund
+      defaultAssignee: njoslin
       envPrefix: ACE_DT
       executableName: ace-dt
       groupName: config.dt.act3-ace.ai

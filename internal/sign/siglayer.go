@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	SignatureTagSuffix string = "sig" // SignatureTagSuffix is the suffix for a tag, follows the digest of the signed manifest
+	// SignatureTagSuffix is the suffix for a tag, follows the digest of the signed manifest.
+	SignatureTagSuffix string = "sig"
 )
 
 // ErrNoSignatureAnnotation indicates that a signature was not found in an annotation.

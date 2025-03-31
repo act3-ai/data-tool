@@ -171,7 +171,7 @@ func TestRequirement_String(t *testing.T) {
 			req: Requirement{
 				Name: "there",
 			},
-			want: `there`,
+			want: `there ; `,
 		},
 		{
 			name: "all",
@@ -185,7 +185,7 @@ func TestRequirement_String(t *testing.T) {
 					digest.Digest("sha256:42effe280b8ebfd389022aa65114e30407540ccb89b177d3fbc9a4f177c4bd5d"): {},
 				},
 			},
-			want: `brotli[x,y] ==1.0.9 ; platform_python_implementation == "CPython" and python_version >= "3.8" and python_version < "3.11" \
+			want: `brotli[x,y]==1.0.9 ; platform_python_implementation == "CPython" and python_version >= "3.8" and python_version < "3.11" \
 	--hash=sha256:12effe280b8ebfd389022aa65114e30407540ccb89b177d3fbc9a4f177c4bd5d \
 	--hash=sha256:42effe280b8ebfd389022aa65114e30407540ccb89b177d3fbc9a4f177c4bd5d`,
 		},

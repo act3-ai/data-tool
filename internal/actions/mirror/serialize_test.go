@@ -27,15 +27,6 @@ import (
 	"gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
 
-/*
-Serialize testing: what to cover
-
-test that all blobs are in tar file
-test checkpointing
-TODO test offset
-test destexist
-*/
-
 func TestSerializeRun(t *testing.T) {
 	defer leaktest.Check(t)() //nolint
 
@@ -96,38 +87,6 @@ func TestSerializeRun(t *testing.T) {
 
 		err = serialize.Run(ctx, ref, tf, nil, 0, bs, 90)
 		rne(err)
-
-		/*
-			// open the tar file
-			f, err := os.Open(tf)
-			rne(err)
-
-
-			// untar the created tar reader
-			tr := tar.NewReader(f)
-
-			// for each header, delete from the map
-			for {
-				hdr, err := tr.Next()
-				if errors.Is(err, io.EOF) {
-					break
-				}
-				// skip all directories
-				if hdr.FileInfo().IsDir() {
-					continue
-				}
-				dir, dig := path.Split(hdr.Name)
-				algo := path.Base(dir)
-				d := digest.NewDigestFromHex(algo, dig)
-				delete(layers, d)
-			}
-
-			// make sure all layers have been accounted for
-			// TODO go deeper into the sub manifest layers
-			if len(layers) != 0 {
-				rne(fmt.Errorf("error missing blob(s): %+v", layers))
-			}
-		*/
 	})
 
 	t.Run("checkpoint", func(t *testing.T) {

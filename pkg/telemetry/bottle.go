@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -18,14 +19,17 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/memory"
 	"oras.land/oras-go/v2/errdef"
+	"oras.land/oras-go/v2/registry/remote/credentials"
 
 	latest "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
 	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
-	telemv1alpha1 "gitlab.com/act3-ai/asce/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
-	"gitlab.com/act3-ai/asce/data/telemetry/pkg/client"
-	"gitlab.com/act3-ai/asce/data/telemetry/pkg/types"
+	telemv1alpha2 "gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
+	"gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/client"
+	"gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/oauth2/device"
+	"gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/types"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
 	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
@@ -46,22 +50,105 @@ type Adapter struct {
 	userName string
 
 	// cache holds bottle manifests and configs
-	cache *memory.Store
+	cache content.Storage
+
+	// credStore holds credentials used for oauth refresh tokens
+	credStore credentials.Store
+}
+
+// AdapterOption defines a functional option when initializing a telemetry adapter
+// for one or more telemetry clients.
+type AdapterOption func(adapter *Adapter)
+
+// WithCache overrides the default memory-based storage used for caching OCI manifests
+// and configs.
+func WithCache(storage content.Storage) AdapterOption {
+	return func(adapter *Adapter) {
+		adapter.cache = storage
+	}
+}
+
+// WithCredStore overrides the default memory-based credentials store for
+// discovering authorization refresh tokens.
+func WithCredStore(credStore credentials.Store) AdapterOption {
+	return func(adapter *Adapter) {
+		adapter.credStore = credStore
+	}
+}
+
+// promptFn implements device.AuthPromtFn.
+func promptFn(ctx context.Context, uri, userCode string) error {
+	rootUI := ui.FromContextOrNoop(ctx) // TODO: Noop is a bit fatal here...
+	rootUI.Info(fmt.Sprintf("On the device you would like to authenticate, please visit %s?user_code=%s", uri, userCode))
+	return nil
 }
 
 // NewAdapter creates the MultiClient for telemetry from the global configuration.
-func NewAdapter(hosts []telemv1alpha1.Location, userName string) *Adapter {
-	mc := client.NewMultiClientConfig(hosts)
-	urls := make([]string, len(hosts))
-	for i, loc := range hosts {
-		urls[i] = string(loc.URL)
-	}
-	return &Adapter{
-		client:   mc,
-		urls:     urls,
+func NewAdapter(ctx context.Context, hosts []telemv1alpha2.Location, userName string, opts ...AdapterOption) *Adapter {
+	log := logger.FromContext(ctx)
+
+	adapt := &Adapter{
+		urls:     make([]string, 0, len(hosts)),
 		userName: userName,
-		cache:    memory.New(),
 	}
+	for _, option := range opts {
+		option(adapt)
+	}
+
+	if adapt.cache == nil {
+		adapt.cache = memory.New()
+	}
+	if adapt.credStore == nil {
+		adapt.credStore = credentials.NewMemoryStore()
+	}
+
+	// deduplicate clients, slices are used since we don't expect many telemetry hosts
+	clients := make([]*http.Client, len(hosts))
+	telemClients := make([]client.Client, 0, len(hosts))
+	for i, host := range hosts {
+		hostURLStr := string(host.URL)
+		clients[i] = http.DefaultClient
+
+		if host.OAuth.Issuer != "" && host.OAuth.ClientID != "" {
+			// try to use an existing oauth client
+			var exists bool
+			for j := 0; j < i; j++ {
+				if hosts[j].OAuth.Issuer == host.OAuth.Issuer &&
+					hosts[j].OAuth.ClientID == host.OAuth.ClientID {
+					clients[i] = clients[j]
+					exists = true
+					break
+				}
+			}
+
+			if !exists {
+				issuerURL, err := url.Parse(host.OAuth.Issuer)
+				if err != nil {
+					log.ErrorContext(ctx, "parsing host oauth issuer", "host", hostURLStr, "issuer", host.OAuth.Issuer, "clientID", host.OAuth.ClientID, "error", err) //nolint:sloglint
+					goto CreateClient
+				}
+
+				authClient, err := device.NewOAuthClient(ctx, issuerURL, string(host.OAuth.ClientID), adapt.credStore, promptFn)
+				if err != nil {
+					log.ErrorContext(ctx, "initializing oauth client", "host", hostURLStr, "issuer", host.OAuth.Issuer, "clientID", host.OAuth.ClientID, "error", err) //nolint:sloglint
+					goto CreateClient
+				}
+				clients[i] = authClient
+			}
+		}
+
+	CreateClient:
+		sc, err := client.NewSingleClient(clients[i], hostURLStr, "")
+		if err != nil {
+			log.ErrorContext(ctx, "creating telemetry client", "server", hostURLStr)
+			continue
+		}
+		telemClients = append(telemClients, sc)
+		adapt.urls = append(adapt.urls, string(host.URL))
+	}
+
+	adapt.client = client.NewMultiClient(telemClients)
+	return adapt
 }
 
 // ResolveWithTelemetry resolves a bottle reference to an oras.GraphTarget and an OCI descriptor.
@@ -69,8 +156,7 @@ func NewAdapter(hosts []telemv1alpha1.Location, userName string) *Adapter {
 // Upon resolving a bottle reference, the bottle's version is validated for security purposes.
 // It is safe to provide a regular OCI reference, although telemetry will not be used.
 func (a *Adapter) ResolveWithTelemetry(ctx context.Context, reference string,
-	sourceTargeter reg.ReadOnlyGraphTargeter, transferOpts tbottle.TransferOptions,
-) (oras.ReadOnlyGraphTarget, ocispec.Descriptor, types.Event, error) {
+	sourceTargeter reg.ReadOnlyGraphTargeter, transferOpts tbottle.TransferOptions) (oras.ReadOnlyGraphTarget, ocispec.Descriptor, types.Event, error) {
 	// validate reference
 	r, err := ref.FromString(reference)
 	if err != nil {
@@ -259,8 +345,7 @@ func (a *Adapter) NewEvent(location string, rawManifest []byte, action types.Eve
 // resolveAndValidate resolves an OCI reference to an oras.ReadOnlyGraphTarget and a descriptor. It also validates the
 // bottle's version if the provided ref used to be the bottle scheme before it was resolved to an OCI reference.
 func (a *Adapter) resolveAndValidate(ctx context.Context, r ref.Ref, sourceTargeter reg.ReadOnlyGraphTargeter,
-	transferOpts tbottle.TransferOptions, validateVersion bool,
-) (oras.ReadOnlyGraphTarget, ocispec.Descriptor, error) {
+	transferOpts tbottle.TransferOptions, validateVersion bool) (oras.ReadOnlyGraphTarget, ocispec.Descriptor, error) {
 	src, desc, err := tbottle.Resolve(ctx, r.String(), sourceTargeter, transferOpts)
 	if err != nil {
 		return nil, ocispec.Descriptor{}, fmt.Errorf("resolving reference: %w", err)

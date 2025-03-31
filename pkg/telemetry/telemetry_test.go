@@ -19,7 +19,7 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 
 	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
-	telemv1alpha1 "gitlab.com/act3-ai/asce/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	telemv1alpha2 "gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
 	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
@@ -119,7 +119,7 @@ func ExamplePull_telemetry() {
 	config := conf.New()
 
 	telemUserName := "exampleUserName"
-	telemHosts := []telemv1alpha1.Location{
+	telemHosts := []telemv1alpha2.Location{
 		{
 			Name: "ace-telemetry",
 			URL:  "https://127.0.0.1:8100",
@@ -130,7 +130,7 @@ func ExamplePull_telemetry() {
 		conf.WithTelemetry(telemHosts, telemUserName),
 	)
 
-	telemAdapt := NewAdapter(telemHosts, telemUserName)
+	telemAdapt := NewAdapter(ctx, telemHosts, telemUserName)
 
 	// resolve bottle reference with telemetry
 	src, desc, event, err := telemAdapt.ResolveWithTelemetry(ctx, ociReference, config, tbottle.TransferOptions{})
@@ -144,7 +144,7 @@ func ExamplePull_telemetry() {
 	if err != nil {
 		panic(fmt.Sprintf("Bottle pull failed: %v\n", err))
 	}
-	fmt.Fprintf(os.Stdout, "Success") //nolint
+	fmt.Fprintf(os.Stdout, "Success")
 
 	// notify telemetry of pull event
 	_, err = telemAdapt.NotifyTelemetry(ctx, src, desc, pullDir, event)

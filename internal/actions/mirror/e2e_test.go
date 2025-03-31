@@ -127,7 +127,6 @@ func TestE2E_Smoke(t *testing.T) {
 		        },
 	*/
 	t.Logf(`Commands to help with debugging:\nmkdir "%[1]s/oci"; tar xvf "%[1]s/tape.tar" -C "%[1]s/oci"; ace-dt oci tree -d "%[1]s/oci"`, dir)
-	// TODO actually call oci tree and dump the output.
 
 	scatterSrc := u.Host + "/high/mirror:sync-1"
 	err = deserialize.Run(ctx, tape, scatterSrc)

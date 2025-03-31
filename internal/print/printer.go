@@ -217,8 +217,6 @@ func (pp prettyPrinter) printPredecessors(ctx context.Context, storage content.R
 }
 
 // entry returns a new printer that prints primary items.  Last must be true for the last item in the list.
-//
-//nolint:revive
 func (pp prettyPrinter) entry(last bool) prettyPrinter {
 	prefix := pp.prefix
 	if last {
@@ -233,7 +231,7 @@ func (pp prettyPrinter) entry(last bool) prettyPrinter {
 
 // info returns a new printer that prints info items.  Last must be true for the last item in the list.
 //
-//nolint:unused,revive
+//nolint:unused
 func (pp prettyPrinter) info(last bool) prettyPrinter {
 	prefix := pp.prefix
 	if last {
@@ -247,8 +245,6 @@ func (pp prettyPrinter) info(last bool) prettyPrinter {
 }
 
 // nest returns a new printer that prints nested one level deeper with the addition prefix appended.
-//
-//nolint:revive
 func (pp prettyPrinter) nest(prefix string) prettyPrinter {
 	pp.prefix = pp.prefixRest + prefix
 	pp.prefixRest += prefix
@@ -257,6 +253,8 @@ func (pp prettyPrinter) nest(prefix string) prettyPrinter {
 
 // processDescriptor determines the appropriate printing func by descriptor media type.
 // If storage implements content.PredecessorFinder then we also display predecessors.
+//
+//nolint:revive
 func (pp prettyPrinter) processDescriptor(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) (int64, error) {
 	// check for max depth
 	if pp.depth >= pp.Depth {
@@ -359,7 +357,7 @@ func (pp prettyPrinter) printImageIndex(ctx context.Context, fetcher content.Fet
 		sum += n
 	}
 
-	return sum, pp.nest(prefixLastInfo).printSummary(sum, desc)
+	return sum, pp.nest(prefixLastInfo).printSummary(sum)
 }
 
 // printImageManifest prints the image manifest and its parts.
@@ -427,7 +425,7 @@ func (pp prettyPrinter) printImageManifest(ctx context.Context, fetcher content.
 		sum += n
 	}
 
-	return sum, pp.nest(prefixLastInfo).printSummary(sum, desc)
+	return sum, pp.nest(prefixLastInfo).printSummary(sum)
 }
 
 func (pp prettyPrinter) printDescriptor(itemName string, desc ocispec.Descriptor) error {
@@ -463,7 +461,7 @@ func (pp prettyPrinter) printDescriptor(itemName string, desc ocispec.Descriptor
 		annos = formatAnnotations(desc.Annotations)
 	}
 
-	_, err := fmt.Fprintf(pp.out, "%s%s⟶[%6s] %s%s%s %s %s\n", pp.prefix, itemName, size, formatMediaType(desc.MediaType), artifactType, platform, dgst, annos)
+	_, err := fmt.Fprintf(pp.out, "%s%s[%6s] %s%s%s %s %s\n", pp.prefix, itemName, size, formatMediaType(desc.MediaType), artifactType, platform, dgst, annos)
 	return err
 }
 
@@ -477,7 +475,7 @@ func (pp prettyPrinter) printHeader(name string, annotations map[string]string) 
 	return err
 }
 
-func (pp prettyPrinter) printSummary(sum int64, desc ocispec.Descriptor) error {
+func (pp prettyPrinter) printSummary(sum int64) error {
 	_, err := fmt.Fprintf(pp.out, "%s%s total\n", pp.prefix, Bytes(sum))
 	return err
 }

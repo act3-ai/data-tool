@@ -43,9 +43,6 @@ func (action *PushDir) Run(ctx context.Context, dir, ref string) error {
 		return err
 	}
 
-	// TODO output the oci reference thats was pushed
-	// digest.Digest(fmt.Sprint(repo.Reference.String(), "@", indexDesc.Digest))
-
 	return nil
 }
 

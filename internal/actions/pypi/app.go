@@ -12,7 +12,6 @@ import (
 	"net/http"
 
 	"github.com/Masterminds/sprig/v3"
-	"github.com/go-chi/chi/v5"
 	"oras.land/oras-go/v2/registry"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/python"
@@ -59,11 +58,12 @@ func NewApp(log *slog.Logger, repo registry.Repository, repoRef, userAgent, vers
 }
 
 // Initialize the routes.
-func (a *App) Initialize(router chi.Router) {
-	router.Get("/", httputil.RootHandler(a.handleAbout).ServeHTTP)
-	router.Get("/simple/", httputil.RootHandler(a.handleIndex).ServeHTTP)
-	router.Get("/simple/{project}/", func(w http.ResponseWriter, r *http.Request) {
-		project := chi.URLParam(r, "project")
+func (a *App) Initialize(handler httputil.Router) {
+	handler.Handle("GET /", httputil.RootHandler(a.handleAbout))
+	handler.Handle("GET /simple/", httputil.RootHandler(a.handleIndex))
+
+	handler.Handle("GET /simple/{project}/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		project := r.PathValue("project")
 		norm := python.Normalize(project)
 		if norm == project {
 			httputil.RootHandler(a.handleProject).ServeHTTP(w, r)
@@ -73,22 +73,21 @@ func (a *App) Initialize(router chi.Router) {
 			w.Header().Set("Location", "../"+norm+"/")
 			w.WriteHeader(http.StatusMovedPermanently)
 		}
-	})
-	router.Get("/simple/{project}/{filename}", httputil.RootHandler(a.handleFile).ServeHTTP)
+	}))
+	handler.Handle("GET /simple/{project}/{filename}", httputil.RootHandler(a.handleFile))
 
-	router.Get("/simple", func(w http.ResponseWriter, r *http.Request) {
+	handler.Handle("GET /simple", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// http.Redirect(w, r, "/simple/", http.StatusMovedPermanently)
 		w.Header().Set("Location", "simple/")
 		w.WriteHeader(http.StatusMovedPermanently)
-	})
+	}))
 
-	router.Get("/simple/{project}", func(w http.ResponseWriter, r *http.Request) {
-		project := chi.URLParam(r, "project")
+	handler.Handle("GET /simple/{project}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		project := r.PathValue("project")
 		// http.Redirect(w, r, "/simple/"+project+"/", http.StatusMovedPermanently)
 		w.Header().Set("Location", project+"/")
 		w.WriteHeader(http.StatusMovedPermanently)
-	})
-
+	}))
 	// middleware.GetHead might be useful on the files handler
 }
 

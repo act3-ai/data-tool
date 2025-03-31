@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	oras "oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -19,9 +20,13 @@ import (
 	"oras.land/oras-go/v2/errdef"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/oci"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 	tlog "gitlab.com/act3-ai/asce/go-common/pkg/test"
 )
+
+const dtVersion = "devel-test"
+const syncTag = "sync"
 
 type args struct {
 	argRevList          []string // references used by ToOCI
@@ -56,7 +61,7 @@ var tests = []test{
 			expectedHeadList:    []string{},
 			expectedBundleCount: 1,
 			expectedRebuildRefs: []string{"refs/tags/v1.0.1"},
-			tag:                 "sync",
+			tag:                 syncTag,
 		},
 		wantErr: false,
 	},
@@ -73,7 +78,7 @@ var tests = []test{
 			expectedHeadList:    []string{},
 			expectedBundleCount: 2,
 			expectedRebuildRefs: []string{"refs/tags/v1.0.2"},
-			tag:                 "sync",
+			tag:                 syncTag,
 		},
 		wantErr: false,
 	},
@@ -90,7 +95,7 @@ var tests = []test{
 			expectedHeadList:    []string{"Feature2"},
 			expectedBundleCount: 3,
 			expectedRebuildRefs: []string{"refs/heads/Feature2"},
-			tag:                 "sync",
+			tag:                 syncTag,
 		},
 		wantErr: false,
 	},
@@ -106,7 +111,7 @@ var tests = []test{
 			expectedHeadList:    []string{"Feature2"},
 			expectedBundleCount: 3,
 			expectedRebuildRefs: []string{"refs/tags/v1.0.3"},
-			tag:                 "sync",
+			tag:                 syncTag,
 		},
 		wantErr: false,
 	},
@@ -122,7 +127,7 @@ var tests = []test{
 			expectedHeadList:    []string{"Feature2", "Feature1"},
 			expectedBundleCount: 3,
 			expectedRebuildRefs: []string{"refs/heads/Feature1"},
-			tag:                 "sync",
+			tag:                 syncTag,
 		},
 		wantErr: false,
 	},
@@ -137,7 +142,7 @@ var tests = []test{
 			expectedHeadList:    []string{"Feature2", "Feature1"},
 			expectedBundleCount: 4,
 			expectedRebuildRefs: []string{"refs/tags/v1.2.0"},
-			tag:                 "sync",
+			tag:                 syncTag,
 		},
 		wantErr: false,
 	},
@@ -154,7 +159,7 @@ var errorTests = []test{
 			expectedTagList:     []string{"v1.0.1", "v1.0.2", "v1.0.3", "v1.2.0"},
 			expectedHeadList:    []string{"Feature2", "Feature1"},
 			expectedBundleCount: 4,
-			tag:                 "sync",
+			tag:                 syncTag,
 		},
 		wantErr: true,
 	},
@@ -168,7 +173,7 @@ var errorTests = []test{
 			expectedTagList:     []string{"v1.0.1", "v1.0.2", "v1.0.3", "v1.2.0"},
 			expectedHeadList:    []string{"Feature2", "Feature1"},
 			expectedBundleCount: 4,
-			tag:                 "sync",
+			tag:                 syncTag,
 		},
 		wantErr: true,
 	},
@@ -186,11 +191,14 @@ var updateTests = []test{
 			expectedHeadList:    []string{"Feature2", "Feature1"},
 			expectedBundleCount: 5,
 			expectedRebuildRefs: []string{"refs/heads/Feature2"},
-			tag:                 "sync",
+			tag:                 syncTag,
 		},
 		wantErr: false,
 	},
+}
 
+// Force Update Use Cases - requires an update to an existing tag reference.
+var forceTests = []test{
 	// Update Tag Ref Tests:
 	// - Updating a tag reference that already exists in the manifest config to a child commit.
 	{
@@ -201,15 +209,15 @@ var updateTests = []test{
 			expectedHeadList:    []string{"Feature2", "Feature1"},
 			expectedBundleCount: 6,
 			expectedRebuildRefs: []string{"refs/tags/v1.2.0"},
-			tag:                 "sync",
+			tag:                 syncTag,
 		},
 		wantErr: false,
 	},
 }
 
-func Test_ToFromOCI(t *testing.T) { //nolint
+func Test_ToFromOCI(t *testing.T) {
 	ctx := context.Background()
-	log := tlog.Logger(t, -2)
+	log := tlog.Logger(t, 0)
 	ctx = logger.NewContext(ctx, log)
 
 	gitVersion, err := cmd.CheckGitVersion(ctx, "")
@@ -221,11 +229,11 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 	// Setup git repo
 	t.Log("Setting up testing git repository")
 	srcGitRemote := t.TempDir() // sync target
-	testRepoCH, err := cmd.NewHelper(ctx, srcGitRemote, &cmd.Options{})
+	srcRepoCH, err := cmd.NewHelper(ctx, srcGitRemote, &cmd.Options{})
 	if err != nil {
 		t.Fatalf("creating source repo command helper: %v", err)
 	}
-	if err := createTestRepo(testRepoCH); err != nil {
+	if err := createTestRepo(ctx, srcRepoCH); err != nil {
 		t.Fatalf("creating test repository: %v", err)
 	}
 
@@ -235,108 +243,42 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 	if err != nil {
 		t.Fatalf("creating destination repo command helper: %v", err)
 	}
-	err = destRepoCH.Init()
+	err = destRepoCH.Init(ctx)
 	if err != nil {
 		t.Fatalf("setting up git rebuild dir: %v", err)
 	}
 
-	target := memory.New()
-	dtVersion := "devel"
+	target := memory.New() // oci target
 
 	// Use Cases
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// want - but as maps to validate we got against what we want across bundles
-			expectedTags := make(map[string]bool, 0)
-			for _, tag := range tt.args.expectedTagList {
-				expectedTags[tag] = false
+	for i, tt := range tests {
+		var existingDesc ocispec.Descriptor
+		if i != 0 {
+			existingDesc, err = target.Resolve(ctx, tt.args.tag)
+			if err != nil {
+				t.Fatalf("resolving base manifest descriptor: error = %s", err)
 			}
-
-			expectedHeads := make(map[string]bool, 0)
-			for _, head := range tt.args.expectedHeadList {
-				expectedHeads[head] = false
-			}
-
-			// test sync
-			t.Run(tt.name+": ToOCI", func(t *testing.T) {
-				syncOpts := SyncOptions{DTVersion: dtVersion, TmpDir: t.TempDir()}
-				toOCITester, err := NewToOCI(ctx, target, tt.args.tag, srcGitRemote, tt.args.argRevList, syncOpts, &cmd.Options{})
-				if err != nil {
-					t.Errorf("creating ToOCI: %v", err)
-				}
-				defer toOCITester.Cleanup() //nolint
-
-				commitManDesc, err := toOCITester.Run(ctx)
-				if err != nil {
-					t.Errorf("ToOCI() error = %v, wantErr %v", err, tt.wantErr)
-				}
-
-				if commitManDesc.ArtifactType != ArtifactTypeSyncManifest {
-					t.Errorf("unexpected artifact type in descriptor of commit manifest, got '%s' want '%s'", commitManDesc.ArtifactType, ArtifactTypeSyncManifest)
-				}
-
-				successors, err := content.Successors(ctx, target, commitManDesc)
-				if err != nil {
-					t.Fatalf("fetching successors for sync manifest, err = %v", err)
-				}
-				if len(successors) != tt.args.expectedBundleCount+1 { // +1 for config
-					// don't fail, let's try to see if we can get some more info to find the cause of the err
-					t.Errorf("expected %d successors, got %d successors", tt.args.expectedBundleCount+1, len(successors))
-				}
-
-				pulledBundles := t.TempDir()
-
-				t.Log("Validating sync config and bundles")
-				err = validateSync(ctx, pulledBundles, successors, expectedTags, expectedHeads, target, dtVersion)
-				if err != nil {
-					t.Fatalf("sync failed verification, args = %+v, err = %v", tt.args, err)
-				}
-				t.Logf("Information in bundle(s) matches config")
-
-				if err := toOCITester.Cleanup(); err != nil {
-					t.Errorf("cleaning up toOCITester handler: %v", err)
-				}
-			})
-
-			expectedRebuildMap := make(map[string]bool, len(tt.args.expectedRebuildRefs))
-			for _, ref := range tt.args.expectedRebuildRefs {
-				expectedRebuildMap[ref] = false
-			}
-
-			// test rebuild
-			t.Run(tt.name+": FromOCI", func(t *testing.T) {
-				syncOpts := SyncOptions{DTVersion: dtVersion, TmpDir: t.TempDir()}
-				fromOCITester, err := NewFromOCI(ctx, target, tt.args.tag, dstGitRemote, syncOpts, &cmd.Options{})
-				if err != nil {
-					t.Errorf("creating FromOCI: %v", err)
-				}
-				defer fromOCITester.Cleanup() //nolint
-
-				updatedRefs, err := fromOCITester.Run(ctx)
-				if err != nil {
-					t.Fatalf("from oci: %v", err)
-				}
-				t.Logf("updated refs: %s", updatedRefs)
-
-				err = validateRebuild(expectedRebuildMap, updatedRefs)
-				if err != nil {
-					t.Errorf("rebuild failed verification, args = %+v, err = %v", tt.args, err)
-					return
-				}
-				t.Logf("Destination repository result matches expectation")
-
-				if err := fromOCITester.Cleanup(); err != nil {
-					t.Errorf("cleaning up fromOCITester handler: %v", err)
-				}
-			})
-		})
+		}
+		ToFromOCITestFunc(ctx, tt, target, existingDesc, srcRepoCH, destRepoCH, &cmd.Options{}, true)(t)
 	}
 
 	// Error Cases
 	for _, tt := range errorTests {
 		t.Run(tt.name, func(t *testing.T) {
-			syncOpts := SyncOptions{DTVersion: dtVersion, TmpDir: t.TempDir()}
-			toOCITester, err := NewToOCI(ctx, target, tt.args.tag, srcGitRemote, tt.args.argRevList, syncOpts, &cmd.Options{})
+			toOCIFStorePath := t.TempDir()
+			toOCIFStore, err := file.New(toOCIFStorePath)
+			if err != nil {
+				t.Fatalf("initializing to ocicache file store: %v", err)
+			}
+			defer toOCIFStore.Close()
+
+			existingDesc, err := target.Resolve(ctx, tt.args.tag)
+			if err != nil {
+				t.Fatalf("resolving base manifest descriptor: error = %s", err)
+			}
+
+			syncOpts := SyncOptions{UserAgent: dtVersion, IntermediateDir: toOCIFStorePath, IntermediateStore: toOCIFStore}
+			toOCITester, err := NewToOCI(ctx, target, existingDesc, srcGitRemote, tt.args.argRevList, syncOpts, &cmd.Options{})
 			if err != nil {
 				t.Errorf("creating ToOCI: %v", err)
 			}
@@ -356,98 +298,189 @@ func Test_ToFromOCI(t *testing.T) { //nolint
 
 	// Use Cases - that require an update to an existing reference
 	t.Log("Updating up testing git repository")
-	if err := updateTestRepo(testRepoCH); err != nil {
+	if err := updateTestRepo(ctx, srcRepoCH); err != nil {
 		t.Fatalf("updating test repository: %v", err)
 	}
 
 	for _, tt := range updateTests {
-		t.Run(tt.name, func(t *testing.T) {
-			// want - but as maps to validate we got against what we want across bundles
-			expectedTags := make(map[string]bool, 0)
-			for _, tag := range tt.args.expectedTagList {
-				expectedTags[tag] = false
-			}
-
-			expectedHeads := make(map[string]bool, 0)
-			for _, head := range tt.args.expectedHeadList {
-				expectedHeads[head] = false
-			}
-
-			t.Run(tt.name+": ToOCI", func(t *testing.T) {
-				syncOpts := SyncOptions{DTVersion: dtVersion, TmpDir: t.TempDir()}
-				toOCITester, err := NewToOCI(ctx, target, tt.args.tag, srcGitRemote, tt.args.argRevList, syncOpts, &cmd.Options{})
-				if err != nil {
-					t.Errorf("creating ToOCI: %v", err)
-				}
-				defer toOCITester.Cleanup() //nolint
-
-				commitManDesc, err := toOCITester.Run(ctx)
-				if err != nil {
-					t.Errorf("ToOCI() error = %v, wantErr %v", err, tt.wantErr)
-				}
-
-				if commitManDesc.ArtifactType != ArtifactTypeSyncManifest {
-					t.Errorf("unexpected artifact type in descriptor of commit manifest, got '%s' want '%s'", commitManDesc.ArtifactType, ArtifactTypeSyncManifest)
-				}
-
-				successors, err := content.Successors(ctx, target, commitManDesc)
-				if err != nil {
-					t.Fatalf("fetching successors for sync manifest, err = %v", err)
-				}
-				if len(successors) != tt.args.expectedBundleCount+1 { // +1 for config
-					t.Errorf("expected %d successors, got %d successors", tt.args.expectedBundleCount+1, len(successors))
-				}
-
-				pulledBundles := t.TempDir()
-
-				t.Log("Validating sync config and bundles")
-				err = validateSync(ctx, pulledBundles, successors, expectedTags, expectedHeads, target, dtVersion)
-				if err != nil {
-					t.Fatalf("sync failed verification, args = %+v, err = %v", tt.args, err)
-				}
-				t.Logf("Information in bundle(s) matches config")
-
-				if err := toOCITester.Cleanup(); err != nil {
-					t.Errorf("cleaning up toOCITester handler: %v", err)
-				}
-			})
-
-			expectedRebuildMap := make(map[string]bool, len(tt.args.expectedRebuildRefs))
-			for _, ref := range tt.args.expectedRebuildRefs {
-				expectedRebuildMap[ref] = false
-			}
-
-			// test rebuild
-			t.Run(tt.name+": FromOCI", func(t *testing.T) {
-				syncOpts := SyncOptions{DTVersion: dtVersion, TmpDir: t.TempDir()}
-				cmdOpts := &cmd.Options{
-					GitOptions: cmd.GitOptions{Force: true, AltGitExec: ""},
-					LFSOptions: &cmd.LFSOptions{},
-				}
-				fromOCITester, err := NewFromOCI(ctx, target, tt.args.tag, dstGitRemote, syncOpts, cmdOpts)
-				if err != nil {
-					t.Errorf("creating FromOCI: %v", err)
-				}
-				defer fromOCITester.Cleanup() //nolint
-
-				updatedRefs, err := fromOCITester.Run(ctx)
-				if err != nil {
-					t.Fatalf("from oci: %v", err)
-				}
-				t.Logf("updated refs: %s", updatedRefs)
-
-				err = validateRebuild(expectedRebuildMap, updatedRefs)
-				if err != nil {
-					t.Fatalf("rebuild failed verification, args = %+v, err = %v", tt.args, err)
-				}
-				t.Logf("Destination repository result matches expectation")
-
-				if err := fromOCITester.Cleanup(); err != nil {
-					t.Errorf("cleaning up fromOCITester handler: %v", err)
-				}
-			})
-		})
+		existingDesc, err := target.Resolve(ctx, tt.args.tag)
+		if err != nil {
+			t.Fatalf("resolving base manifest descriptor: error = %s", err)
+		}
+		ToFromOCITestFunc(ctx, tt, target, existingDesc, srcRepoCH, destRepoCH, &cmd.Options{}, true)(t)
 	}
+
+	for _, tt := range forceTests {
+		existingDesc, err := target.Resolve(ctx, tt.args.tag)
+		if err != nil {
+			t.Fatalf("resolving base manifest descriptor: error = %s", err)
+		}
+		ToFromOCITestFunc(ctx, tt, target, existingDesc, srcRepoCH, destRepoCH, &cmd.Options{GitOptions: cmd.GitOptions{Force: true}}, true)(t)
+	}
+}
+
+func Test_ToFromOCIRewrite(t *testing.T) {
+	ctx := context.Background()
+	log := tlog.Logger(t, 0)
+	ctx = logger.NewContext(ctx, log)
+
+	gitVersion, err := cmd.CheckGitVersion(ctx, "")
+	if err != nil {
+		t.Errorf("validating git version: %v", err)
+	}
+	t.Logf("Testing with git version %s", gitVersion)
+
+	// Setup source git repo
+	t.Log("Setting up testing git repository")
+	srcGitRemote := t.TempDir()
+	srcRepoCH, err := cmd.NewHelper(ctx, srcGitRemote, &cmd.Options{})
+	if err != nil {
+		t.Fatalf("creating source repo command helper: %v", err)
+	}
+	if err := createTestRepoRewrite(ctx, srcRepoCH); err != nil {
+		t.Fatalf("creating test repository: %v", err)
+	}
+
+	// Setup destination git repo
+	t.Log("Setting up rebuild git repository")
+	dstGitRemote := t.TempDir()
+	destRepoCH, err := cmd.NewHelper(ctx, dstGitRemote, &cmd.Options{})
+	if err != nil {
+		t.Fatalf("creating destination repo command helper: %v", err)
+	}
+	err = destRepoCH.Init(ctx, "--bare")
+	if err != nil {
+		t.Fatalf("setting up git rebuild dir: %v", err)
+	}
+
+	target := memory.New()
+
+	// Base case, setup some history to rewrite
+	baseTest := test{
+		name: "Base",
+		args: args{
+			argRevList:          []string{"main", "Feature1"},
+			expectedTagList:     []string{},
+			expectedHeadList:    []string{"main", "Feature1"},
+			expectedBundleCount: 1,
+			expectedRebuildRefs: []string{"refs/heads/main", "refs/heads/Feature1"},
+			tag:                 syncTag,
+		},
+		wantErr: false,
+	}
+	t.Run("Rewrite", ToFromOCITestFunc(ctx, baseTest, target, ocispec.Descriptor{}, srcRepoCH, destRepoCH, &cmd.Options{}, true))
+
+	// Diverge branch history
+	if err := updateTestRepoDiverge(ctx, srcRepoCH); err != nil {
+		t.Fatalf("diverging git history: %v", err)
+	}
+	if err := deleteDanglingCommits(ctx, srcRepoCH); err != nil {
+		t.Fatalf("cleaning up diverged history: %v", err)
+	}
+
+	divergeTest := test{
+		name: "Diverge History",
+		args: args{
+			argRevList:          []string{"main", "Feature1"},
+			expectedTagList:     []string{},
+			expectedHeadList:    []string{"main", "Feature1"},
+			expectedBundleCount: 2,
+			expectedRebuildRefs: []string{"refs/heads/main", "refs/heads/Feature1"},
+			tag:                 syncTag,
+		},
+		wantErr: false,
+	}
+
+	existingDesc, err := target.Resolve(ctx, divergeTest.args.tag)
+	if err != nil {
+		t.Fatalf("resolving base manifest descriptor: error = %s", err)
+	}
+
+	// we can check bundles here due to the implementation of bundle validation
+	// taking the newest reference in any bundle.
+	t.Run("Rewrite", ToFromOCITestFunc(ctx, divergeTest, target, existingDesc, srcRepoCH, destRepoCH, &cmd.Options{GitOptions: cmd.GitOptions{Force: true}}, true))
+
+	// save a bad commit
+	refCommits, err := srcRepoCH.ShowRefs(ctx, "Feature1")
+	if err != nil {
+		t.Fatalf("resolving reference and commit: %v", err)
+	}
+	if len(refCommits) != 1 {
+		t.Fatalf("expected 1 reference resolved, got %d", len(refCommits))
+	}
+	split := strings.Fields(refCommits[0])
+	badCommit := split[0]
+
+	// save this version of the sync manifest
+	// HACK: rework with commented out code once dup config push is fixed
+	// hackTarget := memory.New()
+	// syncTagDup := syncTag + "-dup"
+	// _, err = oras.Copy(ctx, target, syncTag, hackTarget, syncTagDup, oras.CopyOptions{})
+	// if err != nil {
+	// 	t.Fatalf("copying sync manifest: %v", err)
+	// }
+
+	// desc, err := target.Resolve(ctx, syncTag)
+	// if err != nil {
+	// 	t.Fatalf("resolving sync manifest descriptor: %v", err)
+	// }
+	// if err := target.Tag(ctx, desc, syncTagDup); err != nil {
+	// 	t.Fatalf("tagging manifest again: %v", err)
+	// }
+
+	if err := updateTestRepoRevert(ctx, srcRepoCH); err != nil {
+		t.Fatalf("reverting git history: %v", err)
+	}
+	if err := deleteDanglingCommits(ctx, srcRepoCH); err != nil {
+		t.Fatalf("cleaning up reverted history: %v", err)
+	}
+
+	// Reset branch history
+	resetTest := test{name: "Revert History",
+		args: args{
+			argRevList:          []string{"main", "Feature1", badCommit},
+			expectedTagList:     []string{},
+			expectedHeadList:    []string{"main", "Feature1"},
+			expectedBundleCount: 2,
+			expectedRebuildRefs: []string{"refs/heads/Feature1"},
+			tag:                 syncTag,
+		},
+		wantErr: false,
+	}
+
+	existingDesc, err = target.Resolve(ctx, resetTest.args.tag)
+	if err != nil {
+		t.Fatalf("resolving base manifest descriptor: error = %s", err)
+	}
+	// don't check the bundles, the newest reference is overridden by the config.
+	t.Run("Rewrite", ToFromOCITestFunc(ctx, resetTest, target, existingDesc, srcRepoCH, destRepoCH, &cmd.Options{GitOptions: cmd.GitOptions{Force: true}}, false))
+
+	// Clean sync - no oci artifact
+	hackTarget := memory.New()
+	cleanSyncTest := test{name: "Clean Sync",
+		args: args{
+			argRevList:          []string{"main", "Feature1", badCommit},
+			expectedTagList:     []string{},
+			expectedHeadList:    []string{"main", "Feature1"},
+			expectedBundleCount: 1,
+			expectedRebuildRefs: []string{"refs/heads/main", "refs/heads/Feature1"},
+			tag:                 syncTag,
+		},
+		wantErr: false,
+	}
+
+	// HACK: Our validation function checks the destination based off of the update list returned, not what's actually in the destination
+	dstGitRemote2 := t.TempDir()
+	destRepoCH2, err := cmd.NewHelper(ctx, dstGitRemote2, &cmd.Options{})
+	if err != nil {
+		t.Fatalf("creating destination repo command helper: %v", err)
+	}
+	err = destRepoCH2.Init(ctx, "--bare")
+	if err != nil {
+		t.Fatalf("setting up git rebuild dir: %v", err)
+	}
+	// don't check the bundles, the newest reference is overridden by the config.
+	t.Run("Rewrite", ToFromOCITestFunc(ctx, cleanSyncTest, hackTarget, ocispec.Descriptor{}, srcRepoCH, destRepoCH2, &cmd.Options{GitOptions: cmd.GitOptions{Force: true}}, false))
 }
 
 // test an alternate git executable provided via path.
@@ -492,14 +525,24 @@ func Test_AltGitLFSExec(t *testing.T) {
 func Test_FromOCINonExistantManifest(t *testing.T) {
 	ctx := context.Background()
 	target := memory.New()
-	tag := "nonexistantsync"
+	nonExistantDesc := ocispec.Descriptor{
+		MediaType: ocispec.MediaTypeImageManifest,
+		Digest:    digest.Digest("sha256:e9d3f25129237340dfb34b98aff9c5adf1ed2713264729fa9f470a5233be8a5d"),
+		Size:      636,
+	}
 
-	syncOpts := SyncOptions{TmpDir: t.TempDir()}
+	fs, err := file.New(t.TempDir())
+	if err != nil {
+		t.Fatalf("initializing file store: %v", err)
+	}
+	defer fs.Close()
+
+	syncOpts := SyncOptions{IntermediateDir: t.TempDir(), IntermediateStore: fs}
 	cmdOpts := &cmd.Options{
 		GitOptions: cmd.GitOptions{Force: true, AltGitExec: ""},
 		LFSOptions: &cmd.LFSOptions{},
 	}
-	fromOCITester, err := NewFromOCI(ctx, target, tag, "", syncOpts, cmdOpts)
+	fromOCITester, err := NewFromOCI(ctx, target, nonExistantDesc, "", syncOpts, cmdOpts)
 	if err != nil {
 		t.Errorf("creating FromOCI: %v", err)
 	}
@@ -515,22 +558,146 @@ func Test_FromOCINonExistantManifest(t *testing.T) {
 	}
 }
 
+//nolint:gocognit
+func ToFromOCITestFunc(ctx context.Context, tt test, target oras.GraphTarget,
+	existingDesc ocispec.Descriptor, srcRepoCH, dstRepoCH *cmd.Helper,
+	cmdOpts *cmd.Options, checkBundles bool) func(t *testing.T) {
+	return func(t *testing.T) {
+		t.Run(tt.name, func(t *testing.T) {
+			// want - but as maps to validate we got against what we want across bundles
+			expectedTags := make(map[string]bool, 0)
+			for _, tag := range tt.args.expectedTagList {
+				expectedTags[tag] = false
+			}
+
+			expectedHeads := make(map[string]bool, 0)
+			for _, head := range tt.args.expectedHeadList {
+				expectedHeads[head] = false
+			}
+
+			var newDesc ocispec.Descriptor
+			t.Run(tt.name+": ToOCI", func(t *testing.T) {
+				toOCIFStorePath := t.TempDir()
+				toOCIFStore, err := file.New(toOCIFStorePath)
+				if err != nil {
+					t.Fatalf("initializing to ocicache file store: %v", err)
+				}
+				defer toOCIFStore.Close()
+
+				syncOpts := SyncOptions{
+					UserAgent:         dtVersion,
+					IntermediateDir:   toOCIFStorePath,
+					IntermediateStore: toOCIFStore,
+				}
+				toOCITester, err := NewToOCI(ctx, target, existingDesc, srcRepoCH.Dir(), tt.args.argRevList, syncOpts, cmdOpts)
+				if err != nil {
+					t.Errorf("creating ToOCI: %v", err)
+				}
+				defer toOCITester.Cleanup() //nolint
+
+				newDesc, err = toOCITester.Run(ctx)
+				if err != nil {
+					t.Fatalf("ToOCI() error = %v, wantErr %v", err, tt.wantErr)
+				}
+
+				if newDesc.ArtifactType != oci.ArtifactTypeSyncManifest {
+					t.Errorf("unexpected artifact type in descriptor of commit manifest, got '%s' want '%s'", newDesc.ArtifactType, oci.ArtifactTypeSyncManifest)
+				}
+
+				successors, err := content.Successors(ctx, target, newDesc)
+				if err != nil {
+					t.Fatalf("fetching successors for sync manifest, err = %v", err)
+				}
+				if len(successors) != tt.args.expectedBundleCount+1 { // +1 for config
+					t.Errorf("expected %d successors, got %d successors", tt.args.expectedBundleCount+1, len(successors))
+				}
+
+				pulledBundles := t.TempDir()
+				bundleRebuild := t.TempDir()
+
+				t.Log("Validating sync config and bundles")
+				err = validateSync(ctx, pulledBundles, bundleRebuild, successors, expectedTags, expectedHeads, checkBundles, target, dtVersion)
+				if err != nil {
+					t.Fatalf("sync failed verification, args = %+v, err = %v", tt.args, err)
+				}
+				t.Logf("Information in bundle(s) matches config")
+
+				if err := toOCITester.Cleanup(); err != nil {
+					t.Errorf("cleaning up toOCITester handler: %v", err)
+				}
+
+				if err := target.Tag(ctx, newDesc, tt.args.tag); err != nil {
+					t.Fatalf("tagging new sync manifest: error = %s", err)
+				}
+			})
+
+			expectedRebuildMap := make(map[string]bool, len(tt.args.expectedRebuildRefs))
+			for _, ref := range tt.args.expectedRebuildRefs {
+				expectedRebuildMap[ref] = false
+			}
+
+			// test rebuild
+			t.Run(tt.name+": FromOCI", func(t *testing.T) {
+				fromOCIFStorePath := t.TempDir()
+				fromOCIFStore, err := file.New(fromOCIFStorePath)
+				if err != nil {
+					t.Fatalf("initializing from oci cache file store: %v", err)
+				}
+				defer fromOCIFStore.Close()
+
+				syncOpts := SyncOptions{
+					UserAgent:         dtVersion,
+					IntermediateDir:   fromOCIFStorePath,
+					IntermediateStore: fromOCIFStore,
+				}
+				fromOCITester, err := NewFromOCI(ctx, target, newDesc, dstRepoCH.Dir(), syncOpts, cmdOpts)
+				if err != nil {
+					t.Errorf("creating FromOCI: %v", err)
+				}
+				defer fromOCITester.Cleanup() //nolint
+
+				updatedRefs, err := fromOCITester.Run(ctx)
+				if err != nil {
+					t.Fatalf("from oci: %v", err)
+				}
+				t.Logf("updated refs: %s", updatedRefs)
+
+				err = validateRebuild(expectedRebuildMap, updatedRefs)
+				if err != nil {
+					t.Fatalf("rebuild failed verification, args = %+v, err = %v", tt.args, err)
+				}
+				t.Logf("Destination repository result matches expectation")
+
+				if err := fromOCITester.Cleanup(); err != nil {
+					t.Errorf("cleaning up fromOCITester handler: %v", err)
+				}
+			})
+		})
+	}
+
+}
+
 // * * Validation Functions * * //
 
 // validateSync validates the successors of a sync manifest, i.e. it's config and bundle layers.
-func validateSync(ctx context.Context, pulledBundlesDir string, successors []ocispec.Descriptor,
-	expectedTags, expectedHeads map[string]bool, target *memory.Store, dtVersion string,
-) error {
-	gc, err := cmd.NewHelper(ctx, "", &cmd.Options{})
+func validateSync(ctx context.Context, pulledBundlesDir, bundleRebuild string,
+	successors []ocispec.Descriptor, expectedTags, expectedHeads map[string]bool,
+	checkBundles bool, target oras.GraphTarget, dtVersion string) error {
+
+	gc, err := cmd.NewHelper(ctx, bundleRebuild, &cmd.Options{})
 	if err != nil {
 		return fmt.Errorf("creating validation command helper: %w", err)
 	}
 
+	if err := gc.Init(ctx, "--bare"); err != nil {
+		return fmt.Errorf("initializing bundle rebuild repository: %w", err)
+	}
+
 	// ensure we get the config first, so we can compare it against bundles later.
 	// This may not be necessary, but added to be safe
-	if successors[0].MediaType != MediaTypeSyncConfig {
+	if successors[0].MediaType != oci.MediaTypeSyncConfig {
 		for i, desc := range successors {
-			if desc.MediaType == MediaTypeSyncConfig {
+			if desc.MediaType == oci.MediaTypeSyncConfig {
 				successors[0], successors[i] = successors[i], successors[0]
 				break
 			}
@@ -556,18 +723,21 @@ func validateSync(ctx context.Context, pulledBundlesDir string, successors []oci
 	}
 
 	// validate if bundles have expected tags and heads, and the referenced commits match the config
-	err = validateBundles(ctx, *config, allBundleTags, allBundleHeads, expectedTags, expectedHeads)
-	if err != nil {
-		syncErrs = append(syncErrs, fmt.Errorf("invalid bundle(s): %w", err))
+	if checkBundles {
+		if err = validateBundleRefs(ctx, *config, allBundleTags, allBundleHeads, expectedTags, expectedHeads); err != nil {
+			syncErrs = append(syncErrs, fmt.Errorf("invalid references in bundle(s): %w", err))
+		}
 	}
 
 	return errors.Join(syncErrs...)
 }
 
-func prepSyncValidation(ctx context.Context, ch *cmd.Helper, target *memory.Store, successors []ocispec.Descriptor, pathToBundles string) (*Config, map[string]Commit, map[string]Commit, error) {
-	config := &Config{}
-	allBundleTags := make(map[string]Commit, 0) // ref:commit key:val pair
-	allBundleHeads := make(map[string]Commit, 0)
+func prepSyncValidation(ctx context.Context, ch *cmd.Helper, target oras.GraphTarget,
+	successors []ocispec.Descriptor, pathToBundles string) (*oci.Config, map[string]cmd.Commit, map[string]cmd.Commit, error) {
+
+	var config = &oci.Config{}
+	allBundleTags := make(map[string]cmd.Commit, 0) // ref:commit key:val pair
+	allBundleHeads := make(map[string]cmd.Commit, 0)
 	syncErrs := make([]error, 0)
 
 	// verify the config and bundle
@@ -580,7 +750,7 @@ func prepSyncValidation(ctx context.Context, ch *cmd.Helper, target *memory.Stor
 	// prepare for validation
 	for _, desc := range successors {
 		switch desc.MediaType {
-		case MediaTypeSyncConfig:
+		case oci.MediaTypeSyncConfig:
 
 			// fetch & unmarshal config, fail instead of collecting errors here as we can't validate much without a config
 			cfgReader, err := target.Fetch(ctx, desc)
@@ -598,7 +768,7 @@ func prepSyncValidation(ctx context.Context, ch *cmd.Helper, target *memory.Stor
 				return nil, allBundleTags, allBundleHeads, fmt.Errorf("unmarshaling config: %w", err)
 			}
 
-		case MediaTypeBundleLayer:
+		case oci.MediaTypeBundleLayer:
 
 			// fetch the bundle
 			bundleName := desc.Annotations[ocispec.AnnotationTitle]
@@ -610,14 +780,14 @@ func prepSyncValidation(ctx context.Context, ch *cmd.Helper, target *memory.Stor
 			}
 
 			// get and organize the bundle's references
-			bundleRefs, err := listHeads(ch, targetBundlePath)
+			bundleRefs, err := listHeads(ctx, ch, targetBundlePath)
 			if err != nil {
 				return config, allBundleTags, allBundleHeads, fmt.Errorf("listing references in fetched bundle: %w", err)
 			}
 
 			for _, entry := range bundleRefs {
 				split := strings.Fields(entry)
-				commit := Commit(split[0])
+				commit := cmd.Commit(split[0])
 				fullBundleRef := split[1]
 
 				// if a ref already exists, it will be overwritten by the latest bundle - which is expected behavior
@@ -636,16 +806,16 @@ func prepSyncValidation(ctx context.Context, ch *cmd.Helper, target *memory.Stor
 	return config, allBundleTags, allBundleHeads, errors.Join(syncErrs...)
 }
 
-// validateBundles validates that all references extracted from the bundle(s) are expected and that the
+// validateBundleRefs validates that all references extracted from the bundle(s) are expected and that the
 // commit objects they refer to match the sync config. Note this function does not validate that the refs
 // found in the bundles exactly matches the config, i.e. in some cases a ref only exists in the config
 // because it's commit already exists in a prior bundle; this case is checked in validateConfig.
 //
-// validateBundles answers 3 questions for both tag and head references:
+// validateBundleRefs answers 3 questions for both tag and head references:
 // 1) Is the reference expected?
 // 2) Does the reference in the bundle exist in the config?
 // 3) Does the commit referenced by the tag in the bundle match the config?
-func validateBundles(ctx context.Context, config Config, foundTags, foundHeads map[string]Commit, expectedTags, expectedHeads map[string]bool) error {
+func validateBundleRefs(ctx context.Context, config oci.Config, foundTags, foundHeads map[string]cmd.Commit, expectedTags, expectedHeads map[string]bool) error {
 	bundleErrs := make([]error, 0)
 
 	for tag, bundleCommit := range foundTags {
@@ -698,9 +868,9 @@ func validateBundles(ctx context.Context, config Config, foundTags, foundHeads m
 }
 
 // validateConfig checks to see if a sync config contains the expected tag and head references, as well as a valid api field.
-func validateConfig(config Config, expectedAPIVersion string, expectedTagsMap,
-	expectedHeadsMap map[string]bool,
-) error {
+func validateConfig(config oci.Config, expectedAPIVersion string, expectedTagsMap,
+	expectedHeadsMap map[string]bool) error {
+
 	configErrs := make([]error, 0)
 
 	// catch extraneous tags
@@ -749,10 +919,18 @@ func validateRebuild(expectedRefs map[string]bool, gotRefs []string) error {
 	foundRefs := 0
 	for _, ref := range gotRefs {
 		split := strings.Fields(ref)
-		commit := split[0]
+		commit := split[0] // typically, but in case of rewrite over a tag it's "Deleted"
 		fullRef := split[1]
 
 		switch {
+		case commit == "Deleted":
+			expected := strings.Join(split[0:4], " ")
+			_, ok := expectedRefs[expected] // "Deleted tag 'split[3]'"
+			if !ok {
+				rebuildErrs = append(rebuildErrs, fmt.Errorf("unexpected tag deleted from rebuild repository, tag = %s", strings.Replace(split[3], "'", "", 2)))
+			}
+			expectedRefs[expected] = true
+			foundRefs++
 		case strings.HasPrefix(fullRef, cmd.TagRefPrefix):
 			_, ok := expectedRefs[fullRef]
 			if !ok {
@@ -785,4 +963,17 @@ func validateRebuild(expectedRefs map[string]bool, gotRefs []string) error {
 	}
 
 	return errors.Join(rebuildErrs...)
+}
+
+func deleteDanglingCommits(ctx context.Context, ch *cmd.Helper) error {
+	// Delete dangling commits, i.e. actually delete the history we diverged from
+	if _, err := ch.Git.Run(ctx, "reflog", "expire", "--expire-unreachable=now", "--all"); err != nil {
+		return fmt.Errorf("expiring dangling commits: %w", err)
+	}
+
+	if _, err := ch.Git.Run(ctx, "gc", "--prune=now"); err != nil {
+		return fmt.Errorf("deleting dangling commits: %w", err)
+	}
+
+	return nil
 }

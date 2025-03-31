@@ -42,18 +42,45 @@ ace-dt config --sample
 
 To make use of optional configuration settings, update the relevant sections of your `config.yaml` file.
 
-To include a telemetry host, update the section corresponding to **telemetry**:
+### Telemetry
+
+Telemetry configurations are defined in the **telemetry** section.
+
+#### Add Telemetry Host
+
+Multiple telemetry hosts may be configured at the same time. In such cases, bottle metadata will be sent to all configured hosts.
 
 ```yaml
+# Telemetry Configuration
 telemetry:
   - name: "host"
-    url: "host.url.com"
+    url: "https://host.url.com"
 ```
 
-To specify certificate key locations and signature metadata for use when signing bottles, update the section corresponding to **Signing configuration**:
+#### Configure OAuth for Telemetry Host
 
-```sh
-Signing configuration
+Depending on the deployment, telemetry hosts may require authentication from an OAuth provider. Add the URI of the issuer and client ID to access the protected host.
+
+```yaml
+# Telemetry Configuration
+telemetry:
+  - name: "host"
+    url: "https://host.url.com"
+    oauth:
+      issuer: https://oauth.issuer.com
+      clientID: "591670929820253528"
+```
+
+### Signing
+
+Signing key configurations are defined in the **keys** section, allowing you to easily identify signing keys using an alias.
+
+#### Add Key Alias
+
+Currently, `ace-dt` supports cryptographic signing (and verifying) of ASCE Data Bottles. Signing keys can be added to the configuration to avoid explicitly providing the relavent information each time a signature is made.
+
+```yaml
+# Signing Configuration
 keys:
 - alias: gitlabExampleKey
   path: path/to/private.key
@@ -62,9 +89,20 @@ keys:
   keyid: key-title
 ```
 
-To set default values for OCI registries and repositories, update the section corresponding to **Registry configuration**:
+### OCI Registries
+
+Registry configurations are defined in the **registryConfig** section, allowing you to specify settings on a per-registry basis to avoid rate limits, registry errors, and time waste.
+
+Registry configuration is supported by the following `ace-dt` commands:
+
+- `ace-dt mirror`
+- `ace-dt oci`
+- `ace-dt pypi`
+
+An example is provided below. Details on the different settings will follow.
 
 ```yaml
+# Registry Configuration
 registryConfig:
      index.docker.io:
        endpoints:
@@ -84,14 +122,6 @@ registryConfig:
          insecureSkipVerify: true
 ```
 
-Registry configurations allow you to specify settings on a per-registry basis to avoid rate limits, registry errors, and time waste.
-
-Registry configuration is supported by the following `ace-dt` commands:
-
-- `ace-dt mirror`
-- `ace-dt oci`
-- `ace-dt pypi`
-
 Configuration options include the following fields:
 
 - `registries`: a map of registry host names to their respective registry config settings
@@ -104,17 +134,17 @@ Configuration options include the following fields:
 
 See below for registry configuration options:
 
-### registries
+#### registries
 
 The `registries` field is a map of registry host names to their respective registry config settings. In the example above, the registries that we have defined in the config are `index.docker.io`, `reg.example.com`, and `localhost:5000`. The values in the `registries` field should not include scheme as that is defined in the endpoint (or assumed `https` if no endpoint is assigned or registry does not exist in the config).
 
-### endpoints
+#### endpoints
 
 As a sub-field of `registries`, the `endpoints` field accepts an array of fully-qualified registry endpoints. Currently only the first endpoint is supported but in the future this will expand to allow multiple endpoints. `ace-dt` will pull all images from the first endpoint defined. Endpoints are useful if a mirror already exists of a specific registry and can help avoid rate-limiting from registries like `index.docker.io`.
 
 In the example above, `index.docker.io` has an endpoint defined: `http://localhost:5000`. If a user runs `ace-dt mirror gather` with this command and with `docker.io` images in their `sources.list` file, `ace-dt` will resolve the image location from `http://localhost:5000`.
 
-### rewritePull
+#### rewritePull
 
 The `rewritePull` sub-field of `registries` allows a user to define regex to pull an image from a different *repository location* than what may be defined in a `sources.list` file. This is useful when used in conjunction with `endpoints`, where mirrored image locations may have a nested repository structure compared to the source registry.
 
@@ -128,7 +158,7 @@ rewritePull:
 
 Assuming a user were to have this in their registry config file with rancher and ubuntu images in their `ace-dt mirror gather` `sources.list` file, AND that the `http://localhost:5000` endpoint is valid, `ace-dt` would look for rancher at the location `localhost:5000/ace/dt/rancher-images/rancher:{TAG}`. Likewise, it would also look for the `ubuntu` image at `localhost:5000/ace/dt/ubuntu-images/ubuntu:{TAG}`.
 
-### endpointConfig
+#### endpointConfig
 
 The `endpointConfig` field contains some endpoint-specific settings for TLS and referrers support.
 Its key value should be the fully-qualified endpoint URL. In the example above, we have one configuration defined for endpoint `https://reg.example.com`.
@@ -141,7 +171,7 @@ endpointConfig:
         insecureSkipVerify: true
 ```
 
-### supportsReferrers
+#### supportsReferrers
 
 Some artifacts may reference manifests in their `Subject` field, defining the manifest as a dependency. With the [referrers API](https://github.com/opencontainers/distribution-spec/blob/main/spec.md#listing-referrers), these can be queried via a GET request to a specific referrers path:
 
@@ -155,13 +185,13 @@ Some registries do not support this query, however. In that case, you can specif
 supportsReferrers: "tag"
 ```
 
-### tls
+#### tls
 
 Certificate paths *do not* need to be specified in the `tls` section of the endpoint config ([see the section on adding TLS certificates](#adding-tls-certificates)).
 
 `insecureSkipVerify` can be set in the `tls` section of the `endpointConfig` as outlined below.
 
-### insecureSkipVerify
+#### insecureSkipVerify
 
 Setting `insecureSkipVerify` to `true` in the `endpointConfig` allows you to interact with the registry without SSL validation.
 
@@ -183,6 +213,12 @@ The syntax for setting environment variables is:
 
 ```sh
 export ACE_DT_TELEMETRY_URL=https://mytelemetry.example.com
+```
+
+or inline the variable to use only once:
+
+```sh
+ACE_DT_TELEMETRY_URL=https://mytelemetry.example.com ace-dt bottle push host.com/repo/mybottle:latest
 ```
 
 Options include:

@@ -31,7 +31,7 @@ func Test_Functional_DeleteBottle(t *testing.T) {
 	remoteBottle.Load()
 	helper.PruneCache()
 
-	helper.CommandHelper.RunCommand("delete", remoteBottle.RegRef)
+	helper.RunCommand("delete", remoteBottle.RegRef)
 
 	err := helper.CheckRegForBottle(remoteBottle.RegRef, "")
 	assert.ErrorIs(t, err, errdef.ErrNotFound)

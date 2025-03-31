@@ -19,22 +19,22 @@ func Test_Functional_Source(t *testing.T) {
 	helper := NewTestHelper(t, rootCmd)
 
 	myPartName := "testPart1.txt"
-	helper.BottleHelper.AddBottlePart(myPartName)
+	helper.AddBottlePart(myPartName)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.CommandHelper.RunCommand("source", "list")
-	helper.CommandHelper.RunCommand("source", "add", "testSource", "test.com")
-	helper.CommandHelper.RunCommand("source", "list")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.RunCommand("source", "list")
+	helper.RunCommand("source", "add", "testSource", "test.com")
+	helper.RunCommand("source", "list")
 
-	helper.BottleHelper.Load()
-	assert.Equal(t, "testSource", helper.BottleHelper.Bottle.Definition.Sources[0].Name)
-	assert.Equal(t, "test.com", helper.BottleHelper.Bottle.Definition.Sources[0].URI)
+	helper.Load()
+	assert.Equal(t, "testSource", helper.Bottle.Definition.Sources[0].Name)
+	assert.Equal(t, "test.com", helper.Bottle.Definition.Sources[0].URI)
 
-	helper.CommandHelper.RunCommand("source", "remove", "testSource")
-	helper.BottleHelper.Load()
-	assert.Equal(t, 0, len(helper.BottleHelper.Bottle.Definition.Sources))
+	helper.RunCommand("source", "remove", "testSource")
+	helper.Load()
+	assert.Equal(t, 0, len(helper.Bottle.Definition.Sources))
 }
 
 func Test_Functional_Source_Reference(t *testing.T) {
@@ -59,17 +59,17 @@ func Test_Functional_Source_Reference(t *testing.T) {
 	parentBottleID := "bottle:" + remoteBottle.Bottle.GetBottleID().String()
 
 	myPartName := "testPart1.txt"
-	helper.BottleHelper.AddBottlePart(myPartName)
+	helper.AddBottlePart(myPartName)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.CommandHelper.RunCommand("source", "add", "testSource", remoteBottle.RegRef, "--ref")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.RunCommand("source", "add", "testSource", remoteBottle.RegRef, "--ref")
 
-	assert.NoError(t, helper.BottleHelper.load())
-	assert.Equal(t, "testSource", helper.BottleHelper.Bottle.Definition.Sources[0].Name)
-	assert.Equal(t, parentBottleID, helper.BottleHelper.Bottle.Definition.Sources[0].URI)
-	assert.Len(t, helper.BottleHelper.Bottle.Definition.Sources, 1)
+	assert.NoError(t, helper.load())
+	assert.Equal(t, "testSource", helper.Bottle.Definition.Sources[0].Name)
+	assert.Equal(t, parentBottleID, helper.Bottle.Definition.Sources[0].URI)
+	assert.Len(t, helper.Bottle.Definition.Sources, 1)
 
 }
 
@@ -96,20 +96,20 @@ func Test_Functional_SourceBottleID(t *testing.T) {
 	parentBottleID := "bottle:" + parentBottle.Bottle.GetBottleID().String()
 
 	myPartName := "testPart1.txt"
-	helper.BottleHelper.AddBottlePart(myPartName)
+	helper.AddBottlePart(myPartName)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.CommandHelper.RunCommand("source", "list")
-	helper.CommandHelper.RunCommand("source", "add", "--path", "bottleSource", parentBottle.RootDir)
-	helper.CommandHelper.RunCommand("source", "list")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.RunCommand("source", "list")
+	helper.RunCommand("source", "add", "--path", "bottleSource", parentBottle.RootDir)
+	helper.RunCommand("source", "list")
 
-	helper.BottleHelper.Load()
-	assert.Equal(t, "bottleSource", helper.BottleHelper.Bottle.Definition.Sources[0].Name)
-	assert.Equal(t, parentBottleID, helper.BottleHelper.Bottle.Definition.Sources[0].URI)
+	helper.Load()
+	assert.Equal(t, "bottleSource", helper.Bottle.Definition.Sources[0].Name)
+	assert.Equal(t, parentBottleID, helper.Bottle.Definition.Sources[0].URI)
 
-	helper.CommandHelper.RunCommand("source", "remove", "bottleSource")
-	helper.BottleHelper.Load()
-	assert.Equal(t, len(helper.BottleHelper.Bottle.Definition.Sources), 0)
+	helper.RunCommand("source", "remove", "bottleSource")
+	helper.Load()
+	assert.Equal(t, len(helper.Bottle.Definition.Sources), 0)
 }

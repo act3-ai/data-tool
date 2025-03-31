@@ -5,10 +5,10 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
+	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+
 	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
 	"gitlab.com/act3-ai/asce/data/schema/pkg/util"
-	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
 
 // PartSelectorOptions are options for creating a PartSelector.
@@ -25,10 +25,10 @@ type PartSelectorOptions struct {
 func (opts *PartSelectorOptions) New(ctx context.Context) (PartSelectorFunc, error) {
 	switch {
 	case opts.Empty:
-		return func(storage.PartInfo) bool { return false }, nil
+		return func(PartInfo) bool { return false }, nil
 	case len(opts.Labels) == 0 && len(opts.Names) == 0 && len(opts.Artifacts) == 0:
 		// return nil should also work
-		return func(storage.PartInfo) bool { return true }, nil
+		return func(PartInfo) bool { return true }, nil
 	default:
 		// we only select all parts if all selectors are nil or empty, since
 		// selectors.Parse will select all if nil we alter this behavior.
@@ -39,7 +39,7 @@ func (opts *PartSelectorOptions) New(ctx context.Context) (PartSelectorFunc, err
 		if err != nil {
 			return nil, err
 		}
-		return func(part storage.PartInfo) bool {
+		return func(part PartInfo) bool {
 			log := logger.V(logger.FromContext(ctx).With("part", part.GetName(), "labels", part.GetLabels()), 2)
 			if opts.Names != nil {
 				for _, partName := range opts.Names {

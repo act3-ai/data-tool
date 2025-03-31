@@ -82,10 +82,10 @@ func (r Ref) StringWithScheme() string {
 // Note, this leaves off the scheme if defined.
 func (r Ref) APIString() string {
 	retstr := ""
-	switch {
-	case r.Repo == "":
+	switch r.Repo {
+	case "":
 		retstr = r.Reg + "/v2/" + r.Name
-	case r.Repo == r.Name:
+	case r.Name:
 		retstr = r.Reg + "/v2/" + r.Repo
 	default:
 		retstr = r.Reg + "/v2/" + r.Repo + "/" + r.Name

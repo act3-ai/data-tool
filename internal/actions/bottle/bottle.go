@@ -7,7 +7,6 @@ import (
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/status"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
@@ -30,14 +29,15 @@ func saveMetaChanges(ctx context.Context, btl *bottle.Bottle) error {
 	log := logger.FromContext(ctx)
 
 	// btlMetadataSaveOpts is a SaveOptions constant used when only bottle metadata is updated in a bottle
-	btlMetadataSaveOpts := SaveOptions{
+	var btlMetadataSaveOpts = bottle.SaveOptions{
 		NoArchive: true,
 		NoDigest:  true,
 		NoCommit:  true,
 	}
 
 	// save changes to bottle's metadata
-	err := SaveUpdatesToSet(ctx, btl, btlMetadataSaveOpts)
+	err := bottle.SaveUpdatesToSet(ctx, btl, btlMetadataSaveOpts)
+
 	if err != nil {
 		return fmt.Errorf("failed while saving bottle at %s: %w", btl.GetPath(), err)
 	}
@@ -80,7 +80,7 @@ func LoadAndUpgradeBottle(ctx context.Context, cfg *v1alpha1.Configuration, path
 
 	// TODO it would be nice to only walk the directory tree once
 	// not in InspectBottleFiles and when we read labels.
-	_, _, err = status.InspectBottleFiles(ctx, btl, status.Options{Visitor: prepareUpdatedParts(ctx, btl)})
+	_, _, err = bottle.InspectBottleFiles(ctx, btl, bottle.Options{Visitor: bottle.PrepareUpdatedParts(ctx, btl)})
 	if err != nil {
 		return nil, fmt.Errorf("failed while checking for updated bottle parts: %w", err)
 	}

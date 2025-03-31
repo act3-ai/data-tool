@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -107,10 +108,10 @@ func testRecordLayerSourceMultiple(t *testing.T, bic bicbackend.BlobInfoCache) {
 
 	for i := range descs {
 		RecordLayerSource(ctx, bic, descs[i], srcs[i])
+		time.Sleep(1 * time.Nanosecond) // ensure that the timestamps are different for systems that have lower time resolution (like Windows)
 	}
 
 	candidates := bic.CandidateLocations(ctx, "oci", bicbackend.BICContentScope{Opaque: bicbackend.LayerContent}, descs[0].Digest, false)
-
 	// important testing note: the order of the found locations should be in reverse order from how they were added, so
 	// the srcs index used for the expected value is decreasing
 	assert.Equal(t, []bicbackend.BICReplacementCandidate{
@@ -175,6 +176,7 @@ func testLocateLayerMultiple(t *testing.T, bic bicbackend.BlobInfoCache) {
 
 	for i := range descs {
 		RecordLayerSource(ctx, bic, descs[i], srcs[i])
+		time.Sleep(1 * time.Nanosecond) // ensure that the timestamps are different
 	}
 
 	refs := LocateLayer(ctx, bic, ocispec.Descriptor{Digest: digestA}, ref.RepoFromString("https://duplicate.host/store/a"), false)
@@ -197,6 +199,7 @@ func testGetSources(t *testing.T, bic bicbackend.BlobInfoCache) {
 
 	for i := range descs {
 		RecordLayerSource(ctx, bic, descs[i], srcs[i])
+		time.Sleep(1 * time.Nanosecond) // ensure that the timestamps are different
 	}
 
 	lbi := LayerBlobInfo{layerIDs: []digest.Digest{digestA, digestB}}
