@@ -164,22 +164,22 @@ prepare)
 
     # run unit, functional, and integration tests
     # TODO: Gitlab.com doesn't accept bottles, so we must store them elsewhere for now.
-    dagger call with-registry-auth --address=$privateRegistry --username="$GITLAB_REG_USER_PRIVATE" --secret=env:GITLAB_REG_TOKEN_PRIVATE with-registry-auth --address=$registry --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN with-netrc --netrc=file:$netrcPath test all
+    dagger call with-registry-auth --address="$privateRegistry" --username="$GITLAB_REG_USER_PRIVATE" --secret=env:GITLAB_REG_TOKEN_PRIVATE with-registry-auth --address="$registry" --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN with-netrc --netrc=file:"$netrcPath" test all
 
     # update changelog, release notes, semantic version
     dagger call release prepare export --path=.
 
     # govulncheck
-    dagger call with-netrc --netrc=file:$netrcPath vuln-check
+    dagger call with-netrc --netrc=file:"$netrcPath" vuln-check
 
     # generate docs
     dagger call apidocs export --path=./docs/apis/config.dt.act3-ace.io
-    dagger call with-netrc --netrc=file:$netrcPath clidocs export --path=./docs/cli
+    dagger call with-netrc --netrc=file:"$netrcPath" clidocs export --path=./docs/cli
 
     version=$(cat VERSION)
 
     # build for all supported platforms
-    dagger call with-netrc --netrc=file:$netrcPath build-platforms --version="$version" export --path=./bin
+    dagger call with-netrc --netrc=file:"$netrcPath" build-platforms --version="$version" export --path=./bin
 
     echo "Please review the local changes, especially releases/$version.md"
     ;;
@@ -211,7 +211,7 @@ publish)
 
     # publish image
     imageRepoRef="${registryRepo}:${fullVersion}"
-    dagger call with-registry-auth --address=$registry --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN with-netrc --netrc=file:$netrcPath image-index --version="$fullVersion" --platforms="$platforms" --address "$imageRepoRef"
+    dagger call with-registry-auth --address=$registry --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN with-netrc --netrc=file:"$netrcPath" image-index --version="$fullVersion" --platforms="$platforms" --address "$imageRepoRef"
 
     # shellcheck disable=SC2046
     oras tag "$(oras discover "$imageRepoRef" | head -n 1)" $(resolveExtraTags "$registryRepo" "$fullVersion")
