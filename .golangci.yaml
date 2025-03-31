@@ -1,240 +1,155 @@
+version: "2"
 run:
-  # if you are daring, set this to true
   tests: true
-
 linters:
   enable:
-    - gofmt
     - bodyclose
-    - exhaustive
-    - dupl
-    - errorlint
-    - prealloc
-    - importas
-    - errorlint
-    - errname
-    - revive
-    - gocritic
-    - staticcheck
-    - gosimple
-    - govet
-    - ineffassign
-    - typecheck
-    - unused
-    - misspell
-    - goimports
-    - tenv
-    # - gochecknoglobals
-    - gochecknoinits
-    # - gci
-    - usestdlibvars
-    - thelper
-    - nolintlint
-    - noctx
-    - wrapcheck
-    - gocognit
     - containedctx
     - contextcheck
-    - godot
-    - nosprintfhostport
-    - depguard
-    # - exportloopref
-    - sloglint
     - copyloopvar
-
-linters-settings:
-  # importas:
-    # if set to `true`, force to use alias.
-    # no-unaliased: true
-    # List of aliases
-    # alias:
-    #   - pkg: github.com/opencontainers/go-digest
-    #     alias: digest
-  
-  # govet:
-  #   enable-all: true
-
-  exhaustive:
-    default-signifies-exhaustive: true
-
-  staticcheck:
-    # https://staticcheck.io/docs/options#checks
-    checks: [ "all" ]
-
-  revive:
-    ignore-generated-header: true
-    severity: warning
-    # enable-all-rules: true
-    # rules:
-    # - name: banned-characters
-    #   arguments: [""]
-    # - name: line-length-limit
-    #   severity: warning
-    #   arguments: [200]
-    # - name: function-result-limit
-    #   arguments: [4]
+    - depguard
+    - dupl
+    - errname
+    - errorlint
+    - exhaustive
+    - gochecknoinits
+    - gocognit
+    - gocritic
+    - godot
+    - importas
+    - misspell
+    - noctx
+    - nolintlint
+    - nosprintfhostport
+    - prealloc
+    - revive
+    - sloglint
+    - thelper
+    - usestdlibvars
+    - usetesting
+    - wrapcheck
+  settings:
+    depguard:
+      rules:
+        nontest:
+          files:
+            - $all
+            - '!$test'
+            - '!**/cmd/ace-dt/internal/cli/internal/functesting/*.go'
+          deny:
+            - pkg: github.com/stretchr/testify
+              desc: Testify is only for test code
+        transfer:
+          files:
+            - '**/pkg/transfer/*.go'
+          deny:
+            - pkg: gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle
+              desc: pkg/transfer should not depend on bottles
+            - pkg: gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle
+              desc: pkg/transfer should not depend on bottles
+            - pkg: gitlab.com/act3-ai/asce/data/tool/internal/bottle
+              desc: pkg/transfer should not depend on bottles
+    exhaustive:
+      default-signifies-exhaustive: true
+    gocognit:
+      min-complexity: 35
+    revive:
+      severity: warning
+      rules:
+        - name: atomic
+        - name: unhandled-error
+          arguments:
+            - strings.Builder.Write
+            - strings.Builder.WriteRune
+            - strings.Builder.WriteString
+            - strings.Builder.WriteByte
+        - name: blank-imports
+        - name: context-as-argument
+        - name: context-keys-type
+        - name: dot-imports
+        - name: error-return
+        - name: error-strings
+        - name: error-naming
+        - name: exported
+        - name: if-return
+        - name: increment-decrement
+        - name: var-naming
+        - name: var-declaration
+        - name: package-comments
+        - name: range
+        - name: receiver-naming
+        - name: time-naming
+        - name: unexported-return
+        - name: indent-error-flow
+        - name: errorf
+        - name: empty-block
+        - name: superfluous-else
+        - name: unreachable-code
+        - name: redefines-builtin-id
+        - name: defer
+        - name: useless-break
+        - name: unexported-naming
+        - name: use-any
+        - name: deep-exit
+        - name: unnecessary-stmt
+        - name: modifies-value-receiver
+        - name: call-to-gc
+        - name: import-shadowing
+    sloglint:
+      context: scope
+      static-msg: true
+      key-naming-case: camel
+    staticcheck:
+      checks:
+        - all
+    wrapcheck:
+      ignore-sigs:
+        - .Errorf(
+        - .Err(
+        - errors.New(
+        - errors.Unwrap(
+        - errors.Join(
+        - .Info(
+        - .Stat(
+        - .Lstat(
+        - .Close()
+        - .WalkDir(
+        - .ExecuteContext(
+        - (*golang.org/x/sync/errgroup.Group).Wait()
+        - (*github.com/sourcegraph/conc/pool.ContextPool).Wait()
+        - (*github.com/sourcegraph/conc/pool.Pool).Wait()
+      ignore-sig-regexps:
+        - fmt\..?(P|p)rint.*\(
+        - \(gitlab.com/act3-ai/asce/data/tool/internal/.*
+      ignore-package-globs:
+        - encoding/*
+        - gitlab.com/*
+  exclusions:
+    generated: lax
+    presets:
+      - common-false-positives
+      - std-error-handling
     rules:
-      - name: atomic
-      # - name: line-length-limit
-      #   severity: warning
-      #   arguments: [120]
-      - name: unhandled-error
-        arguments:
-          - strings.Builder.Write
-          - strings.Builder.WriteRune
-          - strings.Builder.WriteString
-          - strings.Builder.WriteByte
-
-      - name: blank-imports
-      - name: context-as-argument
-      - name: context-keys-type
-      - name: dot-imports
-      - name: error-return
-      - name: error-strings
-      - name: error-naming
-      - name: exported
-      - name: if-return
-      - name: increment-decrement
-      - name: var-naming
-      - name: var-declaration
-      - name: package-comments
-      - name: range
-      - name: receiver-naming
-      - name: time-naming
-      - name: unexported-return
-      - name: indent-error-flow
-      - name: errorf
-      - name: empty-block
-      - name: superfluous-else
-      # - name: unused-parameter
-      - name: unreachable-code
-      - name: redefines-builtin-id
-      - name: defer
-      - name: useless-break
-      - name: unexported-naming
-      # - name: cognitive-complexity
-      #   arguments: [35]
-      - name: use-any
-      - name: deep-exit
-      # - name: add-constant
-      - name: unnecessary-stmt
-      - name: modifies-value-receiver
-      # - name: constant-logical-expr
-      - name: call-to-gc
-      - name: import-shadowing
-      # - name: unused-receiver
-
-
-  goimports:
-    # Put imports beginning with prefix after 3rd-party packages.
-    # It's a comma-separated list of prefixes.
-    # Default: ""
-    local-prefixes: gitlab.com/act3-ai/asce
-
-  wrapcheck:
-    ignoreSigs:
-      # defaults
-      - ".Errorf("
-      - ".Err("
-      - "errors.New("
-      - "errors.Unwrap("
-      - "errors.Join("
-      # Don't check "file info" errors
-      - ".Info("
-      - ".Stat("
-      - ".Lstat("
-      - ".Close()" # another linter handles close err
-      - ".WalkDir("
-      # expected to work
-      - .ExecuteContext( # cobra command
-      - (*golang.org/x/sync/errgroup.Group).Wait()
-      - (*github.com/sourcegraph/conc/pool.ContextPool).Wait()
-      - (*github.com/sourcegraph/conc/pool.Pool).Wait()
-    ignoreSigRegexps:
-      # ignore printing (to stdout)
-      - "fmt\\..?(P|p)rint.*\\(" 
-      - "\\(gitlab.com/act3-ai/asce/data/tool/internal/.*"
-    ignorePackageGlobs:
-      - encoding/*
-      - git.act3-ace.com/* # Only catches things when they are imported
-
-  gocognit:
-    min-complexity: 35
-
-  depguard:
-    rules:
-      nontest:
-        files:
-          - $all
-          - "!$test"
-          - "!**/cmd/ace-dt/internal/cli/internal/functesting/*.go"
-        deny:
-          - pkg: github.com/stretchr/testify
-            desc: Testify is only for test code
-
-      transfer:
-        files:
-          - "**/pkg/transfer/*.go"
-        deny:
-          - pkg: "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
-            desc: pkg/transfer should not depend on bottles
-          - pkg: "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
-            desc: pkg/transfer should not depend on bottles
-          - pkg: "gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-            desc: pkg/transfer should not depend on bottles
-  
-  sloglint:
-    # Enforce not mixing key-value pairs and attributes.
-    # Default: true
-    # no-mixed-args: false
-
-    # Enforce using key-value pairs only (overrides no-mixed-args, incompatible with attr-only).
-    # Default: false
-    # kv-only: true
-
-    # Enforce using attributes only (overrides no-mixed-args, incompatible with kv-only).
-    # Default: false
-    # attr-only: true
-
-    # Enforce using methods that accept a context.
-    # Default: false
-    context: scope
-
-    # Enforce using static values for log messages.
-    # Default: false
-    static-msg: true
-
-    # Enforce using constants instead of raw keys.
-    # Default: false
-    # no-raw-keys: true
-
-    # Enforce a single key naming convention.
-    # Values: snake, kebab, camel, pascal
-    # Default: ""
-    key-naming-case: camel
-
-    # Enforce putting arguments on separate lines.
-    # Default: false
-    # args-on-sep-lines: true
-
-issues:
-  # uncomment to enable more linting
-  # exclude-use-default: false
-
-  include:
-    # - EXC0001
-    - EXC0002
-    - EXC0005
-    - EXC0009
-    - EXC0011
-    - EXC0012
-    - EXC0013
-    - EXC0014
-    - EXC0015
-
-  exclude-rules:
-    - path: (.+)_test.go
-      linters:
-        - wrapcheck
-        - godot
-        - dupl
+      - linters:
+          - dupl
+          - godot
+          - wrapcheck
+        path: (.+)_test.go
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - gitlab.com/act3-ai/asce
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

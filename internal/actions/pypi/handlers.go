@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/registry"
 
@@ -46,7 +45,7 @@ func (a *App) handleIndex(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (a *App) handleProject(w http.ResponseWriter, r *http.Request) error {
-	project := chi.URLParam(r, "project")
+	project := r.PathValue("project")
 
 	ctx := r.Context()
 	log := logger.FromContext(ctx).With("project", project)
@@ -75,8 +74,9 @@ func (a *App) handleProject(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (a *App) handleFile(w http.ResponseWriter, r *http.Request) error {
-	project := chi.URLParam(r, "project")
-	filename := chi.URLParam(r, "filename")
+	project := r.PathValue("project")
+	filename := r.PathValue("filename")
+
 	ctx := r.Context()
 	log := logger.FromContext(ctx).With("project", project, "filename", filename)
 	log.InfoContext(ctx, "Retrieving file")

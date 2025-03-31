@@ -6,7 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	telemv1alpha1 "gitlab.com/act3-ai/asce/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	telemv1alpha2 "gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
 )
 
 // +kubebuilder:object:root=true
@@ -48,7 +48,7 @@ type ConfigurationSpec struct {
 	HideProgress bool `json:"hideProgress"` // TODO this should be a flag
 
 	// Telemetry is a list of telemetry server locations
-	Telemetry []telemv1alpha1.Location `json:"telemetry,omitempty"`
+	Telemetry []telemv1alpha2.Location `json:"telemetry,omitempty"`
 
 	// TelemetryUserName is the name of this user for reporting to telemetry
 	TelemetryUserName string `json:"telemetryUserName,omitempty"`
@@ -98,22 +98,25 @@ kind: Configuration
 
 # Registry configuration
 # registryConfig:
-#      index.docker.io:
-#        endpoints:
-#		   - https://index.docker.io
-#		   - http://localhost:5000
-#        rewritePull:
-#          "^rancher/(.*)": "ace/dt/rancher-images/$1"
-#          "^ubuntu/(.*)": "ace/dt/ubuntu-images/$1"
-#      nvcr.io:
-#        endpoints:
-#          - https://nvcr.io
-#    endpointConfig:
-#      https://nvcr.io:
-#        supportsReferrers: "tag"
-#      https://index.docker.io:
-#        tls:
-#          insecureSkipVerify: true
+#   registries:
+#     index.docker.io:
+#       endpoints:
+#         - https://index.docker.io
+#       rewritePull:
+#         "^rancher/(.*)": "ace/dt/rancher-images/$1"
+#         "^ubuntu/(.*)": "ace/dt/ubuntu-images/$1"
+#     nvcr.io:
+#       endpoints:
+#         - https://nvcr.io
+#     localhost:5000:
+#       endpoints:
+#         - http://localhost:5000
+#   endpointConfig:
+#     https://nvcr.io:
+#       supportsReferrers: "tag"
+#     http://localhost:5000
+#       tls:
+#         insecureSkipVerify: true
 `
 
 // SigningKey is metadata which is added to signature annotations when signing.

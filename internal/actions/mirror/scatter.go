@@ -2,6 +2,7 @@ package mirror
 
 import (
 	"context"
+	"fmt"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
@@ -24,24 +25,35 @@ func (action *Scatter) Run(ctx context.Context, sourceRepo, mappingSpec string) 
 
 	rootUI := ui.FromContextOrNoop(ctx)
 
-	src, err := action.Config.Repository(ctx, sourceRepo)
+	gtarget, err := action.Config.ReadOnlyGraphTarget(ctx, sourceRepo)
 	if err != nil {
 		return err
 	}
 
+	srcDesc, err := gtarget.Resolve(ctx, sourceRepo)
+	if err != nil {
+		return fmt.Errorf("resolving source reference: %w", err)
+	}
+
+	// parse with endpoint resolution
+	srcRef, err := action.Config.ParseEndpointReference(sourceRepo)
+	if err != nil {
+		return fmt.Errorf("parsing destination reference: %w", err)
+	}
+
 	// create the scatter options
 	opts := mirror.ScatterOptions{
-		SubsetFile:     action.SourceFile,
-		Src:            src,
-		SrcString:      sourceRepo,
-		SrcReference:   src.Reference,
-		MappingSpec:    mappingSpec,
-		Selectors:      action.Selectors,
-		ConcurrentHTTP: cfg.ConcurrentHTTP,
-		RootUI:         rootUI,
-		DryRun:         action.Check,
-		Recursive:      action.Recursive,
-		RepoFunc:       action.Config.Repository,
+		SubsetFile:      action.SourceFile,
+		Source:          gtarget,
+		SourceDesc:      srcDesc,
+		SourceReference: srcRef,
+		MappingSpec:     mappingSpec,
+		Selectors:       action.Selectors,
+		ConcurrentHTTP:  cfg.ConcurrentHTTP,
+		RootUI:          rootUI,
+		DryRun:          action.Check,
+		Recursive:       action.Recursive,
+		Targeter:        action.Config,
 	}
 
 	// run mirror scatter

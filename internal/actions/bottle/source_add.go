@@ -54,7 +54,7 @@ func (action *SourceAdd) Run(ctx context.Context, srcName, srcURI string, out io
 		// be able to directly add the source. However, we resolve it anyways as if telemetry cannot find it, adding
 		// the source doesn't achieve anything; perhaps an indication of telemetry data loss or an invalid bottle source reference
 		cfg := action.Config.Get(ctx)
-		telemAdapt := telem.NewAdapter(cfg.Telemetry, cfg.TelemetryUserName)
+		telemAdapt := telem.NewAdapter(ctx, cfg.Telemetry, cfg.TelemetryUserName, telem.WithCredStore(action.Config.CredStore()))
 
 		log.InfoContext(ctx, "resolving reference with telemetry", "ref", srcURI)
 		transferOpts := tbottle.TransferOptions{

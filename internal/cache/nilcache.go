@@ -2,84 +2,38 @@ package cache
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 
-	"github.com/opencontainers/go-digest"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// NilCache is an empty implementation of MoteCache that provides empty functionality
-// for cases when caching is disabled.
+// NilCache implements oras content.GraphStorage with empty functionality for cases
+// when caching is disabled.
 type NilCache struct {
 }
 
-// Initialize does nothing.
-func (nc *NilCache) Initialize() error {
-	return nil
-}
-
-// IsDirty returns false.
-func (nc *NilCache) IsDirty() bool {
-	return false
-}
-
-// Refresh does nothing.
-func (nc *NilCache) Refresh() (bool, error) {
+// Exists returns false.
+func (nc *NilCache) Exists(ctx context.Context, target ocispec.Descriptor) (bool, error) {
 	return false, nil
 }
 
-// MoteExists returns false.
-func (nc *NilCache) MoteExists(dgst digest.Digest) bool {
-	return false
+// Fetch is not supported.
+func (nc *NilCache) Fetch(ctx context.Context, desc ocispec.Descriptor) (io.ReadCloser, error) {
+	return nil, errors.ErrUnsupported
 }
 
-// MoteWriter returns an empty mote.
-func (nc *NilCache) MoteWriter(dgst digest.Digest) (io.WriteCloser, error) {
-	return Mote{}, nil
-}
-
-// MoteReader returns an empty mote.
-func (nc *NilCache) MoteReader(dgst digest.Digest) (io.ReadCloser, error) {
-	return Mote{}, nil
-}
-
-// MoteReaderAt returns an empty mote.
-func (nc *NilCache) MoteReaderAt(dgst digest.Digest) (ReaderAt, error) {
-	return Mote{}, nil
-}
-
-// Find returns no info, and false to indicate nothing was found.
-func (nc *NilCache) Find(dgst digest.Digest) (MoteInfo, bool) {
-	return nil, false
-}
-
-// MoteRef returns an empty string.
-func (nc *NilCache) MoteRef(dgst digest.Digest) string {
-	return ""
-}
-
-// CommitMote does nothing.
-func (nc *NilCache) CommitMote(ref string, mote Mote, commitMode int) error {
-	return nil
-}
-
-// CreateMote creates a mote with the provided info. The mote created with this contains the
-// provided information, but is otherwise non functional.
-func (nc *NilCache) CreateMote(dgst digest.Digest, mediaType string, size int64) (Mote, error) {
-	m := Mote{
-		Digest:    dgst,
-		MediaType: mediaType,
-		DataSize:  size,
+// Push prevents potential io blocking by discarding the provided reader.
+func (nc *NilCache) Push(ctx context.Context, expected ocispec.Descriptor, content io.Reader) error {
+	_, err := io.Copy(io.Discard, content)
+	if err != nil {
+		return fmt.Errorf("discarding duplicate blob: %w", err)
 	}
-
-	return m, nil
-}
-
-// RemoveMote does nothing.
-func (nc *NilCache) RemoveMote(dgst digest.Digest) error {
 	return nil
 }
 
-// Prune does nothing.
-func (nc *NilCache) Prune(ctx context.Context, maxSize int64) error {
-	return nil
+// Predecessors always returns an empty set.
+func (nc *NilCache) Predecessors(ctx context.Context, node ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+	return []ocispec.Descriptor{}, nil
 }

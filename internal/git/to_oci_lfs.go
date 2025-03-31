@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -12,6 +11,7 @@ import (
 	"oras.land/oras-go/v2/errdef"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"gitlab.com/act3-ai/asce/data/tool/internal/git/oci"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
@@ -24,7 +24,7 @@ import (
 func (t *ToOCI) runLFS(ctx context.Context, oldCommitManDesc, newCommitManDesc ocispec.Descriptor) (ocispec.Descriptor, error) {
 	log := logger.FromContext(ctx)
 
-	reachableLFSObjs, err := t.cmdHelper.ListReachableLFSFiles(t.argRevList...)
+	reachableLFSObjs, err := t.cmdHelper.ListReachableLFSFiles(ctx, t.argRevList)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("resolving status of LFS files: %w", err)
 	}
@@ -34,11 +34,11 @@ func (t *ToOCI) runLFS(ctx context.Context, oldCommitManDesc, newCommitManDesc o
 		return ocispec.Descriptor{}, cmd.ErrLFSNotEnabled
 	}
 
-	if err := t.FetchLFSManifestConfig(ctx, oldCommitManDesc, t.syncOpts.Clean); err != nil && !errors.Is(err, errdef.ErrNotFound) {
+	if _, err := t.FetchLFSManifestConfig(ctx, oldCommitManDesc, t.syncOpts.Clean); err != nil && !errors.Is(err, errdef.ErrNotFound) {
 		return ocispec.Descriptor{}, err
 	}
 
-	if err := t.prepRepoForLFS(); err != nil {
+	if err := t.prepRepoForLFS(ctx); err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("prepping tempoarary intermediate git repository for handling lfs: %w", err)
 	}
 
@@ -59,33 +59,6 @@ func (t *ToOCI) runLFS(ctx context.Context, oldCommitManDesc, newCommitManDesc o
 	return lfsManDesc, nil
 }
 
-// createFakeLFSFiles creates LFS files, that already exist in the destination registry,
-// within the intermediate repo to prevent fetching with `git-lfs fetch`.
-func (t *ToOCI) createFakeLFSFiles() error {
-	objsInRegistry := t.getExistingLFSFiles() // do not modify lfs manifest before this
-	for obj, size := range objsInRegistry {
-		oidPath := filepath.Join(t.cmdHelper.Dir(), t.cmdHelper.ResolveLFSOIDPath(obj))
-		if err := os.MkdirAll(filepath.Dir(oidPath), 0o777); err != nil {
-			return fmt.Errorf("creating path to empty lfs obj: %w", err)
-		}
-
-		oidFile, err := os.Create(oidPath)
-		if err != nil {
-			return fmt.Errorf("creating empty lfs obj: %w", err)
-		}
-
-		_, err = oidFile.WriteAt([]byte{1}, size-1)
-		if err != nil {
-			return fmt.Errorf("writing to obj file at offset %d: %w", size-1, err)
-		}
-		if err := oidFile.Close(); err != nil {
-			return fmt.Errorf("closing obj file: %w", err)
-		}
-	}
-
-	return nil
-}
-
 // fetchLFSFilesGit fetches all git LFS tracked files from gitRemote reachable from argRevList.
 // Handles caching if it is used.
 func (t *ToOCI) fetchLFSFilesGit(ctx context.Context, gitRemote string, argRevList ...string) error {
@@ -93,8 +66,8 @@ func (t *ToOCI) fetchLFSFilesGit(ctx context.Context, gitRemote string, argRevLi
 	u := ui.FromContextOrNoop(ctx)
 
 	switch {
-	case t.syncOpts.CacheDir != "":
-		commits, _, err := t.localCommitsRefs(argRevList...)
+	case t.syncOpts.Cache != nil:
+		commits, _, err := t.localCommitsRefs(ctx, argRevList...)
 		if err != nil {
 			return fmt.Errorf("resolving argRevList to commits: %w", err)
 		}
@@ -105,27 +78,28 @@ func (t *ToOCI) fetchLFSFilesGit(ctx context.Context, gitRemote string, argRevLi
 			commitsAsStr = append(commitsAsStr, string(commit))
 		}
 
-		if err := t.cache.UpdateLFSFromGit(gitRemote, t.cmdHelper.Options, commitsAsStr...); err != nil {
+		if err := t.syncOpts.Cache.UpdateLFSFromGit(ctx, gitRemote, commitsAsStr...); err != nil {
 			log.DebugContext(ctx, "Cache failed to update git-lfs objects", "error", err)
 			u.Infof("Failed to update cache with git-lfs objects, continuing without caching...")
 		} else {
-
 			log.InfoContext(ctx, "Linking cache lfs files to intermediate repository")
-			if err := t.cmdHelper.Config("--add", "lfs.storage", filepath.Join(t.cache.CachePath(), cmd.LFSObjsPath)); err != nil {
-				return fmt.Errorf("setting lfs.storage config to cache: %w", err)
+			if err := t.cmdHelper.Config(ctx, "--add", "lfs.storage", filepath.Join(t.syncOpts.Cache.CachePath(), "lfs")); err != nil {
+				return fmt.Errorf("setting lfs.storage config to cache: %w", err) // TODO: recover?
 			}
 			break
 		}
 		fallthrough // recover to default if cache fails
 
 	default:
-		if err := t.createFakeLFSFiles(); err != nil { // we can still optimize some even if caching is not used.
-			return fmt.Errorf("creating fake LFS files to trick git-lfs: %w", err)
+		// we can still optimize some even if caching is not used.
+		// do not modify lfs manifest before resolving existing lfs files
+		if err := cmd.CreateFakeLFSFiles(t.cmdHelper.Dir(), t.getExistingLFSFiles()); err != nil {
+			return fmt.Errorf("creating fake LFS files: %w", err)
 		}
 
 		args := []string{"--all"}
 		args = append(args, argRevList...)
-		err := t.cmdHelper.LFS.Fetch(gitRemote, args...)
+		err := t.cmdHelper.LFS.Fetch(ctx, gitRemote, args...)
 		if err != nil {
 			return err
 		}
@@ -143,12 +117,12 @@ func (t *ToOCI) sendLFSSync(ctx context.Context, subject *ocispec.Descriptor, ne
 	for _, oid := range newLFSObjs {
 
 		var lfsDir string
-		if t.syncOpts.CacheDir != "" {
-			lfsDir = t.cache.CachePath()
+		if t.syncOpts.Cache != nil {
+			lfsDir = t.syncOpts.Cache.CachePath()
 		} else {
 			lfsDir = t.cmdHelper.Dir()
 		}
-		desc, err := t.ociHelper.FStore.Add(ctx, oid, MediaTypeLFSLayer, filepath.Join(lfsDir, t.cmdHelper.ResolveLFSOIDPath(oid)))
+		desc, err := t.ociHelper.FStore.Add(ctx, oid, oci.MediaTypeLFSLayer, filepath.Join(lfsDir, cmd.ResolveLFSOIDPath(oid)))
 		if err != nil {
 			return ocispec.Descriptor{}, fmt.Errorf("adding LFS object to filestore: %w", err)
 		}
@@ -165,11 +139,11 @@ func (t *ToOCI) sendLFSSync(ctx context.Context, subject *ocispec.Descriptor, ne
 	manOpts := oras.PackManifestOptions{
 		Subject: subject,
 		Layers:  append(t.lfs.manifest.Layers, lfsObjDescs...),
-		// ConfigDescriptor:    &configDesc,
-		ManifestAnnotations: map[string]string{ocispec.AnnotationCreated: "1970-01-01T00:00:00Z", AnnotationDTVersion: t.syncOpts.DTVersion}, // POSIX epoch
+		//ConfigDescriptor:    &configDesc,
+		ManifestAnnotations: map[string]string{ocispec.AnnotationCreated: "1970-01-01T00:00:00Z", oci.AnnotationDTVersion: t.syncOpts.UserAgent}, // POSIX epoch
 	}
 
-	manDesc, err := oras.PackManifest(ctx, t.ociHelper.Target, oras.PackManifestVersion1_1, ArtifactTypeLFSManifest, manOpts)
+	manDesc, err := oras.PackManifest(ctx, t.ociHelper.Target, oras.PackManifestVersion1_1, oci.ArtifactTypeLFSManifest, manOpts)
 	if err != nil {
 		return ocispec.Descriptor{}, fmt.Errorf("packing and pushing LFS manifest: %w", err)
 	}
@@ -183,7 +157,7 @@ func (t *ToOCI) updateLFSManSubject(ctx context.Context, oldBaseManDesc, newBase
 	log := logger.FromContext(ctx)
 	u := ui.FromContextOrNoop(ctx)
 
-	err := t.FetchLFSManifestConfig(ctx, oldBaseManDesc, false)
+	_, err := t.FetchLFSManifestConfig(ctx, oldBaseManDesc, false)
 	switch {
 	case errors.Is(err, errdef.ErrNotFound):
 		log.InfoContext(ctx, "LFS manifest does not exist, updating subject is unnecessary")
@@ -195,11 +169,11 @@ func (t *ToOCI) updateLFSManSubject(ctx context.Context, oldBaseManDesc, newBase
 		manOpts := oras.PackManifestOptions{
 			Subject: &newBaseManDesc,
 			Layers:  t.lfs.manifest.Layers,
-			// ConfigDescriptor:    &configDesc,
-			ManifestAnnotations: map[string]string{ocispec.AnnotationCreated: "1970-01-01T00:00:00Z", AnnotationDTVersion: t.syncOpts.DTVersion}, // POSIX epoch
+			//ConfigDescriptor:    &configDesc,
+			ManifestAnnotations: map[string]string{ocispec.AnnotationCreated: "1970-01-01T00:00:00Z", oci.AnnotationDTVersion: t.syncOpts.UserAgent}, // POSIX epoch
 		}
 
-		lfsManDesc, err := oras.PackManifest(ctx, t.ociHelper.Target, oras.PackManifestVersion1_1, ArtifactTypeLFSManifest, manOpts)
+		lfsManDesc, err := oras.PackManifest(ctx, t.ociHelper.Target, oras.PackManifestVersion1_1, oci.ArtifactTypeLFSManifest, manOpts)
 		if err != nil {
 			return fmt.Errorf("packing and pushing LFS manifest: %w", err)
 		}
@@ -223,10 +197,10 @@ func (t *ToOCI) getExistingLFSFiles() map[string]int64 {
 }
 
 // prepRepoForLFS prepares the intermediate git repository for pushing LFS files.
-func (t *ToOCI) prepRepoForLFS() error {
+func (t *ToOCI) prepRepoForLFS(ctx context.Context) error {
 	// apply optional lfs server url override
 	if t.cmdHelper.ServerURL != "" {
-		if err := t.cmdHelper.Config("lfs.url", t.cmdHelper.ServerURL); err != nil {
+		if err := t.cmdHelper.Config(ctx, "lfs.url", t.cmdHelper.ServerURL); err != nil {
 			return fmt.Errorf("setting up git config with LFS server URL for base lfs repo: %w", err)
 		}
 	}

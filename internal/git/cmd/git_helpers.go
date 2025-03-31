@@ -6,6 +6,9 @@ import (
 	"strings"
 )
 
+// Commit represents a git commit OID.
+type Commit string
+
 // TagRefPrefix is the git prefex for tag references.
 const TagRefPrefix = "refs/tags/"
 

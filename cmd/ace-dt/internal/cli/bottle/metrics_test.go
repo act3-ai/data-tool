@@ -18,21 +18,21 @@ func Test_Functional_Metric(t *testing.T) {
 	helper := NewTestHelper(t, rootCmd)
 
 	myPartName := "testPart1.txt"
-	helper.BottleHelper.AddBottlePart(myPartName)
+	helper.AddBottlePart(myPartName)
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.CommandHelper.RunCommand("metric", "list")
-	helper.CommandHelper.RunCommand("metric", "add", "testMetric", "0.42", "--desc=testDesc")
-	helper.CommandHelper.RunCommand("metric", "list")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.RunCommand("metric", "list")
+	helper.RunCommand("metric", "add", "testMetric", "0.42", "--desc=testDesc")
+	helper.RunCommand("metric", "list")
 
-	helper.BottleHelper.Load()
-	assert.Equal(t, "testDesc", helper.BottleHelper.Bottle.Definition.Metrics[0].Description)
-	assert.Equal(t, "testMetric", helper.BottleHelper.Bottle.Definition.Metrics[0].Name)
-	assert.Equal(t, "0.42", helper.BottleHelper.Bottle.Definition.Metrics[0].Value)
+	helper.Load()
+	assert.Equal(t, "testDesc", helper.Bottle.Definition.Metrics[0].Description)
+	assert.Equal(t, "testMetric", helper.Bottle.Definition.Metrics[0].Name)
+	assert.Equal(t, "0.42", helper.Bottle.Definition.Metrics[0].Value)
 
-	helper.CommandHelper.RunCommand("metric", "remove", "testMetric")
-	helper.BottleHelper.Load()
-	assert.Equal(t, 0, len(helper.BottleHelper.Bottle.Definition.Metrics))
+	helper.RunCommand("metric", "remove", "testMetric")
+	helper.Load()
+	assert.Equal(t, 0, len(helper.Bottle.Definition.Metrics))
 }

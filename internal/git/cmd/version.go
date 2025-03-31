@@ -1,10 +1,10 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 
 	version "github.com/hashicorp/go-version"
@@ -43,42 +43,24 @@ func CheckGitVersion(ctx context.Context, altExec string) (string, error) {
 	return gitVersion, nil
 }
 
+var gitVersionRegex = regexp.MustCompile(`git version (\d*\.\d*\.\d*)`)
+
 // getGitVersion shells out and parses the version of git being used. Returns major, minor, patch.
-func getGitVersion(altExec string) (v string, err error) {
-	var gitVersion *exec.Cmd
-	switch {
-	case altExec != "":
-		gitVersion = exec.Command(altExec, "version")
-	default:
-		gitVersion = exec.Command("git", "version")
+// gitExec is the path to the git executable (default is "git").
+func getGitVersion(gitExec string) (string, error) {
+	if gitExec == "" {
+		gitExec = "git"
 	}
-	sedCmd := exec.Command("sed", "-e", "s/^git version //")
-
-	sedCmd.Stdin, err = gitVersion.StdoutPipe()
-	if err != nil {
-		return "", fmt.Errorf("connecting git cmd stdout to sed cmd stdin: %w", err)
-	}
-
-	buf := new(bytes.Buffer)
-	sedCmd.Stdout = buf
-
-	// sed first so it's ready to receive git's stdout.
-	err = sedCmd.Start()
-	if err != nil {
-		return "", fmt.Errorf("starting sed cmd: %w", err)
-	}
-
-	err = gitVersion.Run()
+	buf, err := exec.Command(gitExec, "version").Output()
 	if err != nil {
 		return "", fmt.Errorf("running git cmd: %w", err)
 	}
 
-	err = sedCmd.Wait()
-	if err != nil {
-		return "", fmt.Errorf("waiting for sed cmd to complete: %w", err)
+	matches := gitVersionRegex.FindSubmatch(buf)
+	if len(matches) != 2 {
+		return "", fmt.Errorf("git version does not match expected format %s: %w", gitVersionRegex, err)
 	}
-
-	return buf.String(), nil
+	return string(matches[1]), nil
 }
 
 // validGitVersion returns true if the provided version meets the globally specified minimum requirement.
@@ -110,11 +92,12 @@ func CheckGitLFSVersion(ctx context.Context, altExec string) (string, error) {
 
 // getGitLFSVersion shells out and parses the version of git lfs being used. Returns major, minor, patch.
 func getGitLFSVersion(ctx context.Context, altExec string) (string, error) {
-	log := logger.V(logger.FromContext(ctx), 2)
+	lfsgc := &gitLFSCmd{
+		dir:           "",
+		altGitLFSExec: altExec,
+	}
 
-	lfsgc := newGitLFSCmd(log, "", altExec)
-
-	v, err := lfsgc.Version()
+	v, err := lfsgc.Version(ctx)
 	if err != nil {
 		return "", fmt.Errorf("resolving git lfs version: %w", err)
 	}

@@ -52,24 +52,24 @@ func Test_Functional_SymLinkFileToSymLinkFile(t *testing.T) {
 
 	// the final destination
 	newFileName := "symlinkedFile"
-	assert.NoError(t, os.Symlink(intermediateFile, filepath.Join(helper.BottleHelper.RootDir, newFileName)))
+	assert.NoError(t, os.Symlink(intermediateFile, filepath.Join(helper.RootDir, newFileName)))
 
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.CommandHelper.RunCommand("commit")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.RunCommand("commit")
 
 	// check for 1 symlink file
-	helper.BottleHelper.Load()
-	bottleParts := helper.BottleHelper.Bottle.GetParts()
+	helper.Load()
+	bottleParts := helper.Bottle.GetParts()
 	assert.Len(t, bottleParts, 1)
 	assert.Equal(t, newFileName, bottleParts[0].GetName())
 
-	cfg, err := getConfig(helper.CommandHelper.GetConfigFile())
+	cfg, err := getConfig(helper.GetConfigFile())
 	assert.NoError(t, err)
 
 	// check cachepath, looking for part that is larger than a symlink (check if ace-dt cached the symlink and not the compressed+digested part)
 	dgst := bottleParts[0].GetLayerDigest()
-	cachePart := filepath.Join(cfg.CachePath, dgst.Algorithm().String(), dgst.Encoded())
+	cachePart := filepath.Join(cfg.CachePath, "blobs", dgst.Algorithm().String(), dgst.Encoded())
 	finfo, err := os.Stat(cachePart)
 	assert.NoError(t, err)
 	assert.Less(t, int64(1000), finfo.Size())
@@ -96,24 +96,24 @@ func Test_Functional_SymLinkDirToSymLinkDir(t *testing.T) {
 	intermediateDir := filepath.Join(t.TempDir(), "intermediate")
 	assert.NoError(t, os.Symlink(symlinkDir.RootDir, intermediateDir))
 	// the final destination
-	assert.NoError(t, os.Symlink(intermediateDir, filepath.Join(helper.BottleHelper.RootDir, newDirName)))
+	assert.NoError(t, os.Symlink(intermediateDir, filepath.Join(helper.RootDir, newDirName)))
 
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.CommandHelper.RunCommand("commit")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.RunCommand("commit")
 
 	// check for 1 symlink file
-	helper.BottleHelper.Load()
-	bottleParts := helper.BottleHelper.Bottle.GetParts()
+	helper.Load()
+	bottleParts := helper.Bottle.GetParts()
 	assert.Len(t, bottleParts, 1)
 	assert.Equal(t, newDirName, bottleParts[0].GetName())
 
-	cfg, err := getConfig(helper.CommandHelper.GetConfigFile())
+	cfg, err := getConfig(helper.GetConfigFile())
 	assert.NoError(t, err)
 
 	// check cachepath, looking for part that is larger than a symlink (check if ace-dt cached the symlink and not the compressed+digested part)
 	dgst := bottleParts[0].GetLayerDigest()
-	cachePart := filepath.Join(cfg.CachePath, dgst.Algorithm().String(), dgst.Encoded())
+	cachePart := filepath.Join(cfg.CachePath, "blobs", dgst.Algorithm().String(), dgst.Encoded())
 	finfo, err := os.Stat(cachePart)
 	assert.NoError(t, err)
 	assert.Less(t, int64(1000), finfo.Size())
@@ -142,7 +142,7 @@ func Test_Functional_SymLinkFileAndDirPreInitThenCommit(t *testing.T) {
 	rne(os.Symlink(filepath.Join(symlinkFile.RootDir, filePath), intermediateFile))
 	// the final destination
 	newFileName := "symlinkedFile"
-	rne(os.Symlink(intermediateFile, filepath.Join(helper.BottleHelper.RootDir, newFileName)))
+	rne(os.Symlink(intermediateFile, filepath.Join(helper.RootDir, newFileName)))
 
 	// add sym link directory
 	symlinkDir := NewBottleHelper(t)
@@ -152,19 +152,19 @@ func Test_Functional_SymLinkFileAndDirPreInitThenCommit(t *testing.T) {
 	intermediateDir := filepath.Join(t.TempDir(), "intermediate")
 	rne(os.Symlink(symlinkFile.RootDir, intermediateDir))
 	// the final destination
-	rne(os.Symlink(intermediateDir, filepath.Join(helper.BottleHelper.RootDir, newDirName)))
+	rne(os.Symlink(intermediateDir, filepath.Join(helper.RootDir, newDirName)))
 
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.CommandHelper.RunCommand("commit")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.RunCommand("commit")
 
 	// check for 2 parts (1 symlink file, 1 symlink dir)
-	helper.BottleHelper.Load()
-	bottleParts := helper.BottleHelper.Bottle.GetParts()
+	helper.Load()
+	bottleParts := helper.Bottle.GetParts()
 	assert.Len(t, bottleParts, 2)
 	for _, part := range bottleParts {
 		n := part.GetName()
-		if !(n == newFileName || n == newDirName) {
+		if (n != newFileName) && (n != newDirName) {
 			t.Errorf("unexpected bottle part name %s", n)
 		}
 	}
@@ -184,32 +184,32 @@ func Test_Functional_SymLinkFileAndDirPostInitThenCommit(t *testing.T) {
 	helper := NewTestHelper(t, rootCmd)
 	rne := require.New(t).NoError
 
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
 
 	// add sym link file
 	symlinkFile := NewBottleHelper(t)
 	filePath := "originalPartLocation"
 	symlinkFile.AddBottlePart(filePath)
 	newFileName := "symlinkedFile"
-	rne(os.Symlink(filepath.Join(symlinkFile.RootDir, filePath), filepath.Join(helper.BottleHelper.RootDir, newFileName)))
+	rne(os.Symlink(filepath.Join(symlinkFile.RootDir, filePath), filepath.Join(helper.RootDir, newFileName)))
 
 	// add sym link directry
 	symlinkDir := NewBottleHelper(t)
 	symlinkDir.AddArbitraryFileParts(10)
 	newDirName := "symlinkedDir/"
-	rne(os.Symlink(symlinkDir.RootDir, filepath.Join(helper.BottleHelper.RootDir, newDirName)))
+	rne(os.Symlink(symlinkDir.RootDir, filepath.Join(helper.RootDir, newDirName)))
 
-	helper.CommandHelper.RunCommand("commit")
+	helper.RunCommand("commit")
 
 	// check for 2 parts (1 symlink file, 1 symlink dir)
-	helper.BottleHelper.Load()
-	bottleParts := helper.BottleHelper.Bottle.GetParts()
+	helper.Load()
+	bottleParts := helper.Bottle.GetParts()
 
 	assert.Len(t, bottleParts, 2)
 	for _, part := range bottleParts {
 		n := part.GetName()
-		if !(n == newFileName || n == newDirName) {
+		if (n != newFileName) && (n != newDirName) {
 			t.Errorf("unexpected bottle part name %s", n)
 		}
 	}
@@ -229,24 +229,24 @@ func Test_Functional_SymLinkMatchFileName(t *testing.T) {
 	helper := NewTestHelper(t, rootCmd)
 	rne := require.New(t).NoError
 
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
 
 	// add sym link file
 	symlinkFile := NewBottleHelper(t)
 	filePath := "originalPartLocation"
 	symlinkFile.AddBottlePart(filePath)
 	newFileName := "symlinkedFile"
-	rne(os.Symlink(filepath.Join(symlinkFile.RootDir, filePath), filepath.Join(helper.BottleHelper.RootDir, newFileName)))
+	rne(os.Symlink(filepath.Join(symlinkFile.RootDir, filePath), filepath.Join(helper.RootDir, newFileName)))
 
-	helper.CommandHelper.RunCommand("commit")
+	helper.RunCommand("commit")
 
-	helper.BottleHelper.Load()
-	bottleParts := helper.BottleHelper.Bottle.GetParts()
+	helper.Load()
+	bottleParts := helper.Bottle.GetParts()
 	assert.Len(t, bottleParts, 1)
 	for _, part := range bottleParts {
 		n := part.GetName()
-		if !(n == newFileName) {
+		if n != newFileName {
 			t.Errorf("unexpected bottle part name %s", n)
 		}
 	}
@@ -265,29 +265,29 @@ func Test_Functional_SymLinkOneDirTest(t *testing.T) {
 
 	helper := NewTestHelper(t, rootCmd)
 
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
 
 	// add sym link directory
 	symlinkDir := NewBottleHelper(t)
 	symlinkDir.AddArbitraryFileParts(10)
 	newDirName := "symlinkedDir/"
-	newDirPath := filepath.Join(helper.BottleHelper.RootDir, newDirName)
+	newDirPath := filepath.Join(helper.RootDir, newDirName)
 	require.NoError(t, os.Symlink(symlinkDir.RootDir, newDirPath))
 
-	helper.CommandHelper.RunCommand("commit")
+	helper.RunCommand("commit")
 
-	helper.BottleHelper.Load()
-	bottleParts := helper.BottleHelper.Bottle.GetParts()
+	helper.Load()
+	bottleParts := helper.Bottle.GetParts()
 	require.Len(t, bottleParts, 1)
 	assert.Equal(t, newDirName, bottleParts[0].GetName())
 
-	cfg, err := getConfig(helper.CommandHelper.GetConfigFile())
+	cfg, err := getConfig(helper.GetConfigFile())
 	require.NoError(t, err)
 
 	// check cachepath, looking for part that is larger than a symlink (check if ace-dt cached the symlink and not the compressed+digested part)
 	dgst := bottleParts[0].GetLayerDigest()
-	cachePart := filepath.Join(cfg.CachePath, dgst.Algorithm().String(), dgst.Encoded())
+	cachePart := filepath.Join(cfg.CachePath, "blobs", dgst.Algorithm().String(), dgst.Encoded())
 	finfo, err := os.Stat(cachePart)
 	assert.NoError(t, err)
 	assert.Less(t, int64(1000), finfo.Size())
@@ -307,24 +307,24 @@ func Test_Functional_SymLinkTwoDirTest(t *testing.T) {
 	helper := NewTestHelper(t, rootCmd)
 	rne := require.New(t).NoError
 
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
 
-	helper.BottleHelper.AddArbitraryFileParts(1)
+	helper.AddArbitraryFileParts(1)
 
 	// add sym link directory
 	symlinkDir := NewBottleHelper(t)
 	symlinkDir.AddArbitraryFileParts(10)
 	newDirName := "symlinkedDir"
-	rne(os.Symlink(symlinkDir.RootDir, filepath.Join(helper.BottleHelper.RootDir, newDirName)))
+	rne(os.Symlink(symlinkDir.RootDir, filepath.Join(helper.RootDir, newDirName)))
 
 	// add another sym link directory
 	symlinkDir2 := NewBottleHelper(t)
 	symlinkDir2.AddArbitraryFileParts(10)
 	newDirName2 := "symlinkedDir2"
-	rne(os.Symlink(symlinkDir2.RootDir, filepath.Join(helper.BottleHelper.RootDir, newDirName2)))
+	rne(os.Symlink(symlinkDir2.RootDir, filepath.Join(helper.RootDir, newDirName2)))
 
-	helper.CommandHelper.RunCommand("commit")
+	helper.RunCommand("commit")
 
 	helper.RequirePartNum(3)
 }
@@ -347,18 +347,18 @@ func Test_Functional_SymLinkTwoDirTestPreAndPostInit(t *testing.T) {
 	symlinkDir := NewBottleHelper(t)
 	symlinkDir.AddArbitraryFileParts(10)
 	newDirName := "symlinkedDir"
-	rne(os.Symlink(symlinkDir.RootDir, filepath.Join(helper.BottleHelper.RootDir, newDirName)))
+	rne(os.Symlink(symlinkDir.RootDir, filepath.Join(helper.RootDir, newDirName)))
 
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
 
 	// add another sym link directory
 	symlinkDir2 := NewBottleHelper(t)
 	symlinkDir2.AddArbitraryFileParts(10)
 	newDirName2 := "symlinkedDir2"
-	rne(os.Symlink(symlinkDir2.RootDir, filepath.Join(helper.BottleHelper.RootDir, newDirName2)))
+	rne(os.Symlink(symlinkDir2.RootDir, filepath.Join(helper.RootDir, newDirName2)))
 
-	helper.CommandHelper.RunCommand("commit")
+	helper.RunCommand("commit")
 
 	helper.RequirePartNum(2)
 }
@@ -386,41 +386,41 @@ func Test_Functional_SymLinkPostInitThenPush(t *testing.T) {
 	symlinkDir := NewBottleHelper(t)
 	symlinkDir.AddArbitraryFileParts(10)
 	newDirName := "symlinkedDir"
-	rne(os.Symlink(symlinkDir.RootDir, filepath.Join(helper.BottleHelper.RootDir, newDirName)))
+	rne(os.Symlink(symlinkDir.RootDir, filepath.Join(helper.RootDir, newDirName)))
 
 	// set the bottle dir for all other commands to use when running
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
 
 	// add another sym link directory
 	symlinkDir2 := NewBottleHelper(t)
 	symlinkDir2.AddArbitraryFileParts(10)
 	newDirName2 := "symlinkedDir2"
-	rne(os.Symlink(symlinkDir2.RootDir, filepath.Join(helper.BottleHelper.RootDir, newDirName2)))
+	rne(os.Symlink(symlinkDir2.RootDir, filepath.Join(helper.RootDir, newDirName2)))
 
-	helper.BottleHelper.SetTempBottleRef(rootReg)
-	helper.CommandHelper.RunCommand("push", helper.BottleHelper.RegRef)
+	helper.SetTempBottleRef(rootReg)
+	helper.RunCommand("push", helper.RegRef)
 
-	helper.BottleHelper.Load()
-	bottleParts := helper.BottleHelper.Bottle.GetParts()
+	helper.Load()
+	bottleParts := helper.Bottle.GetParts()
 	assert.Len(t, bottleParts, 2)
 
-	cfg, err := getConfig(helper.CommandHelper.GetConfigFile())
+	cfg, err := getConfig(helper.GetConfigFile())
 	assert.NoError(t, err)
 
 	// check cachepath, looking for part that is larger than a symlink (check if ace-dt cached the symlink and not the compressed+digested part)
 	dgst0 := bottleParts[0].GetLayerDigest()
-	cachePart := filepath.Join(cfg.CachePath, dgst0.Algorithm().String(), dgst0.Encoded())
+	cachePart := filepath.Join(cfg.CachePath, "blobs", dgst0.Algorithm().String(), dgst0.Encoded())
 	finfo, err := os.Stat(cachePart)
 	assert.NoError(t, err)
 	assert.Less(t, int64(1000), finfo.Size())
 
 	// check cachepath, looking for part that is larger than a symlink (check if ace-dt cached the symlink and not the compressed+digested part)
 	dgst := bottleParts[1].GetLayerDigest()
-	cachePart = filepath.Join(cfg.CachePath, dgst.Algorithm().String(), dgst.Encoded())
+	cachePart = filepath.Join(cfg.CachePath, "blobs", dgst.Algorithm().String(), dgst.Encoded())
 	finfo, err = os.Stat(cachePart)
 	assert.NoError(t, err)
 	assert.Less(t, int64(1000), finfo.Size())
 
-	assert.NoError(t, helper.CheckRegForBottle(helper.BottleHelper.RegRef, ""))
+	assert.NoError(t, helper.CheckRegForBottle(helper.RegRef, ""))
 }

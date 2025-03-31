@@ -3,11 +3,14 @@ package util
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
 func TestDirSizeSymlinks(t *testing.T) {
-	// Test my test code
+	if runtime.GOOS == "windows" {
+		t.Skip("Windows does not support symlinks")
+	}
 
 	d := t.TempDir()
 
@@ -48,85 +51,6 @@ func TestDirSizeSymlinks(t *testing.T) {
 	}
 }
 
-/*
-func TestReadDirSortedByAccessTime(t *testing.T) {
-	// Define test cases
-	testCases := []struct {
-		name        string
-		setupFS     func() fs.FS
-		path        string
-		expectedErr error
-	}{
-		{
-			name: "normal",
-			setupFS: func() fs.FS {
-				fileA := &fstest.MapFile{
-					Data:    []byte("file A content"),
-					Mode:    0644,
-					ModTime: time.Now(),
-				}
-				fileB := &fstest.MapFile{
-					Data:    []byte("file B content"),
-					Mode:    0644,
-					ModTime: time.Now(),
-				}
-				return fstest.MapFS{
-					"fileA.txt": fileA,
-					"fileB.txt": fileB,
-				}
-			},
-			path:        ".",
-			expectedErr: nil,
-		},
-		{
-			name: "error_getting_file_info",
-			setupFS: func() fs.FS {
-				fileA := &fstest.MapFile{
-					Data:    []byte("file A content"),
-					Mode:    0644,
-					ModTime: time.Now(),
-				}
-				fileB := &fstest.MapFile{
-					Data:    []byte("file B content"),
-					Mode:    0644,
-					ModTime: time.Now(),
-				}
-				mapFS := fstest.MapFS{
-					"fileA.txt": fileA,
-					"fileB.txt": fileB,
-					"error_info.txt": &fstest.MapFile{
-						Data: []byte("error info content"),
-						Mode: 0644,
-					},
-				}
-				return mapFS
-			},
-			path:        ".",
-			expectedErr: fmt.Errorf("error getting file info: %w", errors.New("Info error")),
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			fsys := tc.setupFS()
-
-			infos, err := ReadDirSortedByAccessTime(fsys, tc.path)
-
-			if tc.expectedErr != nil {
-				require.Error(t, err)
-				assert.Equal(t, tc.expectedErr.Error(), err.Error())
-			} else {
-				require.NoError(t, err)
-
-				// Check if the files are sorted by access time
-				for i := 0; i < len(infos)-1; i++ {
-					assert.True(t, atime.Get(infos[i]).Before(atime.Get(infos[i+1])))
-				}
-			}
-		})
-	}
-}
-*/
 /*
 func TestGetDirLastUpdate(t *testing.T) {
 	// Define test cases

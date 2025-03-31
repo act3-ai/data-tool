@@ -32,9 +32,9 @@ func Test_Functional_GUI(t *testing.T) {
 	helper := NewTestHelper(t, rootCmd)
 
 	helper.AddArbitraryFileParts(1)
-	helper.CommandHelper.SetBottleDir(helper.BottleHelper.RootDir)
-	helper.CommandHelper.RunCommand("init")
-	helper.BottleHelper.Load()
+	helper.SetBottleDir(helper.RootDir)
+	helper.RunCommand("init")
+	helper.Load()
 	helper.Bottle.AddAnnotation("foo", "bar")
 	helper.Bottle.AddLabel("foo", "bar")
 	assert.NoError(t, helper.Bottle.AddAuthorInfo(v1.Author{
@@ -87,7 +87,7 @@ func Test_Functional_GUI(t *testing.T) {
 	ctx := context.TODO()
 	g := errgroup.Group{}
 	g.Go(func() error {
-		helper.CommandHelper.RunCommand("gui", "--no-browser")
+		helper.RunCommand("gui", "--no-browser")
 		return nil
 	})
 
@@ -124,7 +124,7 @@ func Test_Functional_GUI(t *testing.T) {
 
 	assert.NoError(t, g.Wait())
 
-	helper.BottleHelper.Load()
+	helper.Load()
 
 	// assertions
 	// require.Equal(t, updatedBottle.Authors, helper.Bottle.Definition.Authors)

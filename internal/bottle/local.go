@@ -9,12 +9,8 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/opencontainers/go-digest"
-	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-
 	latest "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
 	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
-	"gitlab.com/act3-ai/asce/data/tool/internal/storage"
 	"gitlab.com/act3-ai/asce/data/tool/internal/util"
 )
 
@@ -155,25 +151,38 @@ func (btl *Bottle) updateDefinitionParts() {
 	}
 }
 
+// ConfigureFromFile reads bottle configuration from the filename provided. This is the entry.yaml file containing
+// metadata, but NOT including part data.  For a complete bottle, the parts.json file should be loaded as well (such as
+// with WithLocalPartFile(partFileName)(btl) ).
+func (btl *Bottle) ConfigureFromFile(filePath string) error {
+	data, err := os.ReadFile(filePath)
+	if errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("bottle configuration file not found (Has the bottle been initialized?): %w", err)
+	}
+	if err != nil {
+		return fmt.Errorf("error reading bottle config file: %w", err)
+	}
+
+	err = btl.Configure(data)
+	if err != nil {
+		return err
+	}
+
+	// HACK we invalidate the configuration because the data we are passing in is not the config (it is YAML and missing the part information after all)
+	btl.invalidateConfiguration()
+
+	return nil
+}
+
 // fromFile defines a source for a bottle definition to be
 // the provided file path.
 func fromFile(path string) BOption {
 	return func(btl *Bottle) error {
 		btl.localPath = path
-		data, err := os.ReadFile(EntryFile(path))
-		if errors.Is(err, fs.ErrNotExist) {
-			return fmt.Errorf("bottle configuration file not found (Has the bottle been initialized?): %w", err)
-		}
-		if err != nil {
-			return fmt.Errorf("error reading bottle config file: %w", err)
-		}
-
-		err = btl.Configure(data)
+		err := btl.ConfigureFromFile(EntryFile(path))
 		if err != nil {
 			return err
 		}
-		// HACK we invalidate the configuration because the data we are passing in is not the config (it is YAML and missing the part information after all)
-		btl.invalidateConfiguration()
 
 		// load the local parts data from the parts file (if it exists)
 		return WithLocalPartFile(partsFile(path))(btl)
@@ -234,7 +243,7 @@ func CheckIfCanInitialize(bottlePath string, force bool) error {
 }
 
 // PartSelectorFunc is a function that returns true if the part should be included in the download.
-type PartSelectorFunc func(storage.PartInfo) bool
+type PartSelectorFunc func(PartInfo) bool
 
 var errNoRootBottleFound = errors.New("root bottle directory was not found")
 
@@ -298,7 +307,7 @@ func FindBottleRootDir(inputPath string) (string, error) {
 var ErrDirNestedInBottle = errors.New("path is nested within bottle directory")
 
 // VerifyPullDir performs checks on the bottle destination path to ensure that it meets the expected criteria.
-func VerifyPullDir(destdir string, desc ocispec.Descriptor) error {
+func VerifyPullDir(destdir string) error {
 	// Before initiating pull options, we want to check if bottle output directory
 	// Expected behavior
 	//		if  root (parent) bottle is detected -> ErrDirNestedInBottle
@@ -313,24 +322,8 @@ func VerifyPullDir(destdir string, desc ocispec.Descriptor) error {
 		}
 	}
 
-	// test if the manifest digest of the bottle to be pulled matches what exists
-	// TODO: optionally test the bottle dir more rigirously, i.e.
-	// are we simply missing a few part?
 	if rootBtlDir != "" {
-		manBytes, err := os.ReadFile(manifestFile(rootBtlDir))
-		switch {
-		case errors.Is(err, os.ErrNotExist):
-			// unlikely case where the .dt dir exists, but not .manifest.json
-			return fmt.Errorf("bottle manifest file not found: %w", err)
-		case err != nil:
-			return fmt.Errorf("loading bottle manifest: %w", err)
-		default:
-			d := digest.FromBytes(manBytes)
-			if d != desc.Digest {
-				return fmt.Errorf("existing bottle does not match bottle to be pulled, have digest '%s', pulling digest '%s'", d, desc.Digest)
-			}
-			return nil // assume no changes to the bottle have been made since last pull
-		}
+		return fmt.Errorf("found root bottle directory %s: %w", rootBtlDir, ErrDirNestedInBottle)
 	}
 
 	empty, err := util.IsDirEmpty(destdir)

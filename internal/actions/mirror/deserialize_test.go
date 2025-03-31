@@ -18,13 +18,17 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/fortytw2/leaktest"
 	"github.com/google/go-containerregistry/pkg/registry"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"oras.land/oras-go/v2"
+	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
+	"oras.land/oras-go/v2/registry/remote"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
 	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
@@ -110,7 +114,6 @@ func TestDeserialize(t *testing.T) {
 			BufferSize: 512 * 1024,
 		}
 		t.Logf(`Commands to help with debugging:\nmkdir "%[1]s/oci"; tar xvf "%[1]s/tape.tar" -C "%[1]s/oci"; ace-dt oci tree -d "%[1]s/oci"`, dir)
-		// TODO actually call oci tree and dump the output.
 
 		dest := u.Host + "/mirror:sync-1"
 
@@ -129,13 +132,261 @@ func TestDeserialize(t *testing.T) {
 		}
 
 		t.Logf(`Commands to help with debugging:\nmkdir "%[1]s/oci"; tar xvf "%[1]s/tape.tar" -C "%[1]s/oci"; ace-dt oci tree -d "%[1]s/oci"`, dir)
-		// TODO actually call oci tree and dump the output.
 
 		dest := u.Host + "/mirror:sync-1"
 		err = deserialize.Run(ctx, tape, dest)
 		rne(err)
 	})
 
+	t.Run("referrers", func(t *testing.T) {
+		tmp := GetOrCreateTestDir(t)
+		cas2, err := oci.New(ociDir)
+		rne(err)
+
+		// create a manifest with a referrer and a referrer to that referrer
+		manifestDescriptor, err := pushRandomManifest(ctx, cas2, rng, nil, "original", nil)
+		rne(err)
+		referrer, err := pushRandomManifest(ctx, cas2, rng, &manifestDescriptor, "referrer", nil)
+		rne(err)
+		referrer2, err := pushRandomManifest(ctx, cas2, rng, &referrer, "referrer2", nil)
+		rne(err)
+		filename := path.Join(tmp, "referrer-tape.tar")
+		tf, err := os.Create(filename)
+		rne(err)
+		tw := tar.NewWriter(tf)
+
+		// write the oci-layout file
+		lo := ocispec.ImageLayout{
+			Version: ocispec.ImageLayoutVersion,
+		}
+		b, err := json.Marshal(lo)
+		rne(err)
+		rne(writeFileToTar(tw, ocispec.ImageLayoutFile, b))
+
+		// write the index as it would exist without the referrer to the tar file
+		idx := ocispec.Index{
+			Manifests: []ocispec.Descriptor{manifestDescriptor},
+		}
+		idxData, err := json.Marshal(idx)
+		rne(err)
+		rne(writeFileToTar(tw, ocispec.ImageIndexFile, idxData))
+
+		// write the main manifest
+		var m ocispec.Manifest
+		maniBytes, err := content.FetchAll(ctx, cas2, manifestDescriptor)
+		rne(err)
+		rne(writeFileToTar(tw, fmt.Sprintf("blobs/%s/%s", manifestDescriptor.Digest.Algorithm(), manifestDescriptor.Digest.Hex()), maniBytes))
+		// unmarshal the  manifest bytes so we can extract and write the layers to the tar file
+		rne(json.Unmarshal(maniBytes, &m))
+		// append the config to the layers slice so it gets written
+		m.Layers = append(m.Layers, m.Config)
+		// write the manifest layers
+		for _, layer := range m.Layers {
+			layerBytes, err := content.FetchAll(ctx, cas2, layer)
+			rne(err)
+			rne(writeFileToTar(tw, fmt.Sprintf("blobs/%s/%s", layer.Digest.Algorithm(), layer.Digest.Hex()), layerBytes))
+		}
+
+		// write the referrer manifest
+		referrerBytes, err := content.FetchAll(ctx, cas2, referrer)
+		rne(err)
+		rne(writeFileToTar(tw, fmt.Sprintf("blobs/%s/%s", referrer.Digest.Algorithm(), referrer.Digest.Hex()), referrerBytes))
+		// get and write the layers of the referrer manifest
+		rne(json.Unmarshal(referrerBytes, &m))
+		// append the config to the layers slice so it gets written
+		m.Layers = append(m.Layers, m.Config)
+		// write the manifest layers
+		for _, layer := range m.Layers {
+			layerBytes, err := content.FetchAll(ctx, cas2, layer)
+			rne(err)
+			rne(writeFileToTar(tw, fmt.Sprintf("blobs/%s/%s", layer.Digest.Algorithm(), layer.Digest.Hex()), layerBytes))
+		}
+
+		// write a second referrer manifest
+		// write the referrer manifest
+		referrer2Bytes, err := content.FetchAll(ctx, cas2, referrer2)
+		rne(err)
+		rne(writeFileToTar(tw, fmt.Sprintf("blobs/%s/%s", referrer2.Digest.Algorithm(), referrer2.Digest.Hex()), referrer2Bytes))
+		// get and write the layers of the referrer manifest
+		rne(json.Unmarshal(referrer2Bytes, &m))
+		// append the config to the layers slice so it gets written
+		m.Layers = append(m.Layers, m.Config)
+		// write the manifest layers
+		for _, layer := range m.Layers {
+			layerBytes, err := content.FetchAll(ctx, cas2, layer)
+			rne(err)
+			rne(writeFileToTar(tw, fmt.Sprintf("blobs/%s/%s", layer.Digest.Algorithm(), layer.Digest.Hex()), layerBytes))
+		}
+
+		// write the second index.json WITH the referrer manifest
+		followUpIdx := ocispec.Index{
+			Manifests: []ocispec.Descriptor{manifestDescriptor, referrer, referrer2},
+		}
+
+		followUpIdxData, err := json.Marshal(followUpIdx)
+		rne(err)
+		rne(writeFileToTar(tw, ocispec.ImageIndexFile, followUpIdxData))
+
+		m2Action := &Action{
+			DataTool:  tAction,
+			Recursive: true,
+		}
+		deserialize := Deserialize{
+			Action: m2Action,
+			Strict: true,
+		}
+		dest := u.Host + "/testreferrer:sync-1"
+		err = deserialize.Run(ctx, filename, dest)
+		rne(err)
+		// verify that the referrer exists
+		cas3, err := remote.NewRepository(dest)
+		rne(err)
+		var manif ocispec.Manifest
+		cas3.PlainHTTP = true
+		_, rc, err := oras.Fetch(ctx, cas3, strings.Join([]string{u.Host + "/testreferrer", referrer.Digest.String()}, "@"), oras.DefaultFetchOptions)
+		rne(err)
+		decoder := json.NewDecoder(rc)
+		err = decoder.Decode(&manif)
+		rne(err)
+		// verify that the referrer subject matches the original manifest descriptor
+		assert.Equal(t, &manifestDescriptor, manif.Subject)
+	})
+
+	t.Run("referrers with more than 2 indexes", func(t *testing.T) {
+		tmp := GetOrCreateTestDir(t)
+		cas2, err := oci.New(ociDir)
+		rne(err)
+
+		// create a manifest with a referrer and a referrer to that referrer
+		manifestDescriptor, err := pushRandomManifest(ctx, cas2, rng, nil, "original", nil)
+		rne(err)
+		referrer, err := pushRandomManifest(ctx, cas2, rng, &manifestDescriptor, "referrer", nil)
+		rne(err)
+		referrer2, err := pushRandomManifest(ctx, cas2, rng, &referrer, "referrer2", nil)
+		rne(err)
+		filename := path.Join(tmp, "referrer-tape.tar")
+		tf, err := os.Create(filename)
+		rne(err)
+		tw := tar.NewWriter(tf)
+
+		// write the oci-layout file
+		lo := ocispec.ImageLayout{
+			Version: ocispec.ImageLayoutVersion,
+		}
+		b, err := json.Marshal(lo)
+		rne(err)
+		rne(writeFileToTar(tw, ocispec.ImageLayoutFile, b))
+
+		// write the index as it would exist without the referrer to the tar file
+		idx := ocispec.Index{
+			Manifests: []ocispec.Descriptor{manifestDescriptor},
+		}
+		idxData, err := json.Marshal(idx)
+		rne(err)
+		rne(writeFileToTar(tw, ocispec.ImageIndexFile, idxData))
+
+		// write the main manifest
+		var m ocispec.Manifest
+		maniBytes, err := content.FetchAll(ctx, cas2, manifestDescriptor)
+		rne(err)
+		rne(writeFileToTar(tw, fmt.Sprintf("blobs/%s/%s", manifestDescriptor.Digest.Algorithm(), manifestDescriptor.Digest.Hex()), maniBytes))
+		// unmarshal the  manifest bytes so we can extract and write the layers to the tar file
+		rne(json.Unmarshal(maniBytes, &m))
+		// append the config to the layers slice so it gets written
+		m.Layers = append(m.Layers, m.Config)
+		// write the manifest layers
+		for _, layer := range m.Layers {
+			layerBytes, err := content.FetchAll(ctx, cas2, layer)
+			rne(err)
+			rne(writeFileToTar(tw, fmt.Sprintf("blobs/%s/%s", layer.Digest.Algorithm(), layer.Digest.Hex()), layerBytes))
+		}
+
+		// write the referrer manifest
+		referrerBytes, err := content.FetchAll(ctx, cas2, referrer)
+		rne(err)
+		rne(writeFileToTar(tw, fmt.Sprintf("blobs/%s/%s", referrer.Digest.Algorithm(), referrer.Digest.Hex()), referrerBytes))
+		// get and write the layers of the referrer manifest
+		rne(json.Unmarshal(referrerBytes, &m))
+		// append the config to the layers slice so it gets written
+		m.Layers = append(m.Layers, m.Config)
+		// write the manifest layers
+		for _, layer := range m.Layers {
+			layerBytes, err := content.FetchAll(ctx, cas2, layer)
+			rne(err)
+			rne(writeFileToTar(tw, fmt.Sprintf("blobs/%s/%s", layer.Digest.Algorithm(), layer.Digest.Hex()), layerBytes))
+		}
+
+		// write the second index.json WITH the first referrer manifest
+		followUpIdx := ocispec.Index{
+			Manifests: []ocispec.Descriptor{manifestDescriptor, referrer},
+		}
+
+		followUpIdxData, err := json.Marshal(followUpIdx)
+		rne(err)
+		rne(writeFileToTar(tw, ocispec.ImageIndexFile, followUpIdxData))
+
+		// write a second referrer manifest
+		// write the referrer manifest
+		referrer2Bytes, err := content.FetchAll(ctx, cas2, referrer2)
+		rne(err)
+		rne(writeFileToTar(tw, fmt.Sprintf("blobs/%s/%s", referrer2.Digest.Algorithm(), referrer2.Digest.Hex()), referrer2Bytes))
+		// get and write the layers of the referrer manifest
+		rne(json.Unmarshal(referrer2Bytes, &m))
+		// append the config to the layers slice so it gets written
+		m.Layers = append(m.Layers, m.Config)
+		// write the manifest layers
+		for _, layer := range m.Layers {
+			layerBytes, err := content.FetchAll(ctx, cas2, layer)
+			rne(err)
+			rne(writeFileToTar(tw, fmt.Sprintf("blobs/%s/%s", layer.Digest.Algorithm(), layer.Digest.Hex()), layerBytes))
+		}
+
+		// write the third index.json WITH both referrer manifests
+		followUpIdx2 := ocispec.Index{
+			Manifests: []ocispec.Descriptor{manifestDescriptor, referrer, referrer2},
+		}
+
+		followUpIdxData2, err := json.Marshal(followUpIdx2)
+		rne(err)
+		rne(writeFileToTar(tw, ocispec.ImageIndexFile, followUpIdxData2))
+
+		m2Action := &Action{
+			DataTool:  tAction,
+			Recursive: true,
+		}
+		deserialize := Deserialize{
+			Action: m2Action,
+			Strict: false,
+		}
+		dest := u.Host + "/testreferrer:sync-1"
+		err = deserialize.Run(ctx, filename, dest)
+		rne(err)
+		// verify that the referrer exists
+		cas3, err := remote.NewRepository(dest)
+		rne(err)
+		var manif ocispec.Manifest
+		cas3.PlainHTTP = true
+		_, rc, err := oras.Fetch(ctx, cas3, strings.Join([]string{u.Host + "/testreferrer", referrer.Digest.String()}, "@"), oras.DefaultFetchOptions)
+		rne(err)
+		decoder := json.NewDecoder(rc)
+		err = decoder.Decode(&manif)
+		rne(err)
+		// verify that the referrer subject matches the original manifest descriptor
+		assert.Equal(t, &manifestDescriptor, manif.Subject)
+
+		// test with strict mode (should fail)
+		m2Action = &Action{
+			DataTool:  tAction,
+			Recursive: true,
+		}
+		deserialize = Deserialize{
+			Action: m2Action,
+			Strict: true,
+		}
+		dest = u.Host + "/testreferrer:sync-2"
+		err = deserialize.Run(ctx, filename, dest)
+		assert.ErrorContains(t, err, "deserializing: expected 2 index.json files in Strict mode but received 3")
+	})
 	/*
 		t.Run("Cached Storage Fetch Missing Manifest", func(t *testing.T) {
 			desc := ocispec.Descriptor{
@@ -337,4 +588,24 @@ func addFile(tb testing.TB, tw *tar.Writer, fsys fs.FS, filename string) {
 
 	_, err = io.Copy(tw, f)
 	rne(err)
+}
+
+func writeFileToTar(tw *tar.Writer, filename string, data []byte) error {
+	if err := tw.WriteHeader(&tar.Header{
+		Name:     filename,
+		Size:     int64(len(data)),
+		Mode:     0666,
+		ModTime:  time.Unix(0, 0).UTC(),
+		Typeflag: tar.TypeReg,
+	}); err != nil {
+		return fmt.Errorf("writing tar header for %s: %w", filename, err)
+	}
+	_, err := tw.Write(data)
+	if err != nil {
+		return fmt.Errorf("writing tar data for %s: %w", filename, err)
+	}
+	if err := tw.Flush(); err != nil {
+		return fmt.Errorf("flushing tar data for %s: %w", filename, err)
+	}
+	return nil
 }

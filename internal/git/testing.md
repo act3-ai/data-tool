@@ -268,3 +268,88 @@ gitGraph
    branch Feature2
    commit id: "lfsFile2.txt"
 ```
+
+## Test Rewritten Git History
+
+### Base Case
+
+```mermaid
+    %%{init: { 'logLevel': 'debug', 'theme': 'default' , 'themeVariables': {
+              'git0': '#808080',
+              'git1': '#33c2ff'
+       } } }%%
+gitGraph
+   commit
+   commit
+   branch Feature1
+   checkout main
+   commit
+   commit id: "Head-main"
+   checkout Feature1
+   commit
+   commit id: "Head-Feature1"
+```
+
+### Rewrite - Diverge History
+
+Rewrite git history with `git reset --hard`, by one commit on two branches. The histories of `main-new` and `Feature1-new` are the new `main` and `Feature1` histories, mermaid does not have great tooling to represent rewritten history. Consider the old square commits as dangling.
+
+```mermaid
+    %%{init: { 'logLevel': 'debug', 'theme': 'default' , 'themeVariables': {
+              'git0': '#808080',
+              'git1': '#808080',
+              'git2': '#33c2ff',
+              'git3': '#33c2ff'
+       } } }%%
+gitGraph
+   commit
+   commit
+   branch Feature1 order: 2
+   checkout main
+   commit
+   branch main-new
+   checkout main
+   commit id: "Head-main-Old" type: HIGHLIGHT
+   checkout main-new
+   commit id: "Head-main"
+   checkout Feature1
+   commit
+   branch Feature1-New order:3
+   checkout Feature1
+   commit id: "Head-Feature1-Old" type: HIGHLIGHT
+   checkout Feature1-New
+   commit
+   commit id: "Head-Feature1"
+```
+
+### Rewrite - Reset History
+
+Rewrite git history with `git reset --hard`, by one commit on the `Feature1` branch, ensuring no new bundle is created since we don't have any new commits.
+
+```mermaid
+    %%{init: { 'logLevel': 'debug', 'theme': 'default' , 'themeVariables': {
+              'git0': '#808080',
+              'git1': '#808080',
+              'git2': '#33c2ff',
+              'git3': '#33c2ff'
+       } } }%%
+gitGraph
+   commit
+   commit
+   branch Feature1 order: 2
+   checkout main
+   commit
+   branch main-new
+   checkout main
+   commit id: "Head-main-Old" type: HIGHLIGHT
+   checkout main-new
+   commit id: "Head-main"
+   checkout Feature1
+   commit
+   branch Feature1-New order:3
+   checkout Feature1
+   commit type: HIGHLIGHT
+   checkout Feature1-New
+   commit id: "Head-Feature1"
+   commit id: "Head-Feature1-Old" type: HIGHLIGHT
+```

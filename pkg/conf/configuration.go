@@ -14,7 +14,8 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/credentials"
 
-	telemv1alpha1 "gitlab.com/act3-ai/asce/data/telemetry/pkg/apis/config.telemetry.act3-ace.io/v1alpha1"
+	telemv1alpha2 "gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
+	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
 	dtreg "gitlab.com/act3-ai/asce/data/tool/internal/registry"
 	regcache "gitlab.com/act3-ai/asce/data/tool/internal/registry/cache"
 	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
@@ -43,6 +44,9 @@ type Configuration struct {
 	// Stores Registry Information
 	registryCache *regcache.RegistryCache
 	credStore     credentials.Store // in-memory credential store
+
+	// blob caching
+	blobCacher *orasutil.BlobCacher
 }
 
 // New returns a validated empty configuration object.  Configuration files should be defined using
@@ -54,18 +58,26 @@ func New(credOpts ...Option) *Configuration {
 	cfg := &Configuration{
 		scheme:    scheme,
 		userAgent: "ace-dt", // default
-		credStore: credentials.NewMemoryStore(),
 	}
 
 	for _, o := range credOpts {
 		o(cfg)
 	}
+
+	// avoid unnecessary sync.Map alloc
+	if cfg.credStore == nil {
+		cfg.credStore = credentials.NewMemoryStore()
+	}
+
 	return cfg
 }
 
 // loadConfig loads configuration details from defined configuration files and override functions.
 func (cfg *Configuration) loadConfig(ctx context.Context) error {
 	log := logger.V(logger.FromContext(ctx), 1)
+
+	// create the registry cache
+	cfg.registryCache = regcache.NewRegistryCache()
 
 	log.InfoContext(ctx, "Loading configuration", "configFiles", cfg.ConfigFiles)
 	cfg.config = &v1alpha1.Configuration{}
@@ -82,8 +94,12 @@ func (cfg *Configuration) loadConfig(ctx context.Context) error {
 		}
 	}
 
-	// create the registry cache
-	cfg.registryCache = regcache.NewRegistryCache()
+	if cfg.config.CachePath != "" {
+		cfg.blobCacher, err = orasutil.NewBlobCacher(cfg.config.CachePath)
+		if err != nil {
+			log.ErrorContext(ctx, "failed to initialize blob cache", "error", err)
+		}
+	}
 
 	log.InfoContext(ctx, "Using configuration", "config", cfg.config)
 	return nil
@@ -99,6 +115,7 @@ func (cfg *Configuration) Get(ctx context.Context) *v1alpha1.Configuration {
 			cfg.config = &v1alpha1.Configuration{}
 			v1alpha1.ConfigurationDefault(cfg.config)
 		}
+		log.InfoContext(ctx, "Successfully loaded configuration")
 	} else {
 		log.InfoContext(ctx, "Using already loaded configuration")
 	}
@@ -124,7 +141,8 @@ func (cfg *Configuration) AddConfigOverride(overrideFunction ...ConfigOverrideFu
 }
 
 // Repository sets up a repository target based on a reference string, making use of registry configuration
-// settings.
+// settings. Since we return the Repository structure, it's troublesome to wrap the interface. In cases
+// where alternative endpoints are used, it may be necessary to use an EndpointResolver.
 func (cfg *Configuration) Repository(ctx context.Context, ref string) (*remote.Repository, error) {
 	log := logger.V(logger.FromContext(ctx), 1)
 	// if the config is not loaded, we should load it
@@ -153,15 +171,51 @@ func (cfg *Configuration) Repository(ctx context.Context, ref string) (*remote.R
 }
 
 // GraphTarget sets up a repository target based on a reference string, making use of registry configuration
-// settings. Implements registry.GraphTargeter.
+// settings. Implements GraphTargeter.
 func (cfg *Configuration) GraphTarget(ctx context.Context, ref string) (oras.GraphTarget, error) {
-	return cfg.Repository(ctx, ref)
+	repo, err := cfg.Repository(ctx, ref)
+	if err != nil {
+		return nil, err
+	}
+	gt := oras.GraphTarget(repo)
+
+	endpointURL, err := dtreg.ResolveEndpoint(&cfg.config.RegistryConfig, repo.Reference)
+	if err != nil {
+		return nil, fmt.Errorf("resolving alternate registry endpoint '%s': %w", repo.Reference.String(), err)
+	}
+
+	if endpointURL != nil {
+		gt = dtreg.NewEndpointResolver(gt, endpointURL.Host)
+	}
+
+	if cfg.blobCacher != nil {
+		return cfg.blobCacher.GraphTarget(gt), nil
+	}
+	return gt, nil
 }
 
-// ReadOnlyGraphTarget sets up a read-only repository target based on a reference string, making use of registry configuration
-// settings. Implements registry.GraphTargeter.
+// ReadOnlyGraphTarget sets up a read-only repository target based on a reference string making
+// use of registry configuration settings. Implements ReadOnlyGraphTargeter.
 func (cfg *Configuration) ReadOnlyGraphTarget(ctx context.Context, ref string) (oras.ReadOnlyGraphTarget, error) {
-	return cfg.Repository(ctx, ref)
+	return cfg.GraphTarget(ctx, ref)
+}
+
+// ParseEndpointReference is the same as the oras registry.ParseReference, except that it resolves
+// endpoints replacing the registry portion of the reference as defined by the configuration.
+// Implements EndpointReferenceParser.
+func (cfg *Configuration) ParseEndpointReference(reference string) (registry.Reference, error) {
+	ref, err := registry.ParseReference(reference)
+	if err != nil {
+		return registry.Reference{}, fmt.Errorf("parsing reference '%s': %w", reference, err)
+	}
+
+	endpointURL, err := dtreg.ResolveEndpoint(&cfg.config.RegistryConfig, ref)
+	if err != nil {
+		return registry.Reference{}, fmt.Errorf("resolving alternate registry endpoint '%s': %w", ref.String(), err)
+	}
+	ref.Registry = endpointURL.Host
+
+	return ref, nil
 }
 
 // NewRegistry creates a ORAS registry using the registry configuration.
@@ -188,24 +242,29 @@ func (cfg *Configuration) UserAgent() string {
 	return cfg.userAgent
 }
 
+// CredStore returns a docker credentials store.
+func (cfg *Configuration) CredStore() credentials.Store {
+	return cfg.credStore
+}
+
 // WithRegistryConfig overwrites the loaded registry configuration, appending new
 // registry configurations if they do not already exist.
 func WithRegistryConfig(regCfg v1alpha1.RegistryConfig) ConfigOverrideFunction {
 	return func(ctx context.Context, c *v1alpha1.Configuration) error {
 		// sanity checks
-		if c.ConfigurationSpec.RegistryConfig.Configs == nil {
-			c.ConfigurationSpec.RegistryConfig.Configs = make(map[string]v1alpha1.Registry)
+		if c.RegistryConfig.Configs == nil {
+			c.RegistryConfig.Configs = make(map[string]v1alpha1.Registry)
 		}
-		if c.ConfigurationSpec.RegistryConfig.EndpointConfig == nil {
-			c.ConfigurationSpec.RegistryConfig.EndpointConfig = make(map[string]v1alpha1.EndpointConfig)
+		if c.RegistryConfig.EndpointConfig == nil {
+			c.RegistryConfig.EndpointConfig = make(map[string]v1alpha1.EndpointConfig)
 		}
 
 		// overwrites an existing entry
 		for k, v := range regCfg.Configs {
-			c.ConfigurationSpec.RegistryConfig.Configs[k] = v
+			c.RegistryConfig.Configs[k] = v
 		}
 		for k, v := range regCfg.EndpointConfig {
-			c.ConfigurationSpec.RegistryConfig.EndpointConfig[k] = v
+			c.RegistryConfig.EndpointConfig[k] = v
 		}
 		return nil
 	}
@@ -232,11 +291,11 @@ func WithCachePath(path string) ConfigOverrideFunction {
 
 // WithTelemetry overwrites the telemetry username while appending telemetry hosts to the
 // loaded telemetry configuration.
-func WithTelemetry(hosts []telemv1alpha1.Location, userName string) ConfigOverrideFunction {
+func WithTelemetry(hosts []telemv1alpha2.Location, userName string) ConfigOverrideFunction {
 	return func(ctx context.Context, c *v1alpha1.Configuration) error {
 		// sanity check
 		if c.Telemetry == nil {
-			c.Telemetry = make([]telemv1alpha1.Location, 1)
+			c.Telemetry = make([]telemv1alpha2.Location, 1)
 		}
 		c.Telemetry = append(c.Telemetry, hosts...)
 

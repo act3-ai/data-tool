@@ -31,6 +31,9 @@ var mappers = map[string]func(mapFile string) (mapperFunc, error){
 // newMapper returns a new mapping function for the given mapping directive.
 func newMapper(mappingSpec string) (mapperFunc, error) {
 	parts := strings.SplitN(mappingSpec, "=", 2)
+	if len(parts) != 2 || parts[1] == "" {
+		return nil, fmt.Errorf("invalid mapper, please use the format 'MAP-TYPE=MAP-ARG': got '%s'", mappingSpec)
+	}
 	mapType, mapArg := parts[0], parts[1]
 
 	if m, ok := mappers[mapType]; ok {
@@ -177,6 +180,7 @@ func templateMapper(mapFile string) (mapperFunc, error) {
 }
 
 func extractTag(sref string) (string, error) {
+	// don't use a registry.EndpointReferenceParser, preserving the original reference
 	r, err := registry.ParseReference(sref)
 	if err != nil {
 		return "", fmt.Errorf("error parsing the reference: %w", err)
@@ -185,6 +189,7 @@ func extractTag(sref string) (string, error) {
 }
 
 func extractRepo(sref string) (string, error) {
+	// don't use a registry.EndpointReferenceParser, preserving the original reference
 	r, err := registry.ParseReference(sref)
 	if err != nil {
 		return "", fmt.Errorf("error parsing the reference: %w", err)
@@ -193,6 +198,7 @@ func extractRepo(sref string) (string, error) {
 }
 
 func extractReg(sref string) (string, error) {
+	// don't use a registry.EndpointReferenceParser, preserving the original reference
 	r, err := registry.ParseReference(sref)
 	if err != nil {
 		return "", fmt.Errorf("error parsing the reference: %w", err)
@@ -202,6 +208,7 @@ func extractReg(sref string) (string, error) {
 
 // Maybe a better name out there? A package is the full repository path and reference together (no registry).
 func extractPackage(sref string) (string, error) {
+	// don't use a registry.EndpointReferenceParser, preserving the original reference
 	r, err := registry.ParseReference(sref)
 	if err != nil {
 		return "", fmt.Errorf("error parsing the reference: %w", err)

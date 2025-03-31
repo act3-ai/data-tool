@@ -23,7 +23,7 @@ func newSerializeCmd(tool *actions.Action) *cobra.Command {
 	}
 	var existingCheckpoints []string
 
-	cmd := &cobra.Command{
+	cmd := &cobra.Command{ //nolint:dupl
 		Use:   "serialize IMAGE DEST [EXISTING-IMAGE...]",
 		Short: "Serialize image data from IMAGE to DEST assuming that all blobs in the EXISTING-IMAGE(s) do not need to be sent.",
 		Long: `IMAGE is a reference to an OCI image index to use as the source.  All the images in the image index will be sent to DEST.
@@ -64,7 +64,9 @@ If serialize fails for any reason, provide the --resume-from-checkpoint flag wit
 	// checkpoint flags
 	cmd.Flags().StringVar(&action.Checkpoint, "checkpoint", "", "Save checkpoint file to file.  Can be provided to --resume-from and --resume-from-checkpoint to continue an incomplete serialize operation from where it left off.")
 	cmd.Flags().StringSliceVar(&existingCheckpoints, "existing-from-checkpoint", []string{}, "List of checkpoint files and their offsets. e.g, checkpoint.txt:12345, checkpoint2.txt:23456")
+	cmd.Flags().BoolVar(&action.WithManifestJSON, "manifest-json", false, "Save a manifest.json file similar to the output of 'ctr images export' (fully compatible) or 'docker image save' (not fully compatible). Recommended to be used on images gathered with one platform specified.")
 
+	cmd.Flags().StringVar(&action.Compression, "compression", "", "Supports zstd and gzip compression methods. (Default behavior is no compression.)")
 	flag.AddMemoryBufferFlags(cmd.Flags(), &mbufOpts)
 	ui.AddOptionsFlags(cmd.Flags(), &uiOptions)
 

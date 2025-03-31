@@ -1,19 +1,19 @@
 package actions
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
 	"os"
 	"strings"
-	"syscall"
 
-	"golang.org/x/term"
 	"oras.land/oras-go/v2/registry/remote/auth"
 	"oras.land/oras-go/v2/registry/remote/credentials"
 
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"gitlab.com/act3-ai/asce/go-common/pkg/redact"
+
+	"gitlab.com/act3-ai/asce/data/tool/internal/secret"
 )
 
 // Login represents the login action.
@@ -22,50 +22,53 @@ type Login struct {
 
 	DisableAuthCheck bool // Disables the registry Ping() to check for auth.
 
-	Username string // Username credential for login
-	Password string // Password credential for login
+	Username  string               // Username credential for login
+	Password  secret.ValueResolver // Password credential for login
+	PassStdin bool
 }
 
 // Run runs the login action.
 func (action *Login) Run(ctx context.Context, registry string, out io.Writer) error {
-	log := logger.FromContext(ctx)
+	// sanity
+	if action.PassStdin && action.Password.String() != "" {
+		return fmt.Errorf("passowrd may be provided (indirectly) by flag or through stdin, not both")
+	}
 
+	log := logger.FromContext(ctx).With("reg", registry)
 	log.InfoContext(ctx, "login command activated")
 
-	cfg := action.Config.Get(ctx)
-
 	var err error
-	if action.Username == "" || action.Password == "" {
-		log.InfoContext(ctx, "Prompting for auth to registry", "reg", registry)
-		if action.Username == "" {
-			_, err = fmt.Fprint(out, "Username: ")
-			if err != nil {
-				return err
-			}
-			reader := bufio.NewReader(os.Stdin)
-			line, _, err := reader.ReadLine()
-			if err != nil {
-				return fmt.Errorf("error reading from stdin: %w", err)
-			}
-			action.Username = strings.TrimSpace(string(line))
-		}
-
-		if action.Password == "" {
-			_, err = fmt.Fprint(out, "Password: ")
-			if err != nil {
-				return err
-			}
-			bpw, err := term.ReadPassword(int(syscall.Stdin))
-			if err != nil {
-				return fmt.Errorf("error reading password from term: %w", err)
-			}
-			action.Password = string(bpw)
-			if action.Password == "" {
-				return fmt.Errorf("password is required")
-			}
+	if action.Username == "" {
+		action.Username, err = secret.PromptUsername(ctx, out)
+		if err != nil {
+			return fmt.Errorf("prompting username input: %w", err)
 		}
 	}
 
+	var pass redact.Secret
+	switch {
+	case action.PassStdin:
+		in, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			return fmt.Errorf("reading password from stdin: %w", err)
+		}
+		p := strings.TrimSuffix(string(in), "\n")
+		p = strings.TrimSuffix(p, "\r")
+		pass = redact.Secret(p)
+	case action.Password.String() == "":
+		pass, err = secret.PromptPassword(ctx, out)
+		if err != nil {
+			return fmt.Errorf("prompting password input: %w", err)
+		}
+	default:
+		// 'env:', 'file:', or 'cmd:'
+		pass, err = action.Password.Get(ctx)
+		if err != nil {
+			return fmt.Errorf("resolving secret: %w", err)
+		}
+	}
+
+	cfg := action.Config.Get(ctx)
 	store, err := credentials.NewStore(cfg.RegistryAuthFile, credentials.StoreOptions{
 		AllowPlaintextPut: true,
 	})
@@ -82,7 +85,7 @@ func (action *Login) Run(ctx context.Context, registry string, out io.Writer) er
 
 	cred := auth.Credential{
 		Username: action.Username,
-		Password: action.Password,
+		Password: string(pass),
 	}
 
 	if action.DisableAuthCheck {
@@ -96,8 +99,6 @@ func (action *Login) Run(ctx context.Context, registry string, out io.Writer) er
 			return err
 		}
 	} else {
-		// TODO this validates that the login was successful with registry.Ping().
-		// For the python HACK we actually do not want this.
 		err = credentials.Login(ctx, store, reg, cred)
 		if err != nil {
 			return fmt.Errorf("logging in: %w", err)

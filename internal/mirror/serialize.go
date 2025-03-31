@@ -12,7 +12,6 @@ import (
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/errgroup"
-	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 
@@ -50,8 +49,11 @@ type SerializeOptions struct {
 	ExistingImages      []string
 	Recursive           bool
 	RepoFunc            func(context.Context, string) (*remote.Repository, error)
-	SourceRepo          oras.ReadOnlyGraphTarget
+	SourceStorage       content.ReadOnlyStorage
 	SourceReference     string
+	Compression         string
+	SourceDesc          ocispec.Descriptor
+	WithManifestJSON    bool
 }
 
 // Serialize takes the artifact created in a gather operation and serializes it to tar.
@@ -96,12 +98,20 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 			return fmt.Errorf("create checkpoint ledger file: %w", err)
 		}
 		defer ledger.Close()
-		serializer = encoding.NewOCILayoutSerializerWithLedger(dest, ledger)
+		serializer, err = encoding.NewOCILayoutSerializerWithLedger(dest, ledger, opts.Compression)
+		if err != nil {
+			return fmt.Errorf("creating serializer: %w", err)
+		}
 	} else {
-		serializer = encoding.NewOCILayoutSerializer(dest)
+		serializer, err = encoding.NewOCILayoutSerializer(dest, opts.Compression)
+		if err != nil {
+			return fmt.Errorf("creating serializer: %w", err)
+		}
 	}
+
 	defer serializer.Close() // this is closed at the end of the function and the error is checked.
 
+	// TODO: We can remove the opts.RepoFunc requirement if we perform the reference resolution ahead of time.
 	if err := processExisting(ctx, rootUI, opts.ExistingImages, serializer.SkipBlob, opts.RepoFunc); err != nil {
 		return err
 	}
@@ -110,17 +120,34 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 		return err
 	}
 
-	desc, err := opts.SourceRepo.Resolve(ctx, opts.SourceReference)
-	if err != nil {
-		return fmt.Errorf("getting remote descriptor for %s: %w", opts.SourceReference, err)
-	}
-
 	// Add the reference name into the annotation for book keeping
-	if desc.Annotations == nil {
-		desc.Annotations = map[string]string{}
+	if opts.SourceDesc.Annotations == nil {
+		opts.SourceDesc.Annotations = map[string]string{}
 	}
 	// This is similar to calling .Tag() on a CAS
-	desc.Annotations[ocispec.AnnotationRefName] = opts.SourceReference
+	opts.SourceDesc.Annotations[ocispec.AnnotationRefName] = opts.SourceReference
+
+	// get the deduplicated size from the annotations of the gather manifest and use it in the progress UI.
+	var gatherIdxManifest ocispec.Index
+	gatherManifestBytes, err := content.FetchAll(ctx, opts.SourceStorage, opts.SourceDesc)
+	if err != nil {
+		return fmt.Errorf("fetching the gather manifest: %w", err)
+	}
+	if err := json.Unmarshal(gatherManifestBytes, &gatherIdxManifest); err != nil {
+		return fmt.Errorf("unmarshalling index manifest bytes: %w", err)
+	}
+
+	ddb := gatherIdxManifest.Annotations[encoding.AnnotationLayerSizeDeduplicated]
+	if ddb == "" {
+		// <ace-dt v1.13 serialized files will not have this annotation so we need to check it for backwards compatibility
+		// we will set it to 0
+		ddb = "0"
+	}
+	deduplicatedBytes, err := strconv.Atoi(ddb)
+	if err != nil {
+		return fmt.Errorf("getting deduplicated bytes from the manifest annotations: %w", err)
+	}
+	progress.Update(opts.SourceDesc.Size, int64(deduplicatedBytes))
 
 	// Add caching
 	// fsBlobCache := cache.NewFilesystemCache(cfg.CachePath)
@@ -143,10 +170,11 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 			SchemaVersion: 2,
 		},
 		MediaType: ocispec.MediaTypeImageIndex,
-		Manifests: []ocispec.Descriptor{desc},
+		Manifests: []ocispec.Descriptor{opts.SourceDesc},
 		Annotations: map[string]string{
-			encoding.AnnotationGatherVersion:        dataToolVersion,
-			encoding.AnnotationSerializationVersion: fmt.Sprint(serializationVersion),
+			encoding.AnnotationGatherVersion:         dataToolVersion,
+			encoding.AnnotationSerializationVersion:  fmt.Sprint(serializationVersion),
+			encoding.AnnotationLayerSizeDeduplicated: ddb,
 		},
 	}
 	if err := serializer.SaveIndex(index); err != nil {
@@ -160,7 +188,7 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 	// In fact a descriptor can be done many ways so we return all manifests that we come across.
 	mt := newManifestTracker()
 
-	if err := writeDescriptor(ctx, rootUI, progress, opts.Recursive, opts.SourceRepo, serializer, mt, desc); err != nil {
+	if err := writeDescriptor(ctx, rootUI, progress, opts.Recursive, opts.SourceStorage, serializer, mt, opts.SourceDesc); err != nil {
 		return fmt.Errorf("writing top level descriptor: %w", err)
 	}
 
@@ -168,6 +196,17 @@ func Serialize(ctx context.Context, destFile, checkpointFile, dataToolVersion st
 	index.Manifests = mt.Manifests()
 	if err := serializer.SaveIndex(index); err != nil {
 		return err
+	}
+
+	if opts.WithManifestJSON {
+		mj, err := encoding.BuildManifestJSON(ctx, opts.SourceStorage, index.Manifests)
+		if err != nil {
+			return fmt.Errorf("building manifest.json: %w", err)
+		}
+
+		if err = serializer.SaveManifestJSON(mj); err != nil {
+			return fmt.Errorf("saving manifest.json to archive: %w", err)
+		}
 	}
 
 	// clean up
@@ -328,7 +367,6 @@ func writeBlob(ctx context.Context,
 	defer task.Complete()
 
 	// update the total write size
-	progress.Update(0, desc.Size)
 	defer progress.Update(desc.Size, 0)
 	task.Infof("Writing blob (%s) %s", print.Bytes(desc.Size), print.ShortDigest(desc.Digest))
 

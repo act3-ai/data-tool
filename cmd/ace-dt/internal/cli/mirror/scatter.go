@@ -33,9 +33,9 @@ This format also allows defining the source as a digest that is present in the s
 Passing a digests MAP-FILE requires a csv file that has formatted lines of: digest-string, destination.
 Scatter will send each digest to the locations defined in the map file provided. 
 
-Passing a go-template MAP-FILE allows a greater deal of flexibility in how references can be pushed
+Passing a go-template MAP-FILE allows greater flexibility in how references can be pushed
 to destination repositories. Hermetic text Sprig functions are currently supported which allows for matching by 
-prefix, digest, media-type, regex, etc.  The following additional functions are provides
+prefix, digest, media-type, regex, etc.  The following additional functions are provided:
 
 Tag - Returns the tag of an OCI string
 Repository - Returns the repository of an OCI string

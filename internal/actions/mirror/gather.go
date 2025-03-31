@@ -2,11 +2,13 @@ package mirror
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
+	dtreg "gitlab.com/act3-ai/asce/data/tool/internal/registry"
 	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
 	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
 )
@@ -38,29 +40,48 @@ func (action *Gather) Run(ctx context.Context, sourceFile string, dest string) e
 		action.ExtraAnnotations = make(map[string]string)
 	}
 
-	destTarget, err := action.Config.Repository(ctx, dest)
+	destTarget, err := action.Config.GraphTarget(ctx, dest)
 	if err != nil {
 		return err
+	}
+
+	destRef, err := dtreg.ParseEndpointOrDefault(action.Config, dest)
+	if err != nil {
+		return fmt.Errorf("resolving destination reference with endpoint resolution: %w", err)
 	}
 
 	// create the gather opts
 	opts := mirror.GatherOptions{
 		Platforms:      action.Platforms,
 		ConcurrentHTTP: cfg.ConcurrentHTTP,
-		DestTarget:     destTarget,
+		DestStorage:    destTarget,
 		Log:            log,
 		RootUI:         rootUI,
 		SourceFile:     sourceFile,
 		Dest:           dest,
 		Annotations:    action.ExtraAnnotations,
 		IndexFallback:  action.IndexFallback,
-		DestReference:  destTarget.Reference,
+		DestReference:  destRef,
 		Recursive:      action.Recursive,
-		RepoFunc:       action.Config.Repository,
+		Targeter:       action.Config,
 	}
 
 	// run the gather function
-	return mirror.Gather(ctx, action.DataTool.Version(), opts)
+	idxDesc, err := mirror.Gather(ctx, action.Version(), opts)
+	if err != nil {
+		return fmt.Errorf("gathering artifacts: %w", err)
+	}
+
+	err = destTarget.Tag(ctx, idxDesc, destRef.Reference)
+	if err != nil {
+		return fmt.Errorf("tagging gather index manifest: %w", err)
+	}
+	referenceWithDigest := opts.DestReference
+	referenceWithDigest.Reference = idxDesc.Digest.String()
+	opts.RootUI.Infof("Gather index: %s", referenceWithDigest.String())
+	opts.RootUI.Infof("Pushed index to destination: %s", destRef)
+
+	return nil
 }
 
 // WorkTracker is an object for tracking the number of blobs and bytes actually pushed.

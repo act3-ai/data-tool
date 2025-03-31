@@ -69,7 +69,7 @@ func commit(ctx context.Context, cfg *v1alpha1.Configuration, btl *bottle.Bottle
 	level := cfg.CompressionLevel
 
 	log.InfoContext(ctx, "Saving updated bottle")
-	if err := SaveUpdatesToSet(ctx, btl, SaveOptions{CompressLevel: level}); err != nil {
+	if err := bottle.SaveUpdatesToSet(ctx, btl, bottle.SaveOptions{CompressLevel: level}); err != nil {
 		return err
 	}
 

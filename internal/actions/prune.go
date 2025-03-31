@@ -21,29 +21,27 @@ type Prune struct {
 // Run runs the prune action.
 func (action *Prune) Run(ctx context.Context, out io.Writer) error {
 	log := logger.FromContext(ctx)
-
 	log.InfoContext(ctx, "util prune command activated")
 
 	cfg := action.Config.Get(ctx)
 
-	max, valid := cfg.CachePruneMax.AsInt64()
+	maxSize, valid := cfg.CachePruneMax.AsInt64()
 	if !valid {
 		return fmt.Errorf("invalid config value cachePruneMax of %s", cfg.CachePath)
 	}
 	// check the flag
 	if action.Max >= 0 {
-		max = action.Max
+		maxSize = action.Max
 	}
-	// max is specified in megabytes
-	max = max * 1024 * 1024
-	log.InfoContext(ctx, "Max size selected", "size", max)
+	// maxSize is specified in megabytes
+	maxSize = maxSize * 1024 * 1024
 
-	cacheManager := cache.NewBottleCachePruner(cfg.CachePath)
-
-	if err := cacheManager.Prune(ctx, max); err != nil {
-		return fmt.Errorf("error pruning cache: %w", err)
+	log.InfoContext(ctx, "Pruning cache", "cachePath", cfg.CachePath, "maxSize", maxSize)
+	if err := cache.Prune(ctx, cfg.CachePath, maxSize); err != nil {
+		return fmt.Errorf("pruning cache: %w", err)
 	}
-	_, err := fmt.Fprintf(out, "Cache pruned to maximum size: %d MiB\n", max/(1024*1024))
+
+	_, err := fmt.Fprintf(out, "Cache pruned to maximum size: %d MiB\n", maxSize/(1024*1024))
 	if err != nil {
 		return err
 	}

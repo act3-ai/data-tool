@@ -199,16 +199,18 @@ func (mt *TaggableTracker) notifyManifest(ctx context.Context, desc ocispec.Desc
 
 	mt.taggableDescriptors[desc.Digest] = append(mt.taggableDescriptors[desc.Digest], desc)
 
-	manifestData, err := content.FetchAll(ctx, mt.target, desc)
-	switch {
-	case errors.Is(err, errdef.ErrNotFound):
-		// manifest is missing
-	case err != nil:
-		return false, fmt.Errorf("checked existence of manifest: %w", err)
-	default:
+	exists, err := mt.target.Exists(ctx, desc)
+	if err != nil {
+		return false, fmt.Errorf("checking manifest existence at remote: %w", err)
+	}
+	if exists {
 		log.InfoContext(ctx, "Manifest already in repository")
+		// copy to the cache
+		manifestData, err := content.FetchAll(ctx, mt.target, desc)
+		if err != nil {
+			return false, fmt.Errorf("fetching manifest from remote: %w", err)
+		}
 
-		// push to the cache
 		if err := tryPushBytes(ctx, mt.cache, desc, manifestData); err != nil {
 			return false, fmt.Errorf("populating cache with manifest: %w", err)
 		}
@@ -221,11 +223,16 @@ func (mt *TaggableTracker) notifyManifest(ctx context.Context, desc ocispec.Desc
 	// We know we will need the contents of the blob (really a manifest) in addTaggable -> FindSuccessors so we fetch it now
 	target := desc                                // copy
 	target.MediaType = "application/octet-stream" // not a manifest media type
-	manifestData, err = content.FetchAll(ctx, mt.target, target)
-	if errors.Is(err, errdef.ErrNotFound) {
+	exists, err = mt.target.Exists(ctx, target)
+	if err != nil {
+		return false, fmt.Errorf("checking manifest existence at remote: %w", err)
+	}
+	if !exists {
 		// blob is missing
 		return false, nil
 	}
+
+	manifestData, err := content.FetchAll(ctx, mt.target, target)
 	if err != nil {
 		return false, fmt.Errorf("fetch manifest as a blob: %w", err)
 	}
@@ -315,7 +322,9 @@ func (mt *TaggableTracker) addTaggable(ctx context.Context, desc ocispec.Descrip
 				mt.missingTaggables[desc.Digest] = append(mt.missingTaggables[desc.Digest], taggable)
 			}
 		} else {
-			exists, err := mt.target.Exists(ctx, desc)
+			d := desc
+			d.MediaType = "application/octet-stream"
+			exists, err := mt.target.Exists(ctx, d)
 			if err != nil {
 				return fmt.Errorf("checking existence of blob: %w", err)
 			}

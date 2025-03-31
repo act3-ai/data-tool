@@ -267,12 +267,11 @@ func (r *Requirement) String() string {
 	}
 
 	if version := r.VersionSpecifier.String(); len(version) != 0 {
-		b.WriteRune(' ')
 		b.WriteString(r.VersionSpecifier.String())
 	}
 
+	b.WriteString(" ; ")
 	if len(r.Constraints) != 0 {
-		b.WriteString(" ; ")
 		b.WriteString(r.Constraints)
 	}
 

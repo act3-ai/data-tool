@@ -49,7 +49,11 @@ ace-dt mirror clone sources.list go-template=mapping.tmpl
 ace-dt mirror clone sources.list first-prefix=mapping.csv
 ace-dt mirror clone sources.list digests=mapping.csv
 ace-dt mirror clone sources.list longest-prefix=mapping.csv
-ace-dt mirror clone sources.list all-prefix=mapping.csv`,
+ace-dt mirror clone sources.list all-prefix=mapping.csv
+
+To continue cloning artifacts from the sources.list file even if some fail (while outputting error messages), use the following command:
+ace-dt mirror clone sources.list nest=ref.other.com/mirror --continue
+`,
 
 		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -62,6 +66,7 @@ ace-dt mirror clone sources.list all-prefix=mapping.csv`,
 	cmd.PersistentFlags().StringSliceVarP(&action.Selectors, "selector", "l", []string{}, "Only scatter manifests tagged with annotation labels, e.g., component=core,module=test")
 	cmd.PersistentFlags().BoolVar(&action.Check, "check", false, "Dry run- do not actually send to destination repositories")
 	cmd.Flags().StringSliceVarP(&action.Platforms, "platforms", "p", []string{}, "Only gather images that match the specified platform(s). Warning: This will modify the manifest digest/reference..")
+	cmd.Flags().BoolVar(&action.ContinueOnError, "continue", false, "Continue cloning even if some artifacts fail to copy")
 	ui.AddOptionsFlags(cmd.Flags(), &uiOptions)
 
 	return cmd

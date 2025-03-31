@@ -1,6 +1,7 @@
 package bottle
 
 import (
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -37,6 +38,9 @@ func TestNewFSUtilAndClose(t *testing.T) {
 }
 
 func TestAddFileWithData(t *testing.T) {
+	// This is needed because Windows does not recognize / as an absolute path
+	absoluteFilepath, err := filepath.Abs("/invalid/data.txt")
+	require.NoError(t, err, "filepath.Abs should not return an error")
 	testCases := []struct {
 		name   string
 		path   string
@@ -60,9 +64,9 @@ func TestAddFileWithData(t *testing.T) {
 		},
 		{
 			name:   "Invalid absolute path",
-			path:   "/invalid/data.txt",
+			path:   absoluteFilepath,
 			data:   []byte("Invalid absolute path"),
-			errMsg: "path /invalid/data.txt is absolute. All FSUtil paths are relative",
+			errMsg: fmt.Sprintf("path %s is absolute. All FSUtil paths are relative", absoluteFilepath),
 		},
 	}
 
@@ -90,6 +94,8 @@ func TestAddFileWithData(t *testing.T) {
 }
 
 func TestAddFileOfSize(t *testing.T) {
+	absoluteFilepath, err := filepath.Abs("/invalid/data.txt")
+	require.NoError(t, err, "filepath.Abs should not return an error")
 	testCases := []struct {
 		name   string
 		path   string
@@ -113,9 +119,9 @@ func TestAddFileOfSize(t *testing.T) {
 		},
 		{
 			name:   "Invalid absolute path",
-			path:   "/invalid/random.txt",
+			path:   absoluteFilepath,
 			size:   1024,
-			errMsg: "path /invalid/random.txt is absolute. All FSUtil paths are relative",
+			errMsg: fmt.Sprintf("path %s is absolute. All FSUtil paths are relative", absoluteFilepath),
 		},
 	}
 
@@ -143,6 +149,8 @@ func TestAddFileOfSize(t *testing.T) {
 }
 
 func TestAddDir(t *testing.T) {
+	absoluteFilepath, err := filepath.Abs("/invalid/data.txt")
+	require.NoError(t, err, "filepath.Abs should not return an error")
 	testCases := []struct {
 		name   string
 		path   string
@@ -162,8 +170,8 @@ func TestAddDir(t *testing.T) {
 		},
 		{
 			name:   "Invalid absolute path",
-			path:   "/invalid/random",
-			errMsg: "path /invalid/random is absolute. All FSUtil paths are relative",
+			path:   absoluteFilepath,
+			errMsg: fmt.Sprintf("path %s is absolute. All FSUtil paths are relative", absoluteFilepath),
 		},
 	}
 
@@ -191,6 +199,8 @@ func TestAddDir(t *testing.T) {
 }
 
 func TestAddFileOfSizeDeterministic(t *testing.T) {
+	invalidDeterministic, err := filepath.Abs("/invalid/data.txt")
+	require.NoError(t, err, "filepath.Abs should not return an error")
 	testCases := []struct {
 		name   string
 		path   string
@@ -214,9 +224,9 @@ func TestAddFileOfSizeDeterministic(t *testing.T) {
 		},
 		{
 			name:   "Invalid absolute path",
-			path:   "/invalid/deterministic.txt",
+			path:   invalidDeterministic,
 			size:   1024,
-			errMsg: "path /invalid/deterministic.txt is absolute. All FSUtil paths are relative",
+			errMsg: fmt.Sprintf("path %s is absolute. All FSUtil paths are relative", invalidDeterministic),
 		},
 	}
 
