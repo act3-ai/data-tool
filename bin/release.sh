@@ -200,14 +200,15 @@ approve)
     ;;
 
 publish)
-    fullVersion=v$(cat VERSION)
+    version=$(cat VERSION)
+    fullVersion=v${version}
     platforms=linux/amd64,linux/arm64
     
     # publish release
     dagger call with-registry-auth --address=$registry --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN publish --token=env:GITLAB_REG_TOKEN
 
     # upload release assets (binaries)
-    dagger call release upload-assets --version="$fullVersion" --assets=./bin --token=env:GITLAB_REG_TOKEN
+    dagger call release upload-assets --version="$version" --assets=./bin --token=env:GITLAB_REG_TOKEN
 
     # publish image
     imageRepoRef="${registryRepo}:${fullVersion}"
@@ -218,7 +219,7 @@ publish)
 
     # scan images with ace-dt
     echo "$imageRepoRef" > artifacts.txt
-    dagger call with-registry-auth --address=$registry --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN scan --sources artifacts.txt
+    dagger call with-registry-auth --address=$registry --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN with-netrc --netrc=file:"$netrcPath" scan --sources artifacts.txt
 
     # notify everyone
     # TODO: uncomment me
