@@ -1,3 +1,13 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+## [1.15.8] - 2025-03-31
+
+### 🚀 Features
+
+- *(dagger)* Move pipeline to dagger, new release script.
+
 ## [1.15.7](https://git.act3-ace.com/ace/data/tool/compare/v1.15.6...v1.15.7) (2025-03-26)
 
 
