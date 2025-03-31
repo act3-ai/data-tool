@@ -45,6 +45,7 @@ func (t *Tool) APIDocs() (*dagger.Directory, error) {
 func (t *Tool) Generate() *dagger.Directory {
 	ctr := dag.Go().
 		WithSource(t.Source).
+		WithEnvVariable("GOBIN", "/work/src/tool").
 		Exec([]string{"go", "install", goControllerGen}).
 		WithExec([]string{"go", "generate", "./..."})
 
