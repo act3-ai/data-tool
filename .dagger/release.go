@@ -47,10 +47,11 @@ type Release struct {
 // Update the changelog, release notes, version, and helm chart versions.
 func (r *Release) Prepare(ctx context.Context) (*dagger.Directory, error) {
 	changelog := r.Changelog(ctx)
-	version, err := r.Version(ctx)
-	if err != nil {
-		return nil, err
-	}
+	// version, err := r.Version(ctx)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	version := "1.15.8"
 
 	notes, err := r.Notes(ctx, version)
 	if err != nil {
@@ -89,7 +90,8 @@ func (t *Tool) Publish(ctx context.Context,
 func (r *Release) Changelog(ctx context.Context) *dagger.File {
 	const changelogPath = "/app/CHANGELOG.md"
 	return r.gitCliffContainer().
-		WithExec([]string{"git-cliff", "--bump", "--strip=footer", "-o", changelogPath}).
+		// WithExec([]string{"git-cliff", "--bump", "--strip=footer", "-o", changelogPath}).
+		WithExec([]string{"git-cliff", "06f591bec27905323cb69295b390ec0ad589c6eb..50feb02fd08178e758f6e5ac6abf7b4e0e28485b", "--tag", "v1.15.8", "--prepend", changelogPath}).
 		File(changelogPath)
 }
 
