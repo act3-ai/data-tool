@@ -15,9 +15,8 @@ func (t *Tool) VulnCheck(ctx context.Context) (string, error) {
 		}).
 		WithSource(t.Source).
 		WithCgoDisabled().
-		WithEnvVariable("GO_PRIVATE", gitlabHost).
+		WithEnvVariable("GOPRIVATE", gitlabPrivate).
 		Exec([]string{"go", "install", goVulnCheck}).
-		// Container().
 		WithExec([]string{"govulncheck", "./..."}).
 		Stdout(ctx)
 }

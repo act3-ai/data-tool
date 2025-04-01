@@ -140,7 +140,7 @@ func build(ctx context.Context,
 		}).
 		WithSource(src).
 		WithCgoDisabled().
-		WithEnvVariable("GO_PRIVATE", gitlabHost).
+		WithEnvVariable("GOPRIVATE", gitlabPrivate).
 		WithEnvVariable("GOFIPS140", fipsMode).
 		Build(dagger.GoWithSourceBuildOpts{
 			Pkg:      "./cmd/ace-dt",

@@ -46,6 +46,7 @@ func (t *Tool) Generate() *dagger.Directory {
 	ctr := dag.Go().
 		WithSource(t.Source).
 		WithEnvVariable("GOBIN", "/work/src/tool").
+		WithEnvVariable("GOPRIVATE", gitlabPrivate).
 		Exec([]string{"go", "install", goControllerGen}).
 		WithExec([]string{"go", "generate", "./..."})
 

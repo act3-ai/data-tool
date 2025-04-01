@@ -158,7 +158,7 @@ prepare)
     fi
     
     # auto-gen kube api
-    dagger call generate export --path=./pkg/apis/config.dt.act3-ace.io
+    dagger call with-netrc --netrc=file:"$netrcPath" generate export --path=./pkg/apis/config.dt.act3-ace.io
 
     dagger call lint all
 

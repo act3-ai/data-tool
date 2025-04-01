@@ -22,6 +22,7 @@ const (
 	// repository information
 	gitlabHost    = "https://gitlab.com"
 	gitlabProject = "act3-ai/asce/data/tool"
+	gitlabPrivate = "git.act3-ace.com" // TODO: Remove me.
 
 	// images
 	imageGitlabCLI  = "registry.gitlab.com/gitlab-org/cli:latest"
