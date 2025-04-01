@@ -89,7 +89,7 @@ func (t *Tool) Publish(ctx context.Context,
 func (r *Release) Changelog(ctx context.Context) *dagger.File {
 	const changelogPath = "/app/CHANGELOG.md"
 	return r.gitCliffContainer().
-		WithExec([]string{"git-cliff", "--bump", "--strip=footer", "-o", changelogPath}).
+		WithExec([]string{"git-cliff", "--bump", "--strip=footer", "--unreleased", "--prepend", changelogPath}).
 		File(changelogPath)
 }
 
