@@ -62,20 +62,22 @@ commit_preprocessors = [
 ]
 # regex for parsing and grouping commits
 commit_parsers = [
-  { message = "^feat", group = "<!-- 0 -->🚀 Features" },
-  { message = "^fix", group = "<!-- 1 -->🐛 Bug Fixes" },
-  { message = "^refactor", group = "<!-- 2 -->🚜 Refactor" },
-  { message = "^doc", group = "<!-- 3 -->📚 Documentation" },
-  { message = "^perf", group = "<!-- 4 -->⚡ Performance" },
-  { message = "^dagger", group = "<!-- 5 -->🗡️ Dagger" },
-  { message = "^test", group = "<!-- 6 -->🧪 Testing" },
+  { message = '^feat\((.*)\)', group = '🚀 Features (${1})' },
+  { message = '^fix\((.*)\)', group = '🐛 Bug Fixes (${1})' },
+  { message = "^refactor", group = "🚜 Refactor" },
+  { message = "^doc", group = "📚 Documentation" },
+  { message = "^perf", group = "⚡ Performance" },
+  { message = "^dagger", group = "🗡️ Dagger" },
+  { message = "^test", group = "🧪 Testing" },
   { message = "^chore\\(release\\): prepare for", skip = true },
   { message = "^chore\\(deps.*\\)", skip = true },
   { message = "^chore\\(pr\\)", skip = true },
   { message = "^chore\\(pull\\)", skip = true },
-  { message = "^chore|^ci", group = "<!-- 7 -->⚙️ Miscellaneous Tasks" },
-  { body = ".*security", group = "<!-- 8 -->🛡️ Security" },
-  { message = "^revert", group = "<!-- 9 -->◀️ Revert" },
+  { message = "^chore|^ci", group = "⚙️ Miscellaneous Tasks" },
+  { body = ".*security", group = "🛡️ Security" },
+  { message = "^revert", group = "◀️ Revert" },
+  { message = "^deps", group = "📦 Dependencies" },
+  { message = ".*", group = "💼 Other" },
 ]
 # filter out the commits that are not matched by commit parsers
 filter_commits = false
