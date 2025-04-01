@@ -159,8 +159,20 @@ func (t *Test) Integration(ctx context.Context) (string, error) {
 
 	acedt := build(ctx, t.Source, t.Netrc, "linux/amd64", "", "latest")
 
+	originalBottleRef := "reg.git.act3-ace.com/ace/data/tool/bottle/mnist:v1.6"
+	bottleID, err := dag.Wolfi().
+		Container().
+		WithFile("/usr/local/bin/ace-dt", acedt).
+		WithMountedSecret("/root/.docker/config.json", t.RegistryConfig.Secret()).
+		WithExec([]string{"ace-dt", "bottle", "pull", originalBottleRef, "-d", "bottle"}).
+		File("bottle/.dt/bottleid").
+		Contents(ctx)
+	if err != nil {
+		return "", fmt.Errorf("resolving bottleID: %w", err)
+	}
+
 	acedtConfigPath := "ace-dt-config.yaml"
-	ctr := dag.Wolfi().
+	_, err = dag.Wolfi().
 		Container().
 		WithFile("/usr/local/bin/ace-dt", acedt).
 		WithMountedSecret("/root/.docker/config.json", t.RegistryConfig.Secret()).
@@ -171,18 +183,13 @@ func (t *Test) Integration(ctx context.Context) (string, error) {
 		WithEnvVariable("ACE_DT_TELEMETRY_USERNAME", "ci-test-user").
 		// allow plain-http for test registry
 		WithNewFile(acedtConfigPath, insecureRegConfig(regEndpoint)).
-		WithEnvVariable("ACE_DT_CONFIG", acedtConfigPath)
-
-	// test authenticated pull, then push & pull with telemetry, and validate bottleid
-	originalBottleRef := "reg.git.act3-ace.com/ace/data/tool/bottle/mnist:v1.6"
-	bottleID, err := ctr.WithExec([]string{"ace-dt", "bottle", "pull",
-		originalBottleRef, "-d", "bottle"}).
-		WithExec([]string{"ace-dt", "bottle", "push",
-			fmt.Sprintf("%s/bottle/mnist:v1.6", regHost), "-d", "bottle"}).
-		File("bottle/.dt/bottleid").
-		Contents(ctx)
+		WithEnvVariable("ACE_DT_CONFIG", acedtConfigPath).
+		WithExec([]string{"ace-dt", "bottle", "pull", originalBottleRef, "-d", "bottle"}).
+		WithExec([]string{"ace-dt", "bottle", "push", fmt.Sprintf("%s/bottle/mnist:v1.6", regHost), "-d", "bottle"}).
+		WithExec([]string{"ace-dt", "bottle", "pull", fmt.Sprintf("bottle:%s", bottleID), "-d", "bottle-pull2"}).
+		Stdout(ctx)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("running integration test: %w", err)
 	}
 
 	// ensure telemetry reports the original location and the new one
@@ -200,15 +207,11 @@ func (t *Test) Integration(ctx context.Context) (string, error) {
 		return "", fmt.Errorf("closing response body: %w", err)
 	}
 	result := string(res)
-	strings.Contains(result, regHost)
-	strings.Contains(result, originalBottleRef)
-
-	// pull by bottleid
-	_, err = ctr.WithExec([]string{"ace-dt", "bottle", "pull",
-		fmt.Sprintf("bottle:%s", bottleID), "-d", "bottle-pull2"}).
-		Stdout(ctx)
-	if err != nil {
-		return "", fmt.Errorf("pulling bottle by ID: %w", err)
+	if !strings.Contains(result, regHost) {
+		return "", fmt.Errorf("telemetry did not report new bottle location, body: %s", result)
+	}
+	if !strings.Contains(result, strings.TrimSuffix(originalBottleRef, ":v1.6")) {
+		return "", fmt.Errorf("telemetry did not report original bottle location, body: %s", result)
 	}
 
 	// shutdown servers
