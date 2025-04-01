@@ -10,3 +10,4 @@ ignores:
   - ".gitlab/issue_templates/**"
   - "docs/cli/**"
   - "docs/apis/**"
+  - "releases/**"
