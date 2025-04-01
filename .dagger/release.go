@@ -85,7 +85,7 @@ func (t *Tool) Publish(ctx context.Context,
 	return t.createRelease(ctx, version, notes, token)
 }
 
-// Generate the change log from conventional commit messages (see cliff.toml)
+// Generate the change log from conventional commit messages (see cliff.toml).
 func (r *Release) Changelog(ctx context.Context) *dagger.File {
 	const changelogPath = "/app/CHANGELOG.md"
 	return r.gitCliffContainer().
@@ -105,14 +105,27 @@ func (r *Release) Version(ctx context.Context) (string, error) {
 	return strings.TrimSpace(version)[1:], err
 }
 
-// Generate the initial release notes
+// Generate the initial release notes.
 func (r *Release) Notes(ctx context.Context,
-	// helm chart version
-	chartVersion string,
+	// release version
+	version string,
 ) (string, error) {
-	return r.gitCliffContainer().
+	notes, err := r.gitCliffContainer().
 		WithExec([]string{"git-cliff", "--bump", "--unreleased", "--strip=all"}).
 		Stdout(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	// Note: Changes to existing or inclusions of additional image references
+	// should be reflected here, see published images in ../bin/release.sh publish stage.
+	b := &strings.Builder{}
+	b.WriteString("| Images |\n")
+	b.WriteString("| ---------------------------------------------------- |\n")
+	fmt.Fprintf(b, "| registry.gitlab.com/act3-ai/asce/data/tool:%s |\n\n", version)
+	b.WriteString(notes)
+
+	return b.String(), nil
 
 }
 

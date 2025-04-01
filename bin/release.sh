@@ -211,6 +211,7 @@ publish)
     dagger call release upload-assets --version="$version" --assets=./bin --token=env:GITLAB_REG_TOKEN
 
     # publish image
+    # Note: Changes to existing or inclusions of additional image references should be reflected in the release notes generated in ../.dagger/release.go
     imageRepoRef="${registryRepo}:${fullVersion}"
     dagger call with-registry-auth --address=$registry --username="$GITLAB_REG_USER" --secret=env:GITLAB_REG_TOKEN with-netrc --netrc=file:"$netrcPath" image-index --version="$fullVersion" --platforms="$platforms" --address "$imageRepoRef"
 
