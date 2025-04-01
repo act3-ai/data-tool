@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
-	"gitlab.com/act3-ai/asce/data/tool/internal/secret"
+	"gitlab.com/act3-ai/asce/go-common/pkg/secret"
 )
 
 // loginCmd represents the login command.
