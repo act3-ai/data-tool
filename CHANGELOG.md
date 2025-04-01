@@ -2,6 +2,28 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.9] - 2025-04-01
+
+### 🐛 Bug Fixes (dagger,build)
+
+- *(dagger,build)* Add build tags to reduce binary size and versioning
+
+### 📦 Dependencies
+
+- *(secret)* Remove internal/secret in favor of go-common/pkg/secret
+
+### 🗡️ Dagger
+
+- *(release)* Update git-cliff changelong generation to prepend only
+- Bump to v0.18.0
+- Add table of images to release notes
+
+### 🧪 Testing
+
+- *(dagger)* Add standalone golangci-lint function
+- *(markdownlint)* Ignore linting auto-generated release docs
+- *(integration)* Add missing telemetry response validation
+
 ## [1.15.8] - 2025-03-31
 
 ### 🚀 Features
