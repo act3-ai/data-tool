@@ -17,8 +17,8 @@
     },
     {
       "name": "registry-config",
-      "source": "github.com/sagikazarmark/daggerverse/registry-config@registry-config/v0.5.0",
-      "pin": "d814d0d7c421348f51cdda96870a05ca2aa8e96a"
+      "source": "github.com/sagikazarmark/daggerverse/registry-config@registry-config/v0.8.0",
+      "pin": "126b5fbbdad70dbf2a8689600baec2eb78c05ef4"
     },
     {
       "name": "shellcheck",
