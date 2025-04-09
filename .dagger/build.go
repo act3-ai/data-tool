@@ -175,6 +175,6 @@ func withCommonLabels(ctr *dagger.Container, version string) *dagger.Container {
 		WithLabel("org.opencontainers.image.title", "Tool").
 		// TODO: Different keys, same values feels off; but reflects the legacy release process
 		WithLabel("org.opencontainers.image.url", "ghcr.io/act3-ai/data-tool").
-		WithLabel("org.opencontainers.image.source", "ghcr.io/act3-ai/data-tool").
+		WithLabel("org.opencontainers.image.source", "https://ghcr.io/act3-ai/data-tool").
 		WithLabel("org.opencontainers.image.description", "ACE Data Tool")
 }
