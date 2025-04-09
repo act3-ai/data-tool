@@ -23,7 +23,6 @@ const (
 	gitRepo = "act3-ai/data-tool"
 
 	// images
-	imageGitlabCLI  = "registry.gitlab.com/gitlab-org/cli:latest"
 	imageGitCliff   = "docker.io/orhunp/git-cliff:2.8.0"
 	imageGrype      = "anchore/grype:latest"
 	imageSyft       = "anchore/syft:latest"
