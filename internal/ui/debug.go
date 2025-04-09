@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui/tracker"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/ui/tracker"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // debugUI is a UI used to record timestamped events for debugging.

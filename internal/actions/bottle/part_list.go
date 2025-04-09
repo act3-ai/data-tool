@@ -6,10 +6,10 @@ import (
 	"io"
 	"strings"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions/internal/format"
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-	"gitlab.com/act3-ai/asce/data/tool/internal/print"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/actions/internal/format"
+	"github.com/act3-ai/data-tool/internal/bottle"
+	"github.com/act3-ai/data-tool/internal/print"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // PartList represents the bottle part list action.

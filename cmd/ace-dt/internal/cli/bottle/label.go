@@ -3,7 +3,7 @@ package bottle
 import (
 	"github.com/spf13/cobra"
 
-	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
+	actions "github.com/act3-ai/data-tool/internal/actions/bottle"
 )
 
 // newLabelCmd represents the label command.

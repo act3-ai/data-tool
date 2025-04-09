@@ -6,7 +6,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	"k8s.io/apimachinery/pkg/labels"
 
-	cfgdef "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
+	cfgdef "github.com/act3-ai/bottle-schema/pkg/apis/data.act3-ace.io/v1"
 )
 
 // PartInfo is an interface for oci file entry data retrieval.

@@ -17,7 +17,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/ioutil"
+	"github.com/act3-ai/go-common/pkg/ioutil"
 )
 
 const blobsDir = "blobs"

@@ -8,7 +8,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"github.com/act3-ai/data-tool/internal/ui"
 )
 
 // Simulate is an action for simulating UI activity.

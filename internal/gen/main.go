@@ -6,8 +6,8 @@ import (
 	"log"
 	"os"
 
-	"gitlab.com/act3-ai/asce/data/tool/pkg/apis"
-	"gitlab.com/act3-ai/asce/go-common/pkg/genschema"
+	"github.com/act3-ai/data-tool/pkg/apis"
+	"github.com/act3-ai/go-common/pkg/genschema"
 )
 
 func main() {
@@ -20,7 +20,7 @@ func main() {
 		os.Args[1],
 		apis.NewScheme(),
 		[]string{"config.dt.act3-ace.io"},
-		"gitlab.com/act3-ai/asce/data/tool",
+		"github.com/act3-ai/data-tool",
 	); err != nil {
 		log.Fatal(fmt.Errorf("JSON Schema generation failed: %w", err))
 	}

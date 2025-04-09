@@ -22,15 +22,15 @@ import (
 	orasreg "oras.land/oras-go/v2/registry"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
-	tbtl "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
-	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
-	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
-	tlog "gitlab.com/act3-ai/asce/go-common/pkg/test"
+	"github.com/act3-ai/bottle-schema/pkg/mediatype"
+	"github.com/act3-ai/data-tool/internal/bottle"
+	"github.com/act3-ai/data-tool/internal/orasutil"
+	tbtl "github.com/act3-ai/data-tool/internal/transfer/bottle"
+	"github.com/act3-ai/data-tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"github.com/act3-ai/data-tool/pkg/conf"
+	tbottle "github.com/act3-ai/data-tool/pkg/transfer/bottle"
+	"github.com/act3-ai/go-common/pkg/logger"
+	tlog "github.com/act3-ai/go-common/pkg/test"
 )
 
 var (

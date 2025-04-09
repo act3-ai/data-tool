@@ -12,8 +12,8 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/maps"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
-	"gitlab.com/act3-ai/asce/data/tool/internal/python"
+	"github.com/act3-ai/bottle-schema/pkg/selectors"
+	"github.com/act3-ai/data-tool/internal/python"
 )
 
 // newLabelsCmd creates a new cobra.Command for the pypi labels subcommand.

@@ -8,14 +8,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	telemv1alpha2 "gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
+	telemv1alpha2 "github.com/act3-ai/data-telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
 
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/flag"
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/oci"
-	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
-	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"gitlab.com/act3-ai/asce/go-common/pkg/redact"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/internal/flag"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/internal/ui"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/oci"
+	actions "github.com/act3-ai/data-tool/internal/actions/bottle"
+	"github.com/act3-ai/data-tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"github.com/act3-ai/go-common/pkg/redact"
 )
 
 // pullCmd represents the pull command.

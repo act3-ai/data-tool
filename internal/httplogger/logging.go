@@ -10,8 +10,8 @@ import (
 	"net/url"
 	"sync/atomic"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
-	"gitlab.com/act3-ai/asce/go-common/pkg/redact"
+	"github.com/act3-ai/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/redact"
 )
 
 var requestNumber atomic.Int64

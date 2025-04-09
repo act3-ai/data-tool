@@ -5,10 +5,10 @@ import (
 
 	"k8s.io/apimachinery/pkg/labels"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/logger"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
-	"gitlab.com/act3-ai/asce/data/schema/pkg/util"
+	"github.com/act3-ai/bottle-schema/pkg/selectors"
+	"github.com/act3-ai/bottle-schema/pkg/util"
 )
 
 // PartSelectorOptions are options for creating a PartSelector.

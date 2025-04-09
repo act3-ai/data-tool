@@ -9,7 +9,7 @@ import (
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
+	"github.com/act3-ai/data-tool/internal/oci"
 )
 
 // AnnotationX509ChainThumbprint stores a certificate chain as a list of thumbprints. A manifest annotation key.

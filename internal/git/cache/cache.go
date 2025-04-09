@@ -8,7 +8,7 @@ import (
 
 	"oras.land/oras-go/v2/content/file"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"github.com/act3-ai/data-tool/internal/git/cmd"
 )
 
 // Cache represents a cache of git and git-lfs objects.

@@ -8,10 +8,10 @@ import (
 
 	"github.com/notaryproject/notation-core-go/signature"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
-	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/actions"
+	sigcustom "github.com/act3-ai/data-tool/internal/sign"
+	"github.com/act3-ai/data-tool/internal/ui"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // Verify is the action structure.

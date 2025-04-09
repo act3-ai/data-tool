@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // ArtifactRemove represents the bottle artifact remove action.

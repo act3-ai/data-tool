@@ -6,7 +6,7 @@ package cache
 import (
 	"context"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
+	"github.com/act3-ai/data-tool/internal/cache"
 )
 
 // Pruner removes files from a cache until the total size is less than

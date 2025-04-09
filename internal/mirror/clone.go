@@ -10,11 +10,11 @@ import (
 	"github.com/sourcegraph/conc/pool"
 	"oras.land/oras-go/v2"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/print"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
-	dtreg "gitlab.com/act3-ai/asce/data/tool/internal/registry"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
+	"github.com/act3-ai/data-tool/internal/print"
+	"github.com/act3-ai/data-tool/internal/ref"
+	dtreg "github.com/act3-ai/data-tool/internal/registry"
+	"github.com/act3-ai/data-tool/internal/ui"
+	reg "github.com/act3-ai/data-tool/pkg/registry"
 )
 
 // CloneOptions define the options required to run a Clone operation.

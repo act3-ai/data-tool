@@ -13,8 +13,8 @@ import (
 	digest "github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/oci"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 const (

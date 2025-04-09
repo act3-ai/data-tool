@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"gitlab.com/act3-ai/asce/data/tool/pkg/cache"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/pkg/cache"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // Prune represents the prune action.

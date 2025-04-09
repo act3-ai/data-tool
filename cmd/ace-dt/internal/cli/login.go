@@ -3,8 +3,8 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
-	"gitlab.com/act3-ai/asce/go-common/pkg/secret"
+	"github.com/act3-ai/data-tool/internal/actions"
+	"github.com/act3-ai/go-common/pkg/secret"
 )
 
 // loginCmd represents the login command.

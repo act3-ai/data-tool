@@ -13,7 +13,7 @@ import (
 	"oras.land/oras-go/v2/errdef"
 	"oras.land/oras-go/v2/registry"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
+	"github.com/act3-ai/data-tool/internal/mirror/encoding"
 )
 
 // Copier represents a copy object for mirror operations.

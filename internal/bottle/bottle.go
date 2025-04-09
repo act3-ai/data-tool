@@ -24,15 +24,15 @@ import (
 	orascontent "oras.land/oras-go/v2/content"
 	orasoci "oras.land/oras-go/v2/content/oci"
 
-	bottle "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io"
-	cfgdef "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
-	sutil "gitlab.com/act3-ai/asce/data/schema/pkg/util"
+	bottle "github.com/act3-ai/bottle-schema/pkg/apis/data.act3-ace.io"
+	cfgdef "github.com/act3-ai/bottle-schema/pkg/apis/data.act3-ace.io/v1"
+	"github.com/act3-ai/bottle-schema/pkg/mediatype"
+	sutil "github.com/act3-ai/bottle-schema/pkg/util"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
-	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
-	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
-	"gitlab.com/act3-ai/asce/data/tool/internal/util"
+	"github.com/act3-ai/data-tool/internal/bottle/label"
+	"github.com/act3-ai/data-tool/internal/cache"
+	"github.com/act3-ai/data-tool/internal/oci"
+	"github.com/act3-ai/data-tool/internal/util"
 )
 
 // Bottle represents a bottle and associated options for managing data

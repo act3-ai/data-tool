@@ -4,9 +4,9 @@ import (
 	"context"
 	"io"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/logger"
 
-	latest "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
+	latest "github.com/act3-ai/bottle-schema/pkg/apis/data.act3-ace.io/v1"
 )
 
 // MetricAdd represents the bottle metric add action.

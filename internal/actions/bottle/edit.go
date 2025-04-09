@@ -8,9 +8,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-	"gitlab.com/act3-ai/asce/data/tool/internal/util"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/bottle"
+	"github.com/act3-ai/data-tool/internal/util"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // Edit represents the bottle edit action.

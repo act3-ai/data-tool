@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"github.com/act3-ai/data-tool/internal/git/cmd"
 )
 
 const (

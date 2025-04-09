@@ -3,7 +3,7 @@
 package bottle
 
 import (
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
+	"github.com/act3-ai/data-tool/internal/bottle"
 )
 
 const defaultConcurrency = 5

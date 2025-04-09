@@ -3,7 +3,7 @@ package mirror
 import (
 	"github.com/spf13/cobra"
 
-	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/mirror"
+	actions "github.com/act3-ai/data-tool/internal/actions/mirror"
 )
 
 func newDiffCmd(tool *actions.Action) *cobra.Command {

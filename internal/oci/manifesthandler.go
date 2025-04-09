@@ -15,8 +15,8 @@ import (
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/validation"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	"github.com/act3-ai/bottle-schema/pkg/validation"
+	"github.com/act3-ai/data-tool/internal/ref"
 )
 
 const (

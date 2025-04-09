@@ -6,7 +6,7 @@ import (
 
 	"oras.land/oras-go/v2/registry/remote/credentials"
 
-	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
+	"github.com/act3-ai/data-tool/pkg/conf"
 )
 
 // DataTool represents the base data tool action.

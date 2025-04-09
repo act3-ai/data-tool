@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/testing"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/internal/ui"
+	"github.com/act3-ai/data-tool/internal/mirror/testing"
 )
 
 func newRunRecipe() *cobra.Command {

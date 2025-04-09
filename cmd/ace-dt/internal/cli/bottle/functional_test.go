@@ -13,10 +13,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/functesting"
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
-	"gitlab.com/act3-ai/asce/go-common/pkg/fsutil"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/internal/functesting"
+	"github.com/act3-ai/data-tool/internal/bottle"
+	"github.com/act3-ai/data-tool/pkg/conf"
+	"github.com/act3-ai/go-common/pkg/fsutil"
 )
 
 // TestHelper is a struct that contains helpers to make it easier to design functional tests.

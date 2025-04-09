@@ -20,8 +20,8 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/bottle"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 //go:embed templates

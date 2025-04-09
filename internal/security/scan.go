@@ -13,8 +13,8 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/ref"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // ScanOptions defines the options needed to run the scan operation.

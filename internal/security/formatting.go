@@ -8,9 +8,9 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
+	"github.com/act3-ai/bottle-schema/pkg/selectors"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
+	"github.com/act3-ai/data-tool/internal/mirror"
 )
 
 func formatPlatformString(platform *ocispec.Platform) string {

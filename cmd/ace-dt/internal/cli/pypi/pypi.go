@@ -4,8 +4,8 @@ package pypi
 import (
 	"github.com/spf13/cobra"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions/pypi"
+	"github.com/act3-ai/data-tool/internal/actions"
+	"github.com/act3-ai/data-tool/internal/actions/pypi"
 )
 
 // NewPypiCmd represents the base command for all Python package index (PyPI commands).

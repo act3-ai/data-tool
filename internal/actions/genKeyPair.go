@@ -7,9 +7,9 @@ import (
 	"os"
 	"path/filepath"
 
-	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	sigcustom "github.com/act3-ai/data-tool/internal/sign"
+	"github.com/act3-ai/data-tool/internal/ui"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // GenKeyPair represents the generate key pair action.

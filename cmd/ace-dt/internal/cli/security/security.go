@@ -3,8 +3,8 @@ package security
 import (
 	"github.com/spf13/cobra"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
-	securityactions "gitlab.com/act3-ai/asce/data/tool/internal/actions/security"
+	"github.com/act3-ai/data-tool/internal/actions"
+	securityactions "github.com/act3-ai/data-tool/internal/actions/security"
 )
 
 // NewSecurityCmd handles command operations within the security package.

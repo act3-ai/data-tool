@@ -13,7 +13,7 @@ import (
 	orascontent "oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // PredecessorCacher wraps an oras content.Storage to cache referrers included in manifests

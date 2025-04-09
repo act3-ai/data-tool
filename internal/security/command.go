@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"github.com/act3-ai/data-tool/internal/ui"
 )
 
 func syftReference(ctx context.Context, reference string) ([]byte, error) {

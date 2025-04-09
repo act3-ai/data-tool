@@ -2,7 +2,7 @@
 package security
 
 import (
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	"github.com/act3-ai/data-tool/internal/actions"
 )
 
 // Action represents a general security action.

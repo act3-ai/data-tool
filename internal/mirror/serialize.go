@@ -15,11 +15,11 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/blockbuf"
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
-	"gitlab.com/act3-ai/asce/data/tool/internal/print"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	"gitlab.com/act3-ai/asce/go-common/pkg/ioutil"
+	"github.com/act3-ai/data-tool/internal/mirror/blockbuf"
+	"github.com/act3-ai/data-tool/internal/mirror/encoding"
+	"github.com/act3-ai/data-tool/internal/print"
+	"github.com/act3-ai/data-tool/internal/ui"
+	"github.com/act3-ai/go-common/pkg/ioutil"
 )
 
 // serializationVersion is the serialization format version.

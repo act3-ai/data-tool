@@ -13,8 +13,8 @@ import (
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/cache/bicbackend"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
+	"github.com/act3-ai/data-tool/internal/cache/bicbackend"
+	"github.com/act3-ai/data-tool/internal/ref"
 )
 
 // SourceProvider is an interface enabling the retrieval of file sources, which is a mapping of digest string to

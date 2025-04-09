@@ -4,8 +4,8 @@ package sbom
 import (
 	"github.com/spf13/cobra"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
-	sbomactions "gitlab.com/act3-ai/asce/data/tool/internal/actions/sbom"
+	"github.com/act3-ai/data-tool/internal/actions"
+	sbomactions "github.com/act3-ai/data-tool/internal/actions/sbom"
 )
 
 // NewSBOMCmd handles command operations within the sbom package.

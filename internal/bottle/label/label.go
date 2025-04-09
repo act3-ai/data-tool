@@ -13,7 +13,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/yaml"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/util"
+	"github.com/act3-ai/data-tool/internal/util"
 )
 
 const (
