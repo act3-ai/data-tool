@@ -7,7 +7,7 @@ meta:
   name: ace-dt
   title: ACE Data Tool
   description: This a CLI tool for packaging, uploading, and downloading data from OCI registries
-  repository: https://gitlab.com/act3-ai/asce/data/tool.git
+  repository: https://github.com/act3-ai/data-tool.git
   authors:
     - name: Chase Grund
       email: chase.grund@udri.udayton.edu
@@ -20,7 +20,7 @@ blueprints:
       envPrefix: ACE_DT
       executableName: ace-dt
       groupName: config.dt.act3-ace.ai
-      modulePath: gitlab.com/act3-ai/asce/data/tool/git
+      modulePath: github.com/act3-ai/data-tool/git
   - ref: https://git.act3-ace.com/devsecops/blueprints/mkdocs-base-site.git@cedd3c7
 
 # Edit configuration interactively:
