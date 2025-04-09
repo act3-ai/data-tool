@@ -43,11 +43,11 @@ linters:
           files:
             - '**/pkg/transfer/*.go'
           deny:
-            - pkg: gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle
+            - pkg: github.com/act3-ai/data-tool/internal/transfer/bottle
               desc: pkg/transfer should not depend on bottles
-            - pkg: gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle
+            - pkg: github.com/act3-ai/data-tool/internal/actions/bottle
               desc: pkg/transfer should not depend on bottles
-            - pkg: gitlab.com/act3-ai/asce/data/tool/internal/bottle
+            - pkg: github.com/act3-ai/data-tool/internal/bottle
               desc: pkg/transfer should not depend on bottles
     exhaustive:
       default-signifies-exhaustive: true
