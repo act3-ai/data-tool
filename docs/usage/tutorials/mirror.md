@@ -77,7 +77,7 @@ Create a `sources.list` file and populate it with the following:
 
 ```text
 index.docker.io/library/busybox:1.36.1
-reg.git.act3-ace.com/ace/data/tool/bottle/mnist:v1.6
+ghcr.io/act3-ai/data-tool/bottles/mnist:v1.6
 ```
 
 In this tutorial we are using our `sources.list` file to specify the two images that we want to populate into our low-side repository.
@@ -107,10 +107,10 @@ ace-dt mirror gather sources.list localhost:5000/gather:sync-1
 The expected output should be similar to the following:
 
 ```sh
-reg.git.act3-ace.com/ace/data/tool/bottle/mnist:v1.6 ↦ sending
+ghcr.io/act3-ai/data-tool/bottles/mnist:v1.6 ↦ sending
 index.docker.io/library/busybox:1.36.1 ↦ sending
 index.docker.io/library/busybox:1.36.1 ↦ Completed in 2.996s
-reg.git.act3-ace.com/ace/data/tool/bottle/mnist:v1.6 ↦ Completed in 3.562s
+ghcr.io/act3-ai/data-tool/bottles/mnist:v1.6 ↦ Completed in 3.562s
 ↦ Gather operation complete. Image location: localhost:5000/gather:sync-1
 ```
 
@@ -491,7 +491,7 @@ localhost:5000/{{ $annotation }}
 Using the above template:
 
 - `index.docker.io/library/busybox:1.36.1` would be mapped to `localhost:5000/index.docker.io/library/busybox:1.36.1`.
-- `reg.git.act3-ace.com/ace/data/tool/bottle/mnist:v1.6` would be mapped to `localhost:5000/reg.git.act3-ace.com/ace/data/tool/bottle/mnist:v1.6`.
+- `ghcr.io/act3-ai/data-tool/bottles/mnist:v1.6` would be mapped to `localhost:5000/ghcr.io/act3-ai/data-tool/bottles/mnist:v1.6`.
 
 #### Use of Go Templating
 
@@ -518,7 +518,7 @@ ace-dt mirror scatter localhost:5000/deserialize:sync-1 go-template=scatter.tmpl
 The expected output should be similar to the following:
 
 ```sh
-artifact 1/2|destination 1/1 ↦ sending reg.git.act3-ace.com/ace/data/tool/bottle/mnist:v1.6 to localhost:5000/reg.git.act3-ace.com/ace/data/tool/bottle/mnist:v1.6
+artifact 1/2|destination 1/1 ↦ sending ghcr.io/act3-ai/data-tool/bottles/mnist:v1.6 to localhost:5000/ghcr.io/act3-ai/data-tool/bottles/mnist:v1.6
 artifact 2/2|destination 1/1 ↦ sending index.docker.io/library/busybox:1.36.1 to localhost:5000/index.docker.io/library/busybox:1.36.1
 artifact 1/2|destination 1/1 ↦ Completed in 60ms
 artifact 1/2 ↦ Completed [1] in 60ms
