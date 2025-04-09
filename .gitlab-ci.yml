@@ -1,8 +1,0 @@
-warn-job:
-  stage: test
-  script:
-    - echo "NOTICE - Pipeline is ran locally with dagger."
-    - echo 'Use "dagger functions" to view all options.'
-    - echo 'Use "dagger call test --help" to view testing options.'
-    - echo 'Use "dagger call lint --help" to view linting options.'
-    - echo 'Refer to bin/release.sh for usage examples.'
