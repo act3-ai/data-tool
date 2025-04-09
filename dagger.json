@@ -12,8 +12,8 @@
     },
     {
       "name": "golangci-lint",
-      "source": "github.com/sagikazarmark/daggerverse/golangci-lint@golangci-lint/v0.6.0",
-      "pin": "126b5fbbdad70dbf2a8689600baec2eb78c05ef4"
+      "source": "github.com/sagikazarmark/daggerverse/golangci-lint@golangci-lint/v0.9.0",
+      "pin": "e6c14178bcaaff9e102e2a89173ca31479b80629"
     },
     {
       "name": "registry-config",
