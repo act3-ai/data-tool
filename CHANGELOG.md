@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.12] - 2025-04-10
+
+### 🐛 Bug Fixes (goreleaser)
+
+- *(goreleaser)* Skip builds
+
 ## [1.15.11] - 2025-04-10
 
 ### 🐛 Bug Fixes (tap)
