@@ -21,10 +21,10 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
-	"gitlab.com/act3-ai/asce/go-common/pkg/test"
+	"github.com/act3-ai/data-tool/internal/actions"
+	"github.com/act3-ai/data-tool/internal/mirror"
+	"github.com/act3-ai/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/test"
 )
 
 func TestSerializeRun(t *testing.T) {

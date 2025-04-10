@@ -3,8 +3,8 @@ package pypi
 import (
 	"github.com/spf13/cobra"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions/pypi"
-	"gitlab.com/act3-ai/asce/go-common/pkg/config"
+	"github.com/act3-ai/data-tool/internal/actions/pypi"
+	"github.com/act3-ai/go-common/pkg/config"
 )
 
 // NnwServeCmd creates a new "serve" subcommand.

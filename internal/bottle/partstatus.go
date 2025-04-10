@@ -11,12 +11,12 @@ import (
 
 	"github.com/opencontainers/go-digest"
 
-	latest "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
-	"gitlab.com/act3-ai/asce/data/tool/internal/archive"
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
-	"gitlab.com/act3-ai/asce/data/tool/internal/util"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	latest "github.com/act3-ai/bottle-schema/pkg/apis/data.act3-ace.io/v1"
+	"github.com/act3-ai/bottle-schema/pkg/mediatype"
+	"github.com/act3-ai/data-tool/internal/archive"
+	"github.com/act3-ai/data-tool/internal/bottle/label"
+	"github.com/act3-ai/data-tool/internal/util"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // Options define a set of options for processing file statuses.

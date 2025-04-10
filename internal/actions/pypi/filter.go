@@ -5,9 +5,9 @@ import (
 	"slices"
 	"strings"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
-	"gitlab.com/act3-ai/asce/data/tool/internal/python"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/bottle-schema/pkg/selectors"
+	"github.com/act3-ai/data-tool/internal/python"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // NOTE consider adding dependency checking (io.MultiWriter and unzip then look at the deps and add them to list to download)

@@ -1,10 +1,15 @@
 {
   "name": "tool",
-  "engineVersion": "v0.18.0",
+  "engineVersion": "v0.18.2",
   "sdk": {
     "source": "go"
   },
   "dependencies": [
+    {
+      "name": "gh",
+      "source": "github.com/sagikazarmark/daggerverse/gh@gh/v0.11.0",
+      "pin": "c1be27189ce47d28f84014b715f78e47db9fbadc"
+    },
     {
       "name": "go",
       "source": "github.com/sagikazarmark/daggerverse/go@go/v0.9.0",
@@ -12,13 +17,13 @@
     },
     {
       "name": "golangci-lint",
-      "source": "github.com/sagikazarmark/daggerverse/golangci-lint@golangci-lint/v0.6.0",
-      "pin": "126b5fbbdad70dbf2a8689600baec2eb78c05ef4"
+      "source": "github.com/sagikazarmark/daggerverse/golangci-lint@golangci-lint/v0.9.0",
+      "pin": "e6c14178bcaaff9e102e2a89173ca31479b80629"
     },
     {
       "name": "registry-config",
-      "source": "github.com/sagikazarmark/daggerverse/registry-config@registry-config/v0.5.0",
-      "pin": "d814d0d7c421348f51cdda96870a05ca2aa8e96a"
+      "source": "github.com/sagikazarmark/daggerverse/registry-config@registry-config/v0.8.0",
+      "pin": "126b5fbbdad70dbf2a8689600baec2eb78c05ef4"
     },
     {
       "name": "shellcheck",

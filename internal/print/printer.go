@@ -16,10 +16,10 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
-	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
-	"gitlab.com/act3-ai/asce/data/tool/internal/descriptor"
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
+	"github.com/act3-ai/bottle-schema/pkg/mediatype"
+	"github.com/act3-ai/data-tool/internal/cache"
+	"github.com/act3-ai/data-tool/internal/descriptor"
+	"github.com/act3-ai/data-tool/internal/mirror/encoding"
 )
 
 // colors to print color to the console.

@@ -7,7 +7,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/pflag"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	"github.com/act3-ai/data-tool/internal/actions"
 )
 
 // TelemetryURLFlags adds a flag for changing the default telemetry url.

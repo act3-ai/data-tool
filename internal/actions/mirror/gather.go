@@ -7,10 +7,10 @@ import (
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
-	dtreg "gitlab.com/act3-ai/asce/data/tool/internal/registry"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/mirror"
+	dtreg "github.com/act3-ai/data-tool/internal/registry"
+	"github.com/act3-ai/data-tool/internal/ui"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // Gather represents the mirror gather action.

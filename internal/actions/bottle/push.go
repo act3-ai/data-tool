@@ -7,15 +7,15 @@ import (
 
 	"oras.land/oras-go/v2/errdef"
 
-	"gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/types"
+	"github.com/act3-ai/data-telemetry/v3/pkg/types"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
-	tbtl "gitlab.com/act3-ai/asce/data/tool/internal/transfer/bottle"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	telem "gitlab.com/act3-ai/asce/data/tool/pkg/telemetry"
-	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/actions"
+	"github.com/act3-ai/data-tool/internal/ref"
+	tbtl "github.com/act3-ai/data-tool/internal/transfer/bottle"
+	"github.com/act3-ai/data-tool/internal/ui"
+	telem "github.com/act3-ai/data-tool/pkg/telemetry"
+	tbottle "github.com/act3-ai/data-tool/pkg/transfer/bottle"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // Push represents the bottle push action.

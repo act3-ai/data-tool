@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/httputil"
-	"gitlab.com/act3-ai/asce/go-common/pkg/httputil/promhttputil"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/httputil"
+	"github.com/act3-ai/go-common/pkg/httputil/promhttputil"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // Serve is the action for starting the server.
@@ -55,5 +55,5 @@ func (action *Serve) Run(ctx context.Context, repository string) error {
 		Handler:      handler,
 	}
 
-	return httputil.Serve(ctx, srv, 10*time.Second)
+	return httputil.Serve(ctx, srv, 10*time.Second) //nolint:wrapcheck
 }

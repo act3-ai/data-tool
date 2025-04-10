@@ -18,12 +18,12 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/registry/remote"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
-	telemv1alpha2 "gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
-	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"gitlab.com/act3-ai/asce/data/tool/pkg/conf"
-	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/bottle-schema/pkg/mediatype"
+	telemv1alpha2 "github.com/act3-ai/data-telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
+	"github.com/act3-ai/data-tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"github.com/act3-ai/data-tool/pkg/conf"
+	tbottle "github.com/act3-ai/data-tool/pkg/transfer/bottle"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 type DestHelper struct {

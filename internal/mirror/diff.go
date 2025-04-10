@@ -10,10 +10,10 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
-	dtreg "gitlab.com/act3-ai/asce/data/tool/internal/registry"
-	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
+	"github.com/act3-ai/data-tool/internal/mirror/encoding"
+	"github.com/act3-ai/data-tool/internal/ref"
+	dtreg "github.com/act3-ai/data-tool/internal/registry"
+	reg "github.com/act3-ai/data-tool/pkg/registry"
 )
 
 // DiffOptions represent the necessary options for the mirror ls command.

@@ -13,9 +13,9 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/retry"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/python"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/python"
+	"github.com/act3-ai/data-tool/internal/ui"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // ToPyPI represents the pypi to-pypi action.

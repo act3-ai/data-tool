@@ -11,16 +11,16 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
-	"gitlab.com/act3-ai/asce/data/tool/internal/oci"
-	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
-	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/bottle-schema/pkg/mediatype"
+	"github.com/act3-ai/data-tool/internal/bottle"
+	"github.com/act3-ai/data-tool/internal/cache"
+	"github.com/act3-ai/data-tool/internal/oci"
+	"github.com/act3-ai/data-tool/internal/orasutil"
+	"github.com/act3-ai/data-tool/internal/ref"
+	sigcustom "github.com/act3-ai/data-tool/internal/sign"
+	"github.com/act3-ai/data-tool/internal/ui"
+	reg "github.com/act3-ai/data-tool/pkg/registry"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // Resolve uses the source ReadOnlyGraphTargeter to resolve an OCI reference to a manifest descriptor.

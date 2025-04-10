@@ -11,9 +11,9 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/registry"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/python"
-	"gitlab.com/act3-ai/asce/go-common/pkg/httputil"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/python"
+	"github.com/act3-ai/go-common/pkg/httputil"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 func (a *App) handleAbout(w http.ResponseWriter, r *http.Request) error {

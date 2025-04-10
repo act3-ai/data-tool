@@ -7,10 +7,10 @@ import (
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/registry"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/cache"
+	"github.com/act3-ai/data-tool/internal/mirror"
+	"github.com/act3-ai/data-tool/internal/ui"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // Archive represents the mirror clone action.

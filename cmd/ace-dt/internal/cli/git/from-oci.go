@@ -5,9 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/oci"
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions/git"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/internal/ui"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/oci"
+	"github.com/act3-ai/data-tool/internal/actions/git"
 )
 
 // newFromOCICmd creates a new cobra.Command for the rebuild subcommand.

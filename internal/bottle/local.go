@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"reflect"
 
-	latest "gitlab.com/act3-ai/asce/data/schema/pkg/apis/data.act3-ace.io/v1"
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle/label"
-	"gitlab.com/act3-ai/asce/data/tool/internal/util"
+	latest "github.com/act3-ai/bottle-schema/pkg/apis/data.act3-ace.io/v1"
+	"github.com/act3-ai/data-tool/internal/bottle/label"
+	"github.com/act3-ai/data-tool/internal/util"
 )
 
 // ErrBottleAlreadyInit is the error received when trying to init an inited bottle.

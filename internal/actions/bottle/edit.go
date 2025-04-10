@@ -8,9 +8,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-	"gitlab.com/act3-ai/asce/data/tool/internal/util"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/bottle"
+	"github.com/act3-ai/data-tool/internal/util"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // Edit represents the bottle edit action.
@@ -169,7 +169,10 @@ func checkBottle(ctx context.Context, bottlePath string, filePath string) error 
 		if err != nil {
 			return err
 		}
-		return btl.Definition.ValidateWithContext(ctx)
+		if err := btl.Definition.ValidateWithContext(ctx); err != nil {
+			return fmt.Errorf("validating bottle: %w", err)
+		}
+		return nil
 	}
 
 	btl, err := bottle.LoadBottle(bottlePath,
@@ -179,5 +182,8 @@ func checkBottle(ctx context.Context, bottlePath string, filePath string) error 
 	if err != nil {
 		return err
 	}
-	return btl.Definition.ValidateWithContext(ctx)
+	if err := btl.Definition.ValidateWithContext(ctx); err != nil {
+		return fmt.Errorf("validating bottle: %w", err)
+	}
+	return nil
 }

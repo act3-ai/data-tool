@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"github.com/act3-ai/data-tool/internal/mirror"
+	"github.com/act3-ai/data-tool/internal/ui"
 )
 
 // Scatter represents the mirror scatter action.

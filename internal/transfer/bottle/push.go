@@ -11,14 +11,14 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/mediatype"
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-	"gitlab.com/act3-ai/asce/data/tool/internal/cache"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
-	dtreg "gitlab.com/act3-ai/asce/data/tool/internal/registry"
-	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
-	reg "gitlab.com/act3-ai/asce/data/tool/pkg/registry"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/bottle-schema/pkg/mediatype"
+	"github.com/act3-ai/data-tool/internal/bottle"
+	"github.com/act3-ai/data-tool/internal/cache"
+	"github.com/act3-ai/data-tool/internal/ref"
+	dtreg "github.com/act3-ai/data-tool/internal/registry"
+	sigcustom "github.com/act3-ai/data-tool/internal/sign"
+	reg "github.com/act3-ai/data-tool/pkg/registry"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // PushBottle copies a bottle to a remote location via oras.ExtendedCopyGraph. ReferrerOptions are used

@@ -72,27 +72,31 @@ func (t *Test) Functional(ctx context.Context) (string, error) {
 	}
 	defer regService.Stop(ctx)
 
-	regEndpoint, err := regService.Endpoint(ctx, dagger.ServiceEndpointOpts{Scheme: "http"})
+	regEndpoint, err := regService.Endpoint(ctx,
+		dagger.ServiceEndpointOpts{
+			Scheme: "http",
+			Port:   registryPort,
+		})
 	if err != nil {
 		return "", err
 	}
 
 	// start telemetry server
-	telemService, err := t.TelemetryWithPostgres(ctx)
-	if err != nil {
-		return "", err
-	}
+	telemService := t.TelemetryWithPostgres(ctx)
 	telemService, err = telemService.Start(ctx)
 	if err != nil {
 		return "", err
 	}
 	defer telemService.Stop(ctx)
 
-	telemEndpoint, err := telemService.Endpoint(ctx, dagger.ServiceEndpointOpts{Scheme: "http"})
+	telemEndpoint, err := telemService.Endpoint(ctx,
+		dagger.ServiceEndpointOpts{
+			Scheme: "http",
+			Port:   telemetryPort,
+		})
 	if err != nil {
 		return "", err
 	}
-
 	acedtConfigPath := "ace-dt-config.yaml"
 	results, err := dag.Go().
 		WithSource(t.Source).
@@ -101,7 +105,7 @@ func (t *Test) Functional(ctx context.Context) (string, error) {
 		WithExec([]string{"apt", "update"}).
 		WithExec([]string{"apt", "install", "-y", "git-lfs"}).
 		// bind to registry and telemetry servers
-		WithServiceBinding("server", telemService).
+		WithServiceBinding("telemetry", telemService).
 		WithServiceBinding("registry", regService).
 		WithEnvVariable("TEST_REGISTRY", strings.TrimPrefix(regEndpoint, "http://")).
 		WithEnvVariable("TEST_TELEMETRY", telemEndpoint).
@@ -109,7 +113,7 @@ func (t *Test) Functional(ctx context.Context) (string, error) {
 		WithNewFile(acedtConfigPath, insecureRegConfig(regEndpoint)).
 		WithEnvVariable("ACE_DT_CONFIG", acedtConfigPath).
 		WithExec([]string{"go", "test", "-count=1", "./..."}).
-		Stdout(ctx)
+		Stderr(ctx)
 	if err != nil {
 		return results, err
 	}
@@ -142,10 +146,7 @@ func (t *Test) Integration(ctx context.Context) (string, error) {
 	regHost := strings.TrimPrefix(regEndpoint, "http://")
 
 	// start telemetry server
-	telemService, err := t.TelemetryWithPostgres(ctx)
-	if err != nil {
-		return "", err
-	}
+	telemService := t.TelemetryWithPostgres(ctx)
 	telemService, err = telemService.Start(ctx)
 	if err != nil {
 		return "", err
@@ -159,7 +160,7 @@ func (t *Test) Integration(ctx context.Context) (string, error) {
 
 	acedt := build(ctx, t.Source, t.Netrc, "linux/amd64", "", "latest")
 
-	originalBottleRef := "reg.git.act3-ace.com/ace/data/tool/bottle/mnist:v1.6"
+	originalBottleRef := "ghcr.io/act3-ai/data-tool/bottles/mnist:v1.6"
 	bottleID, err := dag.Wolfi().
 		Container().
 		WithFile("/usr/local/bin/ace-dt", acedt).
@@ -248,14 +249,8 @@ func (t *Test) Registry() *dagger.Service {
 //
 // This function makes it easier to expose a telemetry server to the host
 // with less hassle connecting it to postgres.
-func (tt *Test) TelemetryWithPostgres(ctx context.Context) (*dagger.Service, error) {
-	telemServer := tt.Telemetry(tt.Postgres())
-	telemServer, err := telemServer.Start(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	return telemServer, nil
+func (tt *Test) TelemetryWithPostgres(ctx context.Context) *dagger.Service {
+	return tt.Telemetry(tt.Postgres())
 }
 
 // Start a telemetry server.

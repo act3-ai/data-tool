@@ -13,8 +13,8 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/memory"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
-	tlog "gitlab.com/act3-ai/asce/go-common/pkg/test"
+	"github.com/act3-ai/go-common/pkg/logger"
+	tlog "github.com/act3-ai/go-common/pkg/test"
 )
 
 // Tests ensure predecessors are established as expected.

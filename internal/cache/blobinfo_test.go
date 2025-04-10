@@ -9,10 +9,10 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/cache/bicbackend"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
-	"gitlab.com/act3-ai/asce/go-common/pkg/test"
+	"github.com/act3-ai/data-tool/internal/cache/bicbackend"
+	"github.com/act3-ai/data-tool/internal/ref"
+	"github.com/act3-ai/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/test"
 )
 
 const (

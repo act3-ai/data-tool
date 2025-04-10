@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/logger"
 
 	"github.com/fatih/color"
 	tsize "github.com/kopoli/go-terminal-size"

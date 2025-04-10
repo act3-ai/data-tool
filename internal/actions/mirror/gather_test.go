@@ -23,12 +23,12 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"sigs.k8s.io/yaml"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ref"
-	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
-	"gitlab.com/act3-ai/asce/go-common/pkg/test"
+	"github.com/act3-ai/data-tool/internal/actions"
+	"github.com/act3-ai/data-tool/internal/mirror/encoding"
+	"github.com/act3-ai/data-tool/internal/ref"
+	"github.com/act3-ai/data-tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"github.com/act3-ai/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/test"
 )
 
 func TestGatherRun(t *testing.T) {

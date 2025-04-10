@@ -7,11 +7,11 @@ import (
 
 	"oras.land/oras-go/v2/content/file"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/git"
-	"gitlab.com/act3-ai/asce/data/tool/internal/git/cache"
-	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/git"
+	"github.com/act3-ai/data-tool/internal/git/cache"
+	"github.com/act3-ai/data-tool/internal/git/cmd"
+	"github.com/act3-ai/data-tool/internal/ui"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // FromOCI represents the git rebuild action.

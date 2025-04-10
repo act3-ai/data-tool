@@ -14,9 +14,9 @@ import (
 	oras "oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
-	"gitlab.com/act3-ai/asce/data/tool/internal/git/oci"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/git/cmd"
+	"github.com/act3-ai/data-tool/internal/git/oci"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // ObjectCacher proivdes methods for adding git or git-lfs objects to a cache.

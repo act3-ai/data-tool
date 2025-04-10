@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/flag"
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/blockbuf"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/internal/flag"
+	"github.com/act3-ai/data-tool/internal/mirror/blockbuf"
 )
 
 // newMbufferCmd creates a new multiplexer subcommand.

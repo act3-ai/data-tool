@@ -6,7 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
+	"github.com/act3-ai/data-tool/internal/actions"
 )
 
 // RefCompletion adds a ValidArgsFunction to a command. Optionally add unix-style argument indices to specify

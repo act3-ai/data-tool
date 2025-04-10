@@ -20,20 +20,20 @@ import (
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/api/resource"
 
-	telemv1alpha2 "gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
+	telemv1alpha2 "github.com/act3-ai/data-telemetry/v3/pkg/apis/config.telemetry.act3-ace.io/v1alpha2"
 
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/bottle"
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/git"
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/mirror"
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/oci"
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/pypi"
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/sbom"
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/security"
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
-	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"gitlab.com/act3-ai/asce/go-common/pkg/config"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
-	"gitlab.com/act3-ai/asce/go-common/pkg/redact"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/bottle"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/git"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/mirror"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/oci"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/pypi"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/sbom"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/security"
+	"github.com/act3-ai/data-tool/internal/actions"
+	"github.com/act3-ai/data-tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"github.com/act3-ai/go-common/pkg/config"
+	"github.com/act3-ai/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/redact"
 )
 
 // NewToolCmd returns a command that represents the root command ace-dt.

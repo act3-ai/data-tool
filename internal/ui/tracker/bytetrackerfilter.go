@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/print"
+	"github.com/act3-ai/data-tool/internal/print"
 )
 
 // ByteTrackerFilter takes updates of the number of bytes processed/transferred and produces estimates of the time to complete and speed.

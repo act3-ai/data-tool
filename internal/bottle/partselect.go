@@ -2,13 +2,14 @@ package bottle
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/labels"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/logger"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
-	"gitlab.com/act3-ai/asce/data/schema/pkg/util"
+	"github.com/act3-ai/bottle-schema/pkg/selectors"
+	"github.com/act3-ai/bottle-schema/pkg/util"
 )
 
 // PartSelectorOptions are options for creating a PartSelector.
@@ -37,7 +38,7 @@ func (opts *PartSelectorOptions) New(ctx context.Context) (PartSelectorFunc, err
 		}
 		sels, err := selectors.Parse(opts.Labels)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parsing selectors: %w", err)
 		}
 		return func(part PartInfo) bool {
 			log := logger.V(logger.FromContext(ctx).With("part", part.GetName(), "labels", part.GetLabels()), 2)

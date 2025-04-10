@@ -9,7 +9,7 @@ import (
 
 	version "github.com/hashicorp/go-version"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // Minimum git version.

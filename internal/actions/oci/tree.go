@@ -10,7 +10,7 @@ import (
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content/oci"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/print"
+	"github.com/act3-ai/data-tool/internal/print"
 )
 
 // Tree represents the oci tree action.

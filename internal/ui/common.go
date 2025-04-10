@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui/tracker"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/ui/tracker"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 func processUpdate(log *slog.Logger, trackers map[string]*taskTracker, evt event) string {

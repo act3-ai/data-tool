@@ -7,8 +7,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
-	securityActions "gitlab.com/act3-ai/asce/data/tool/internal/actions/security"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/internal/ui"
+	securityActions "github.com/act3-ai/data-tool/internal/actions/security"
 )
 
 func newScanCommand(tool *securityActions.Action) *cobra.Command {

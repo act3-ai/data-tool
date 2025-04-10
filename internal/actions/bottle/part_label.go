@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // PartLabel represents the bottle part label action.

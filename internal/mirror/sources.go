@@ -17,9 +17,9 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/validation/field"
 
-	"gitlab.com/act3-ai/asce/data/schema/pkg/selectors"
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions/oci"
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/encoding"
+	"github.com/act3-ai/bottle-schema/pkg/selectors"
+	"github.com/act3-ai/data-tool/internal/actions/oci"
+	"github.com/act3-ai/data-tool/internal/mirror/encoding"
 )
 
 // Source represents a single source line in the `sources.list` file. It includes the source reference (name) and any user-defined labels.
@@ -153,7 +153,7 @@ func parseFilters(sel []string) (selectors.LabelSelectorSet, error) {
 	if len(sel) != 0 {
 		filters, err := selectors.Parse(sel)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parsing selectors: %w", err)
 		}
 		return filters, nil
 	}

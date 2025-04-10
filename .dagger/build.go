@@ -78,7 +78,7 @@ func (t *Tool) Image(ctx context.Context,
 	platform dagger.Platform,
 ) *dagger.Container {
 	ctr := dag.Container(dagger.ContainerOpts{Platform: platform}).
-		From("cgr.dev/chainguard/static").
+		From(imageChainguard).
 		WithFile("/usr/local/bin/ace-dt", t.Build(ctx, platform, "", "latest")).
 		WithEntrypoint([]string{"ace-dt"}).
 		WithWorkdir("/")
@@ -132,15 +132,9 @@ func build(ctx context.Context,
 	_, span := Tracer().Start(ctx, fmt.Sprintf("Build %s", name))
 	defer span.End()
 
-	return dag.Go(
-		dagger.GoOpts{
-			Container: dag.Container().
-				From(imageGo).                            // same as dag.Go, but...
-				WithMountedSecret("/root/.netrc", netrc), // allows us to mount this secret
-		}).
+	return dag.Go().
 		WithSource(src).
 		WithCgoDisabled().
-		WithEnvVariable("GOPRIVATE", gitlabPrivate).
 		WithEnvVariable("GOFIPS140", fipsMode).
 		Build(dagger.GoWithSourceBuildOpts{
 			Pkg:      "./cmd/ace-dt",
@@ -180,7 +174,7 @@ func withCommonLabels(ctr *dagger.Container, version string) *dagger.Container {
 		WithLabel("org.opencontainers.image.version", version).
 		WithLabel("org.opencontainers.image.title", "Tool").
 		// TODO: Different keys, same values feels off; but reflects the legacy release process
-		WithLabel("org.opencontainers.image.url", path.Join(gitlabHost, gitlabProject)).
-		WithLabel("org.opencontainers.image.source", path.Join(gitlabHost, gitlabProject)).
+		WithLabel("org.opencontainers.image.url", "ghcr.io/act3-ai/data-tool").
+		WithLabel("org.opencontainers.image.source", "https://ghcr.io/act3-ai/data-tool").
 		WithLabel("org.opencontainers.image.description", "ACE Data Tool")
 }

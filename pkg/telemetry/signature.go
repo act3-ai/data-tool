@@ -12,9 +12,9 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry"
 
-	"gitlab.com/act3-ai/asce/data/telemetry/v3/pkg/types"
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
+	"github.com/act3-ai/data-telemetry/v3/pkg/types"
+	"github.com/act3-ai/data-tool/internal/bottle"
+	sigcustom "github.com/act3-ai/data-tool/internal/sign"
 )
 
 // sendSignatures sends any existing signatures to telemetry for validation and storage.
@@ -26,7 +26,11 @@ func (a *Adapter) sendSignatures(ctx context.Context, summary *types.SignaturesS
 		return fmt.Errorf("error marshalling signature summary: %w", err)
 	}
 
-	return a.client.SendSignature(ctxTimeout, digest.Canonical, sigSummaryJSON, nil)
+	if err := a.client.SendSignature(ctxTimeout, digest.Canonical, sigSummaryJSON, nil); err != nil {
+		return fmt.Errorf("sending signatures event to telemetry: %w", err)
+	}
+
+	return nil
 }
 
 // newSummaryFromLocal generates a telemetry compatible signature summary, which includes the bottle and manifest

@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"strings"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions"
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	telem "gitlab.com/act3-ai/asce/data/tool/pkg/telemetry"
-	tbottle "gitlab.com/act3-ai/asce/data/tool/pkg/transfer/bottle"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/actions"
+	"github.com/act3-ai/data-tool/internal/bottle"
+	"github.com/act3-ai/data-tool/internal/ui"
+	telem "github.com/act3-ai/data-tool/pkg/telemetry"
+	tbottle "github.com/act3-ai/data-tool/pkg/transfer/bottle"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // Pull represents the bottle pull action.

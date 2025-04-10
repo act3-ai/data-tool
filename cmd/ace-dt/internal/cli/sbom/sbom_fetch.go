@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	sbomActions "gitlab.com/act3-ai/asce/data/tool/internal/actions/sbom"
+	sbomActions "github.com/act3-ai/data-tool/internal/actions/sbom"
 )
 
 // NewSBOMFetchCommand creates a new sbom fetch sub-command.

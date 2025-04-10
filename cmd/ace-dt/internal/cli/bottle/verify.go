@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt/internal/cli/internal/ui"
-	actions "gitlab.com/act3-ai/asce/data/tool/internal/actions/bottle"
+	"github.com/act3-ai/data-tool/cmd/ace-dt/internal/cli/internal/ui"
+	actions "github.com/act3-ai/data-tool/internal/actions/bottle"
 )
 
 // verifyCmd represents the verify command.

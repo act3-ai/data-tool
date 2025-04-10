@@ -14,8 +14,8 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/python"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/python"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // increment these if the data model changes so we are forced to re-upload data.

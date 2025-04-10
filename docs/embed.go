@@ -7,9 +7,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/cmd"
-	"gitlab.com/act3-ai/asce/go-common/pkg/config"
-	"gitlab.com/act3-ai/asce/go-common/pkg/embedutil"
+	"github.com/act3-ai/go-common/pkg/cmd"
+	"github.com/act3-ai/go-common/pkg/config"
+	"github.com/act3-ai/go-common/pkg/embedutil"
 )
 
 // GeneralDocs contains general documentation

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"io"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/actions/internal/format"
-	"gitlab.com/act3-ai/asce/data/tool/internal/bottle"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/actions/internal/format"
+	"github.com/act3-ai/data-tool/internal/bottle"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // LabelList represents the bottle label list action.

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/git/cmd"
+	"github.com/act3-ai/data-tool/internal/git/cmd"
 )
 
 const (
@@ -271,7 +271,7 @@ func runAction(ctx context.Context, ch *cmd.Helper, action subCmd) error {
 			return err
 		}
 	case "tag":
-		if _, err := ch.Tag(ctx, action.args[0], action.args[1]); err != nil {
+		if _, err := ch.Tag(ctx, action.args[0], action.args[1], "--no-sign"); err != nil {
 			return err
 		}
 	case "checkout":

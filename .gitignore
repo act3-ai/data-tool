@@ -14,4 +14,3 @@ artifacts.txt
 .env.test
 .envrc.private
 /ci-dist/
-/.gorelease-actual.txt

@@ -27,10 +27,10 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/credentials"
 
-	regcache "gitlab.com/act3-ai/asce/data/tool/internal/registry/cache"
-	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
-	"gitlab.com/act3-ai/asce/go-common/pkg/test"
+	regcache "github.com/act3-ai/data-tool/internal/registry/cache"
+	"github.com/act3-ai/data-tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"github.com/act3-ai/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/test"
 )
 
 func TestRegistryConfig(t *testing.T) {

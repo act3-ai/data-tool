@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror"
+	"github.com/act3-ai/data-tool/internal/mirror"
 )
 
 // Serialize represents the mirror serialize action.

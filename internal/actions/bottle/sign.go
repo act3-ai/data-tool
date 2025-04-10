@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/go-common/pkg/logger"
 
-	sigcustom "gitlab.com/act3-ai/asce/data/tool/internal/sign"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	sigcustom "github.com/act3-ai/data-tool/internal/sign"
+	"github.com/act3-ai/data-tool/internal/ui"
+	"github.com/act3-ai/data-tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
 )
 
 // Sign represents a manifest digest sign action.

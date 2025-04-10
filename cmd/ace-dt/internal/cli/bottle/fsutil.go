@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"gitlab.com/act3-ai/asce/go-common/pkg/ioutil"
+	"github.com/act3-ai/go-common/pkg/ioutil"
 )
 
 // FSUtil contains common utilities for working with a filesystem.

@@ -8,7 +8,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/mirror/multiplex"
+	"github.com/act3-ai/data-tool/internal/mirror/multiplex"
 )
 
 const muxExample = `

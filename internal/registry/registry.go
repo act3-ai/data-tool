@@ -23,10 +23,10 @@ import (
 	"oras.land/oras-go/v2/registry/remote/credentials"
 	"oras.land/oras-go/v2/registry/remote/retry"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/httplogger"
-	regcache "gitlab.com/act3-ai/asce/data/tool/internal/registry/cache"
-	"gitlab.com/act3-ai/asce/data/tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
-	"gitlab.com/act3-ai/asce/go-common/pkg/logger"
+	"github.com/act3-ai/data-tool/internal/httplogger"
+	regcache "github.com/act3-ai/data-tool/internal/registry/cache"
+	"github.com/act3-ai/data-tool/pkg/apis/config.dt.act3-ace.io/v1alpha1"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // CreateRepoWithCustomConfig creates a remote.Repository object and sets it up based off

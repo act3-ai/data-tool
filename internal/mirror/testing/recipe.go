@@ -21,8 +21,8 @@ import (
 	"oras.land/oras-go/v2/content/oci"
 	"oras.land/oras-go/v2/errdef"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/orasutil"
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
+	"github.com/act3-ai/data-tool/internal/orasutil"
+	"github.com/act3-ai/data-tool/internal/ui"
 )
 
 // templateFile executes the template for the given template file.

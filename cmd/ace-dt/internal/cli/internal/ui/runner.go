@@ -10,8 +10,8 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/term"
 
-	"gitlab.com/act3-ai/asce/data/tool/internal/ui"
-	"gitlab.com/act3-ai/asce/data/tool/internal/util"
+	"github.com/act3-ai/data-tool/internal/ui"
+	"github.com/act3-ai/data-tool/internal/util"
 )
 
 // RunUI runs the command with a UI.

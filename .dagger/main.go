@@ -20,18 +20,15 @@ import (
 
 const (
 	// repository information
-	gitlabHost    = "https://gitlab.com"
-	gitlabProject = "act3-ai/asce/data/tool"
-	gitlabPrivate = "git.act3-ace.com" // TODO: Remove me.
+	gitRepo = "act3-ai/data-tool"
 
 	// images
-	imageGitlabCLI  = "registry.gitlab.com/gitlab-org/cli:latest"
 	imageGitCliff   = "docker.io/orhunp/git-cliff:2.8.0"
 	imageGrype      = "anchore/grype:latest"
 	imageSyft       = "anchore/syft:latest"
 	imageUbuntu     = "docker.io/library/ubuntu:24.04"
 	imageRegistry   = "docker.io/library/registry:3.0.0-rc.3"
-	imageTelemetry  = "registry.gitlab.com/act3-ai/asce/data/telemetry/slim:latest"
+	imageTelemetry  = "ghcr.io/act3-ai/data-telemetry/slim:latest"
 	imageGo         = "golang:latest" // github.com/sagikazarmark/daggerverse/go convention
 	imageChainguard = "cgr.dev/chainguard/static"
 	imagePostgres   = "postgres:17-alpine"
