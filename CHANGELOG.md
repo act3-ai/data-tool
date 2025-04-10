@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.11] - 2025-04-10
+
+### 🐛 Bug Fixes (tap)
+
+- *(tap)* Add goreleaser for homebrew tap updates
+
+### 🗡️ Dagger
+
+- *(image)* Fix image source annotation to connect image to repo in github
+
 ## [1.15.10] - 2025-04-10
 
 ### 🐛 Bug Fixes (test,git)
