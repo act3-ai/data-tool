@@ -14,8 +14,8 @@ github.com/act3-ai/bottle-schema v1.2.16 h1:+RaslZXbuCDFucYu+hf8gVSU7Vi1bmcFX5iE
 github.com/act3-ai/bottle-schema v1.2.16/go.mod h1:Rvn48aCU4e3VCzQlBmXCcB/FcMZdTPf98uqZWV42kUw=
 github.com/act3-ai/data-telemetry/v3 v3.1.3 h1:ML7AxbRhUe4QlwFiXakgRf85be0TaWtWqhsyYgTO/6Q=
 github.com/act3-ai/data-telemetry/v3 v3.1.3/go.mod h1:q7T1MXIUN/13h5CNZdsyI55wnHwNj1+oZd+mlq9zYrY=
-github.com/act3-ai/go-common v0.0.0-20250408144520-0fe79ee33711 h1:c03OyONIoUOYikmKUYUn/nrupwhhYsKcqziSP64uf4A=
-github.com/act3-ai/go-common v0.0.0-20250408144520-0fe79ee33711/go.mod h1:5XGwEVLkirOK400u1TyYvS/G6LU5RcoTMEzliTDfUiI=
+github.com/act3-ai/go-common v0.0.0-20250410135331-13316702f911 h1:BLPf9vbYLltLtZ3O9q+ZEVbqgebB0mS4n5kEdnw/rfo=
+github.com/act3-ai/go-common v0.0.0-20250410135331-13316702f911/go.mod h1:5XGwEVLkirOK400u1TyYvS/G6LU5RcoTMEzliTDfUiI=
 github.com/adrg/xdg v0.5.3 h1:xRnxJXne7+oWDatRhR1JLnvuccuIeCoBu2rtuLqQB78=
 github.com/adrg/xdg v0.5.3/go.mod h1:nlTsY+NNiCBGCK2tpm09vRqfVzrc2fLmXGpBLF0zlTQ=
 github.com/alexbrainman/sspi v0.0.0-20231016080023-1a75b4708caa h1:LHTHcTQiSGT7VVbI0o4wBRNQIgn917usHWOd6VAffYI=

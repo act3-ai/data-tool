@@ -8,7 +8,7 @@ require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/act3-ai/bottle-schema v1.2.16
 	github.com/act3-ai/data-telemetry/v3 v3.1.3
-	github.com/act3-ai/go-common v0.0.0-20250408144520-0fe79ee33711
+	github.com/act3-ai/go-common v0.0.0-20250410135331-13316702f911
 	github.com/adrg/xdg v0.5.3
 	github.com/djherbis/atime v1.1.0
 	github.com/dustin/go-humanize v1.0.1
