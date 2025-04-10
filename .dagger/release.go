@@ -140,9 +140,11 @@ func (r *Release) Notes(ctx context.Context,
 	b.WriteString("| Images |\n")
 	b.WriteString("| ---------------------------------------------------- |\n")
 	fmt.Fprintf(b, "| ghcr.io/act3-ai/data-tool:v%s |\n\n", version)
-	b.WriteString(notes)
 
-	return b.String(), nil
+	b.WriteString("### ")
+	notes = strings.Replace(notes, "### ", b.String(), 1)
+
+	return notes, nil
 }
 
 func (r *Release) gitCliffContainer() *dagger.Container {
