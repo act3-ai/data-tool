@@ -1,5 +1,9 @@
 version: 2
 
+builds:
+  - id: default
+    skip: false
+
 brews:
   - name: ace-dt
     ids: [default]
