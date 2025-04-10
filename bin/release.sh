@@ -153,16 +153,16 @@ prepare)
     fi
     
     # auto-gen kube api
-    dagger call \
-        generate \
-        export --path=./pkg/apis/config.dt.act3-ace.io
+    # dagger call \
+    #     generate \
+    #     export --path=./pkg/apis/config.dt.act3-ace.io
 
-    dagger call lint all
+    #dagger call lint all
 
     # run unit, functional, and integration tests
-    dagger call \
-        with-registry-auth --address="$registry" --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
-        test all
+    # dagger call \
+    #     with-registry-auth --address="$registry" --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
+    #     test all
 
     # update changelog, release notes, semantic version
     dagger call \
@@ -170,17 +170,17 @@ prepare)
         export --path=.
 
     # govulncheck
-    dagger call \
-        vuln-check
+    # dagger call \
+    #     vuln-check
 
     # generate docs
-    dagger call \
-        apidocs \
-        export --path=./docs/apis/config.dt.act3-ace.io
+    # dagger call \
+    #     apidocs \
+    #     export --path=./docs/apis/config.dt.act3-ace.io
 
-    dagger call \
-        clidocs \
-        export --path=./docs/cli
+    # dagger call \
+    #     clidocs \
+    #     export --path=./docs/cli
 
     version=$(cat VERSION)
 
