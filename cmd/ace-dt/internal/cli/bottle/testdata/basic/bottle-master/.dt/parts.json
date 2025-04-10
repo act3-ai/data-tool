@@ -1,0 +1,23 @@
+[
+  {
+    "name": "adir",
+    "size": 3584,
+    "digest": "sha256:76e0686964c388cf468a7b6857cfe466a48f962b9afab210fdf6dd2c15ecaffa",
+    "labels": {
+      "foo": "bar"
+    },
+    "layerSize": 174,
+    "mediaType": "application/vnd.act3-ace.bottle.layer.v1.tar+zstd",
+    "layerDigest": "sha256:5bf31de12f811e734e94086259562a6f75b7e71cdca204308c2c5859abb6b95a",
+    "modified": "2022-10-28T10:33:19.086593913-04:00"
+  },
+  {
+    "name": "top-file.txt",
+    "size": 8,
+    "digest": "sha256:12a61f4e173fb3a11c05d6471f74728f76231b4a5fcd9667cef3af87a3ae4dc2",
+    "layerSize": 8,
+    "mediaType": "application/vnd.act3-ace.bottle.layer.v1",
+    "layerDigest": "sha256:12a61f4e173fb3a11c05d6471f74728f76231b4a5fcd9667cef3af87a3ae4dc2",
+    "modified": "2022-10-28T10:33:19.086593913-04:00"
+  }
+]

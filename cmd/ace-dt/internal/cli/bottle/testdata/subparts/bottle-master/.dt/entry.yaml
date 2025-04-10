@@ -1,0 +1,51 @@
+# ACE Data Bottle definition document containing the metadata
+
+apiVersion: data.act3-ace.io/v1beta1
+kind: Bottle
+
+# Labels are used to classify a bottle.  Selectors can later be used on these labels to select a subset of bottles.
+# Follows Kubernetes conventions for labels.
+labels: {}
+# key: value
+
+
+# Arbitrary user-defined content. Useful for storing non-standard metadata.
+# Follows Kubernetes conventions for annotations.
+annotations: {}
+# key: "some value that is allowed to contain spaces and other character!"
+
+
+# A human readable description of this Bottle.
+# This field will be searched by researchers to discover this bottle.
+description: ""
+
+# Information about the bottle sources (where this bottle came from)
+sources: []
+# - name: Name of source
+#   uri: https://my-source.example.com
+# - name: Bottle reference name
+#   uri: bottle://sha256:deedbeef
+
+
+# Contact information for bottle authors
+authors: []
+# - name: Your full name
+#   email: someone@example.com
+#   url: https://myhomepage.example.com # optional
+
+
+# Contains metric data for a given experiment
+metrics: []
+# - name: log loss
+#   description: natural log of the loss function
+#   value: 45.2 # must be numeric
+
+
+# Files intended to be exposed to the telemetry server for easy viewing
+publicArtifacts: []
+# - name: name of artifact
+#   path: path/to/file/in/bottle
+#   mediaType: application/file-media-type # e.g., image/png
+#   digest: sha256:deedbeef # digest of file contents
+
+# Each bottle part may also have "part labels".  Those can be added with "ace-dt bottle commit --label" or directly in the .labels.yaml files.
