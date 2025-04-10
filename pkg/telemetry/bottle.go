@@ -301,7 +301,7 @@ func (a *Adapter) FindBottle(ctx context.Context, refSpec ref.Ref) ([]ref.Ref, e
 
 	locations, err := a.client.GetLocations(ctx, digest.Digest(refSpec.Digest))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("resolving bottle locations: %w", err)
 	}
 
 	logger.V(log, 1).InfoContext(ctx, "parsing telemetry results for references")
@@ -429,7 +429,11 @@ func (a *Adapter) sendTelemetry(ctx context.Context, desc ocispec.Descriptor, ge
 		urls[i] = client.BottleDetailURL(*uu, alg.FromBytes(rawConfig))
 	}
 
-	return urls, a.client.SendEvent(ctxTimeout, alg, eventJSON, rawManifest, rawConfig, getArtifact)
+	if err := a.client.SendEvent(ctxTimeout, alg, eventJSON, rawManifest, rawConfig, getArtifact); err != nil {
+		return urls, fmt.Errorf("sending telemetry event: %w", err)
+	}
+
+	return urls, nil
 }
 
 // ensureBottleVersion checks the bottle version.

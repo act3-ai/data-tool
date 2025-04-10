@@ -2,6 +2,7 @@ package bottle
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/apimachinery/pkg/labels"
 
@@ -37,7 +38,7 @@ func (opts *PartSelectorOptions) New(ctx context.Context) (PartSelectorFunc, err
 		}
 		sels, err := selectors.Parse(opts.Labels)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parsing selectors: %w", err)
 		}
 		return func(part PartInfo) bool {
 			log := logger.V(logger.FromContext(ctx).With("part", part.GetName(), "labels", part.GetLabels()), 2)

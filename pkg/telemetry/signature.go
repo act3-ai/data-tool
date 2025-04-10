@@ -26,7 +26,11 @@ func (a *Adapter) sendSignatures(ctx context.Context, summary *types.SignaturesS
 		return fmt.Errorf("error marshalling signature summary: %w", err)
 	}
 
-	return a.client.SendSignature(ctxTimeout, digest.Canonical, sigSummaryJSON, nil)
+	if err := a.client.SendSignature(ctxTimeout, digest.Canonical, sigSummaryJSON, nil); err != nil {
+		return fmt.Errorf("sending signatures event to telemetry: %w", err)
+	}
+
+	return nil
 }
 
 // newSummaryFromLocal generates a telemetry compatible signature summary, which includes the bottle and manifest

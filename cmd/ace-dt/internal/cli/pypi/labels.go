@@ -6,6 +6,7 @@ go run ./cmd/ace-dt pypi to-oci localhost:5000/pypi pyzmq
 package pypi
 
 import (
+	"fmt"
 	"os"
 	"slices"
 
@@ -68,7 +69,7 @@ $ ace-dt pypi labels pyzmq-23.2.1-pp39-pypy39_pp73-manylinux_2_17_x86_64.manylin
 				// get the selectors
 				s, err := selectors.Parse(sel)
 				if err != nil {
-					return err
+					return fmt.Errorf("parsing selectors: %w", err)
 				}
 
 				cmd.Print("Provided selectors do ")

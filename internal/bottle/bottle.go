@@ -619,7 +619,7 @@ func (btl *Bottle) RemoveAnnotation(k string) error {
 func (btl *Bottle) AddSourceInfo(sourceIn cfgdef.Source) error {
 	// validate input source
 	if err := sourceIn.Validate(); err != nil {
-		return err
+		return fmt.Errorf("validating input source: %w", err)
 	}
 
 	// update source if name or URI matches an already present source
@@ -828,7 +828,7 @@ func (btl *Bottle) AddArtifact(name, pth, mediaType string, dgst digest.Digest) 
 	}
 
 	if err := artifact.Validate(); err != nil {
-		return err
+		return fmt.Errorf("validating artifact: %w", err)
 	}
 
 	// log.Info("Saving bottle public artifact", "artifact", artifact)

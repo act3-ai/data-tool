@@ -153,7 +153,7 @@ func parseFilters(sel []string) (selectors.LabelSelectorSet, error) {
 	if len(sel) != 0 {
 		filters, err := selectors.Parse(sel)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parsing selectors: %w", err)
 		}
 		return filters, nil
 	}
