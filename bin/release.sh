@@ -160,7 +160,6 @@ prepare)
     dagger call lint all
 
     # run unit, functional, and integration tests
-    # TODO: Gitlab.com doesn't accept bottles, so we must store them elsewhere for now.
     dagger call \
         with-registry-auth --address="$registry" --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
         test all
@@ -232,8 +231,7 @@ publish)
 
     # scan images with ace-dt
     echo "$imageRepoRef" > artifacts.txt
-    # TODO: Uncomment me when we have a suitable public registry for custom artifact types.
-    # dagger call with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN scan --sources artifacts.txt
+    dagger call with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN scan --sources artifacts.txt
     ;;
 
 *)
