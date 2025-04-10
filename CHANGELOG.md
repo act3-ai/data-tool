@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.10] - 2025-04-10
+
+### 🐛 Bug Fixes (test,git)
+
+- *(test,git)* Ensure commit signing is not used when creating tags in test repository by @nathan-joslin
+
+### 💼 Other
+
+- Remove .gitlab-ci.yml, add github actions workflow by @nathan-joslin
+- *(go)* Update golangci-lint config with github local prefixes by @nathan-joslin
+- *(markdown)* Remove gitlab issue templates from markdownlint config ignore list by @nathan-joslin
+- Convert release script to use github references by @nathan-joslin
+- Move binary builds to publish step in release script to avoid dirty builds by @nathan-joslin
+- *(go)* Update remaining gitlab references by @nathan-joslin
+- *(go)* Appease golangci-lint by @nathan-joslin
+- Update release.sh to enable image scaning by @nathan-joslin
+
+### 📦 Dependencies
+
+- Bump go-common digest by @nathan-joslin
+- Bump golang.org/x/exp digest to 7e4ce0ab07d0 by @nathan-joslin
+
+### 🗡️ Dagger
+
+- Bump to v0.18.2 by @nathan-joslin
+- *(deps)* Bump golangci-lint module to v0.9.0 by @nathan-joslin
+- *(deps)* Bump registry-config module to v0.8.0 by @nathan-joslin
+- Convert to github references and gh cli by @nathan-joslin
+- Remove unused const for gitlab cli by @nathan-joslin
+- *(test,functional)* Minor updates to handling of services by @nathan-joslin
+- *(release)* Fix release notes images tag by @nathan-joslin
+- *(release)* Fix order of release notes
+
 ## [1.15.9] - 2025-04-01
 
 ### 🐛 Bug Fixes (dagger,build)
