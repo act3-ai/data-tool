@@ -139,7 +139,7 @@ func (r *Release) Notes(ctx context.Context,
 	b := &strings.Builder{}
 	b.WriteString("| Images |\n")
 	b.WriteString("| ---------------------------------------------------- |\n")
-	fmt.Fprintf(b, "| ghcr.io/act3-ai/data-tool:%s |\n\n", version)
+	fmt.Fprintf(b, "| ghcr.io/act3-ai/data-tool:v%s |\n\n", version)
 	b.WriteString(notes)
 
 	return b.String(), nil
