@@ -4,6 +4,9 @@ builds:
   - id: default
     skip: true
 
+archives:
+  - format: binary
+
 brews:
   - name: ace-dt
     ids: [default]
