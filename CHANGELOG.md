@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.14] - 2025-04-10
+
+### 🐛 Bug Fixes (goreleaser)
+
+- *(goreleaser)* Disable archives in favor of binaries
+
 ## [1.15.13] - 2025-04-10
 
 ### 🐛 Bug Fixes (goreleaser)
