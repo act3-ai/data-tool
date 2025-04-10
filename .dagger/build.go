@@ -104,7 +104,8 @@ func (t *Tool) ImageIndex(ctx context.Context,
 	for _, platform := range platforms {
 		p.Go(func(ctx context.Context) (*dagger.Container, error) {
 			img := t.Image(ctx, version, platform).
-				WithLabel("org.opencontainers.image.url", imgURL)
+				WithLabel("org.opencontainers.image.url", imgURL).
+				WithLabel("org.opencontainers.image.source", "https://github.com/act3-ai/data-tool")
 			return img, nil
 		})
 	}
