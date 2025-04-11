@@ -165,6 +165,7 @@ updateHomebrewTap() {
     git -C "$tapGitPath" commit -m "fix(ace-dt): updated to $version"
     git -C "$tapGitPath" push --set-upstream origin "$branch_name"
 
+    cd "$tapGitPath"
     gh pr create -a "@me" -B "main" --fill
 
     echo "Please visit https://github.com/act3-ai/homebrew-tap/pulls to view the PR"
@@ -233,30 +234,30 @@ publish)
     platforms=linux/amd64,linux/arm64
 
     # build for all supported platforms
-    assetsDir=bin/release/assets # changes to this path must be reflected in .dagger/release.go Publish()
-    mkdir -p "$assetsDir"
-    dagger call \
-        build-platforms --version="$version" \
-        export --path="$assetsDir"
+    # assetsDir=bin/release/assets # changes to this path must be reflected in .dagger/release.go Publish()
+    # mkdir -p "$assetsDir"
+    # dagger call \
+    #     build-platforms --version="$version" \
+    #     export --path="$assetsDir"
     
-    # publish release
-    dagger call \
-        with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
-        publish --token=env:GITHUB_API_TOKEN
+    # # publish release
+    # dagger call \
+    #     with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
+    #     publish --token=env:GITHUB_API_TOKEN
 
-    # publish image
-    # Note: Changes to existing or inclusions of additional image references should be reflected in the release notes generated in ../.dagger/release.go
-    imageRepoRef="${registryRepo}:${fullVersion}"
-    dagger call \
-        with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
-        image-index --version="$fullVersion" --platforms="$platforms" --address "$imageRepoRef"
+    # # publish image
+    # # Note: Changes to existing or inclusions of additional image references should be reflected in the release notes generated in ../.dagger/release.go
+    # imageRepoRef="${registryRepo}:${fullVersion}"
+    # dagger call \
+    #     with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
+    #     image-index --version="$fullVersion" --platforms="$platforms" --address "$imageRepoRef"
 
-    # shellcheck disable=SC2046
-    oras tag "$(oras discover "$imageRepoRef" | head -n 1)" $(resolveExtraTags "$registryRepo" "$fullVersion")
+    # # shellcheck disable=SC2046
+    # oras tag "$(oras discover "$imageRepoRef" | head -n 1)" $(resolveExtraTags "$registryRepo" "$fullVersion")
 
-    # scan images with ace-dt
-    echo "$imageRepoRef" > artifacts.txt
-    # dagger call with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN scan --sources artifacts.txt
+    # # scan images with ace-dt
+    # echo "$imageRepoRef" > artifacts.txt
+    # # dagger call with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN scan --sources artifacts.txt
 
     updateHomebrewTap "$fullVersion"
     ;;
