@@ -3,6 +3,14 @@ version: 2
 builds:
   - id: default
     skip: true
+    # homebrew doesn't have great support for windows, those binaries
+    # are still available on the release page
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
 
 archives:
   - format_overrides:
@@ -21,7 +29,7 @@ brews:
       fix(ace-dt): updated to {{.Tag}}
     directory: Formula
     homepage: https://github.com/act3-ai/data-tool
-    description: "Homebrew Bottle installer with a focus on performance and mobility."
+    description: "A CLI tool for packaging, uploading, and downloading data from OCI registries."
     license: "MIT"
     skip_upload: auto
     test: |
