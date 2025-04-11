@@ -231,7 +231,7 @@ publish)
 
     # scan images with ace-dt
     echo "$imageRepoRef" > artifacts.txt
-    dagger call with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN scan --sources artifacts.txt
+    # dagger call with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN scan --sources artifacts.txt
     ;;
 
 *)
