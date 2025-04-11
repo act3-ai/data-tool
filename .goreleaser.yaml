@@ -5,7 +5,11 @@ builds:
     skip: true
 
 archives:
-  - format: binary
+  - format_overrides:
+    - formats: [ 'binary' ]
+
+changelog:
+  disable: true
 
 brews:
   - name: ace-dt
