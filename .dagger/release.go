@@ -13,7 +13,7 @@ func (t *Tool) Release(
 	// top level source code directory
 	// +defaultPath="/"
 	src *dagger.Directory,
-	// gitlab token
+	// GitHub token
 	// +optional
 	token *dagger.Secret,
 ) *Release {
@@ -30,7 +30,7 @@ type Release struct {
 	// +defaultPath="/"
 	Source *dagger.Directory
 
-	// GitLab token
+	// GitHub token
 	// +optional
 	Token *dagger.Secret
 }
