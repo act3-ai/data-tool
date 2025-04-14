@@ -63,43 +63,17 @@ func (t *Tool) Publish(ctx context.Context,
 	src *dagger.Directory,
 	// gitlab personal access token
 	token *dagger.Secret,
-) error {
+) (string, error) {
 	version, err := src.File("VERSION").Contents(ctx)
 	if err != nil {
-		return err
+		return "", err
 	}
 	version = strings.TrimSpace(version)
 	vVersion := "v" + version
 
-	// TODO: Consider isolating release assets into bin/release
-	// This setup risks a dev test build being published
-	assets := src.Directory("bin/release/assets") // changes to this dir path must be reflected in bin/release.sh publish step
-	releaseAssetPaths, err := assets.Entries(ctx)
-	if err != nil {
-		return err
-	}
-	if len(releaseAssetPaths) < 1 {
-		return fmt.Errorf("no release assets found, please do not remove release assets from 'bin/release/assets' before completing the release process")
-	}
-
-	releaseAssets := make([]*dagger.File, 0, len(releaseAssetPaths))
-	for _, path := range releaseAssetPaths {
-		releaseAssets = append(releaseAssets, assets.File(path))
-	}
-
-	notes := src.File(filepath.Join("releases", vVersion+".md"))
-	return dag.Gh(
-		dagger.GhOpts{
-			Token:  token,
-			Repo:   gitRepo,
-			Source: src,
-		}).
-		Release().
-		Create(ctx, vVersion, vVersion, // release title same as tagged version
-			dagger.GhReleaseCreateOpts{
-				NotesFile: notes,
-				Files:     releaseAssets,
-			})
+	notesPath := filepath.Join("releases", vVersion+".md")
+	return GoReleaser(src).
+		WithExec([]string{"goreleaser", "release", "--fail-fast", "release-notes", notesPath}).Stdout(ctx)
 }
 
 // Generate the change log from conventional commit messages (see cliff.toml).

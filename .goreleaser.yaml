@@ -23,12 +23,21 @@ archives:
   - format_overrides:
     - formats: [ 'binary' ]
 
+release:
+  github:
+    owner: act3-ai
+    name: https://github.com/act3-ai/data-tool
+  ids:
+    - ace-dt
+  make_latest: envOrDefault "ACE_DT_RELEASE_LATEST" "true"
+  mode: replace # if we need to re-release, don't duplicate the release notes
+
 brews:
   - name: ace-dt
     ids: [ace-dt]
     commit_author:
-      name: goreleaser[bot]
-      email: bot@goreleaser.com
+      name: "{{.Env.ACE_DT_RELEASE_AUTHOR}}"
+      email: "{{.Env.ACE_DT_RELEASE_AUTHOR_EMAIL}}"
     commit_msg_template: |
       fix(ace-dt): updated to {{.Tag}}
     directory: Formula
@@ -46,11 +55,14 @@ brews:
         system bin/"ace-dt", "gendocs", "man", "."
         man1.install Dir["*.1"]
       end
+    dependencies:
+      - name: git-lfs
+        type: optional
     repository:
       owner: act3-ai
       name: homebrew-tap
       branch: bump-ace-dt-{{.Tag}}
       git:
         url: git@github.com:act3-ai/homebrew-tap.git
-        private_key: "{{.Env.TAP_DEPLOY_KEY}}"
+        private_key: "{{.Env.GITHUB_API_TOKEN}}" # set in .envrc.private
     url_template: "https://github.com/act3-ai/data-tool/releases/download/{{.Tag}}/ace-dt-{{.Tag}}-{{.Runtime.Goos}}-{{.Runtime.Goarch}}"
