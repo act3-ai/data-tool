@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.17] - 2025-04-14
+
+### 🐛 Bug Fixes (goreleaser)
+
+- *(goreleaser)* Remove goreleaser by @nathan-joslin
+
+### 🐛 Bug Fixes (release)
+
+- *(release)* Update release script for homebrew tap by @nathan-joslin
+
+### 🗡️ Dagger
+
+- Build with goreleaser
+- Release with goreleaser
+- Update publish step with goreleaser
+
 ## [1.15.16] - 2025-04-11
 
 ### 🐛 Bug Fixes (goreleaser)
