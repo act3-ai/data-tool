@@ -145,32 +145,6 @@ resolveExtraTags() {
     echo -n "$extraTags"
 }
 
-updateHomebrewTap() {
-    version="$1"
-
-    tapGitPath="/tmp/ace-dt-release"
-    rm -rf "$tapGitPath"
-    mkdir -p "$tapGitPath"
-    git -C "$tapGitPath" clone git@github.com:act3-ai/homebrew-tap.git
-    tapGitPath="$tapGitPath/homebrew-tap"
-
-    branch_name="bump-ace-dt-${version}"
-    git -C "$tapGitPath" checkout -b "$branch_name"
-    
-    cd ./bin
-    ./homebrew.sh "$version"
-    mv -f ace-dt.rb "$tapGitPath/Formula/ace-dt.rb"
-
-    git -C "$tapGitPath" add Formula/ace-dt.rb
-    git -C "$tapGitPath" commit -m "fix(ace-dt): updated to $version"
-    git -C "$tapGitPath" push --set-upstream origin "$branch_name"
-
-    cd "$tapGitPath"
-    gh pr create -a "@me" -B "main" --fill
-
-    echo "Please visit https://github.com/act3-ai/homebrew-tap/pulls to view the PR"
-}
-
 case $1 in
 prepare)
     if [[ $(git diff --stat) != '' ]]; then
@@ -258,8 +232,6 @@ publish)
     # # scan images with ace-dt
     # echo "$imageRepoRef" > artifacts.txt
     # # dagger call with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN scan --sources artifacts.txt
-
-    updateHomebrewTap "$fullVersion"
     ;;
 
 *)
