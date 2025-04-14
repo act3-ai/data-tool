@@ -29,15 +29,15 @@ release:
     name: https://github.com/act3-ai/data-tool
   ids:
     - ace-dt
-  make_latest: envOrDefault "ACE_DT_RELEASE_LATEST" "true"
+  make_latest: envOrDefault "RELEASE_LATEST" "true"
   mode: replace # if we need to re-release, don't duplicate the release notes
 
 brews:
   - name: ace-dt
     ids: [ace-dt]
     commit_author:
-      name: "{{.Env.ACE_DT_RELEASE_AUTHOR}}"
-      email: "{{.Env.ACE_DT_RELEASE_AUTHOR_EMAIL}}"
+      name: "{{.Env.RELEASE_AUTHOR}}"
+      email: "{{.Env.RELEASE_AUTHOR_EMAIL}}"
     commit_msg_template: |
       fix(ace-dt): updated to {{.Tag}}
     directory: Formula

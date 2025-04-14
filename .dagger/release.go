@@ -5,6 +5,7 @@ import (
 	"dagger/tool/internal/dagger"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -61,8 +62,16 @@ func (t *Tool) Publish(ctx context.Context,
 	// source code directory
 	// +defaultPath="/"
 	src *dagger.Directory,
-	// gitlab personal access token
+	// github personal access token
 	token *dagger.Secret,
+	// releaser username
+	author string,
+	//releaser email
+	email string,
+	// tag release as latest
+	// +default=true
+	// +optional
+	latest bool,
 ) (string, error) {
 	version, err := src.File("VERSION").Contents(ctx)
 	if err != nil {
@@ -73,7 +82,12 @@ func (t *Tool) Publish(ctx context.Context,
 
 	notesPath := filepath.Join("releases", vVersion+".md")
 	return GoReleaser(src).
-		WithExec([]string{"goreleaser", "release", "--fail-fast", "release-notes", notesPath}).Stdout(ctx)
+		WithSecretVariable("GITHUB_API_TOKEN", token).
+		WithEnvVariable("RELEASE_AUTHOR", author).
+		WithEnvVariable("RELEASE_AUTHOR_EMAIL", email).
+		WithEnvVariable("RELEASE_LATEST", strconv.FormatBool(latest)).
+		WithExec([]string{"goreleaser", "release", "--fail-fast", "release-notes", notesPath}).
+		Stdout(ctx)
 }
 
 // Generate the change log from conventional commit messages (see cliff.toml).

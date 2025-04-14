@@ -208,16 +208,12 @@ publish)
     platforms=linux/amd64,linux/arm64
 
     # build for all supported platforms
-    # assetsDir=bin/release/assets # changes to this path must be reflected in .dagger/release.go Publish()
-    # mkdir -p "$assetsDir"
-    # dagger call \
-    #     build-platforms --version="$version" \
-    #     export --path="$assetsDir"
+    dagger call build-platforms export --path=dist
     
     # # publish release
-    # dagger call \
-    #     with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
-    #     publish --token=env:GITHUB_API_TOKEN
+    dagger call \
+        with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
+        publish --token=env:GITHUB_API_TOKEN
 
     # # publish image
     # # Note: Changes to existing or inclusions of additional image references should be reflected in the release notes generated in ../.dagger/release.go
