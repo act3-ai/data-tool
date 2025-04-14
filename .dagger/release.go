@@ -159,3 +159,11 @@ func (r *Release) gitCliffContainer() *dagger.Container {
 		}).
 		WithMountedDirectory("/app", r.Source)
 }
+
+func GoReleaser(src *dagger.Directory) *dagger.Container {
+	return dag.Container().
+		From(imageGoReleaser).
+		WithMountedCache("dagger-cache", dag.CacheVolume("dagger-cache")).
+		WithMountedDirectory("/work/src", src).
+		WithWorkdir("/work/src")
+}

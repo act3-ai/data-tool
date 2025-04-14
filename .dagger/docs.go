@@ -14,7 +14,7 @@ const (
 
 // Generate CLI documentation.
 func (t *Tool) CLIDocs(ctx context.Context) *dagger.Directory {
-	acedt := t.Build(ctx, "linux/amd64", "", "")
+	acedt := t.Build(ctx, "linux/amd64", "")
 
 	cliDocsPath := "docs/cli"
 	return dag.Go().

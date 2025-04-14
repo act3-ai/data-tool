@@ -8,10 +8,11 @@
 /integration
 /site
 artifacts.txt
+/dagger-cache
 
 ## Ignore logfiles
 /log
 
 .env.test
 .envrc.private
-/ci-dist/
+/dist/

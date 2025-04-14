@@ -1,27 +1,31 @@
 version: 2
 
 builds:
-  - id: default
-    skip: true
-    # homebrew doesn't have great support for windows, those binaries
-    # are still available on the release page
+  - id: ace-dt
+    binary: ace-dt-{{.Version}}-{{.Os}}-{{.Arch}}
     goos:
       - linux
       - darwin
+      - windows
     goarch:
       - amd64
       - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.build={{.Version}}
+    env:
+      - CGO_ENABLED=0
+      - GOFIPS140=latest
+    main: ./cmd/ace-dt/
 
 archives:
   - format_overrides:
     - formats: [ 'binary' ]
 
-changelog:
-  disable: true
-
 brews:
   - name: ace-dt
-    ids: [default]
+    ids: [ace-dt]
     commit_author:
       name: goreleaser[bot]
       email: bot@goreleaser.com
@@ -33,7 +37,7 @@ brews:
     license: "MIT"
     skip_upload: auto
     test: |
-      system "#{bin}/ace-dt --version"
+      system "#{bin}/ace-dt version"
     extra_install: |
       generate_completions_from_executable(bin/"ace-dt", "completion")
 
@@ -41,7 +45,6 @@ brews:
       mkdir "man" do
         system bin/"ace-dt", "gendocs", "man", "."
         man1.install Dir["*.1"]
-        # man5.install Dir["*.5"]
       end
     repository:
       owner: act3-ai

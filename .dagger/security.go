@@ -36,7 +36,7 @@ func (t *Tool) Scan(ctx context.Context,
 	return dag.Container().
 		WithMountedSecret("/root/.docker/config.json", t.RegistryConfig.Secret()).
 		From("cgr.dev/chainguard/bash").
-		WithFile("/usr/local/bin/ace-dt", build(ctx, t.Source, t.Netrc, "linux/amd64", "", "latest")).
+		WithFile("/usr/local/bin/ace-dt", build(ctx, t.Source, "linux/amd64")).
 		WithFile("/usr/local/bin/grype", grype).
 		WithFile("/usr/local/bin/syft", syft).
 		WithFile(sourcePath, sources).

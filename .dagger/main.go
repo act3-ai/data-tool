@@ -32,6 +32,7 @@ const (
 	imageGo         = "golang:latest" // github.com/sagikazarmark/daggerverse/go convention
 	imageChainguard = "cgr.dev/chainguard/static"
 	imagePostgres   = "postgres:17-alpine"
+	imageGoReleaser = "ghcr.io/goreleaser/goreleaser@sha256:c5c07c3c3d8f50d027845b34791d41ff30901bfee52b2d2dcee5533a32840282" // v2.8.2
 
 	// go tools
 	goVulnCheck     = "golang.org/x/vuln/cmd/govulncheck@latest"
