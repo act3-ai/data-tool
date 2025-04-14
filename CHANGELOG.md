@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.18] - 2025-04-14
+
+### 🗡️ Dagger
+
+- *(release)* Minor fixes to goreleaser config and usage
+
 ## [1.15.17] - 2025-04-14
 
 ### 🐛 Bug Fixes (goreleaser)
