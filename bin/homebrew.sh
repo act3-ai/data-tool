@@ -97,7 +97,7 @@ class Hops < Formula
     on_arm do
       if Hardware::CPU.is_64_bit?
         url "$(resolveURL linux arm64)"
-      sha256 "$(resolveSHA linux arm64)"
+        sha256 "$(resolveSHA linux arm64)"
 
         def install
           bin.install "bin/${cli_name}"
@@ -114,7 +114,7 @@ class Hops < Formula
   end
 
   test do
-    system "#{bin}/${cli_name} --version"
+    system "#{bin}/ace-dt", "version"
   end
 end
 FORMULA
