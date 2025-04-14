@@ -82,11 +82,11 @@ func (t *Tool) Publish(ctx context.Context,
 
 	notesPath := filepath.Join("releases", vVersion+".md")
 	return GoReleaser(src).
-		WithSecretVariable("GITHUB_API_TOKEN", token).
+		WithSecretVariable("GITHUB_TOKEN", token).
 		WithEnvVariable("RELEASE_AUTHOR", author).
 		WithEnvVariable("RELEASE_AUTHOR_EMAIL", email).
 		WithEnvVariable("RELEASE_LATEST", strconv.FormatBool(latest)).
-		WithExec([]string{"goreleaser", "release", "--fail-fast", "release-notes", notesPath}).
+		WithExec([]string{"goreleaser", "release", "--fail-fast", "--release-notes", notesPath}).
 		Stdout(ctx)
 }
 

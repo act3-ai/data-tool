@@ -2,7 +2,7 @@ version: 2
 
 builds:
   - id: ace-dt
-    binary: ace-dt-{{.Version}}-{{.Os}}-{{.Arch}}
+    binary: ace-dt-v{{.Version}}-{{.Os}}-{{.Arch}}
     goos:
       - linux
       - darwin
