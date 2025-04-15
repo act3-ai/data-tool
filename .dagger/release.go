@@ -64,6 +64,8 @@ func (t *Tool) Publish(ctx context.Context,
 	src *dagger.Directory,
 	// github personal access token
 	token *dagger.Secret,
+	// commit ssh private key
+	sshPrivateKey *dagger.Secret,
 	// releaser username
 	author string,
 	//releaser email
@@ -83,6 +85,7 @@ func (t *Tool) Publish(ctx context.Context,
 	notesPath := filepath.Join("releases", vVersion+".md")
 	return GoReleaser(src).
 		WithSecretVariable("GITHUB_TOKEN", token).
+		WithSecretVariable("SSH_PRIVATE_KEY", sshPrivateKey).
 		WithEnvVariable("RELEASE_AUTHOR", author).
 		WithEnvVariable("RELEASE_AUTHOR_EMAIL", email).
 		WithEnvVariable("RELEASE_LATEST", strconv.FormatBool(latest)).

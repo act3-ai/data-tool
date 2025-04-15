@@ -72,7 +72,7 @@ brews:
       branch: bump-ace-dt-{{ .Tag }}
       git:
         url: git@github.com:act3-ai/homebrew-tap.git
-        private_key: "{{ .Env.GITHUB_TOKEN }}" # set in .envrc.private
+        private_key: "{{ .Env.SSH_PRIVATE_KEY }}" # set in .envrc.private
       pull_request:
         enabled: true
     url_template: "https://github.com/act3-ai/data-tool/releases/download/{{.Tag}}/ace-dt-{{ .Tag }}-{{ .Runtime.Goos }}-{{ .Runtime.Goarch }}"
