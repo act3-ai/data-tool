@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.28] - 2025-04-15
+
+### 💼 Other
+
+- Fix contents of archives and naming conventions
+
 ## [1.15.27] - 2025-04-15
 
 ### 💼 Other
