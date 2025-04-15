@@ -30,7 +30,6 @@ archives:
     files:
       - LICENSE
       - src: releases/v{{ .Version }}.md
-        dst: v{{ .Version }}.md
         strip_parent: true
 
 release:
