@@ -26,6 +26,10 @@ archives:
     formats: ["tar.gz"]
     builds_info:
       mode: 755
+    name_template: "ace-dt-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    files:
+      - LICENSE
+      - releases/v{{ .Version }}.md
 
 release:
   github:
@@ -38,7 +42,7 @@ release:
   skip_upload: false
 
 checksum:
-  name_template: "ace-dt_v{{ .Version }}_checksums.txt"
+  name_template: "ace-dt-v{{ .Version }}-checksums.txt"
   algorithm: sha256
   ids:
     - ace-dt-archives
