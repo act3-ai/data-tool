@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.21] - 2025-04-15
+
+### 💼 Other
+
+- Update brews config
+
 ## [1.15.20] - 2025-04-15
 
 ### 💼 Other
