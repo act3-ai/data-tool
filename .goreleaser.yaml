@@ -20,8 +20,11 @@ builds:
     main: ./cmd/ace-dt/
 
 archives:
-  - format_overrides:
-    - formats: [ 'binary' ]
+  - ids:
+      - ace-dt
+    format: "tar.gz"
+    builds_info:
+      mode: 111 # ---x--x--x
 
 release:
   github:
@@ -33,7 +36,7 @@ release:
   mode: replace # if we need to re-release, don't duplicate the release notes
 
 checksum:
-  name_template: "ace-dt_{{ .Version }}_checksums.txt"
+  name_template: "ace-dt_v{{ .Version }}_checksums.txt"
   algorithm: sha256
   ids:
     - ace-dt
@@ -62,14 +65,11 @@ brews:
         system bin/"ace-dt", "gendocs", "man", "."
         man1.install Dir["*.1"]
       end
-    dependencies:
-      - name: git-lfs
-        type: optional
     repository:
       owner: act3-ai
       name: homebrew-tap
       branch: bump-ace-dt-{{.Tag}}
       git:
         url: git@github.com:act3-ai/homebrew-tap.git
-        private_key: "{{.Env.GITHUB_API_TOKEN}}" # set in .envrc.private
+        private_key: "{{.Env.GITHUB_TOKEN}}" # set in .envrc.private
     url_template: "https://github.com/act3-ai/data-tool/releases/download/{{.Tag}}/ace-dt-{{.Tag}}-{{.Runtime.Goos}}-{{.Runtime.Goarch}}"
