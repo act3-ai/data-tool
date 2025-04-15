@@ -20,11 +20,12 @@ builds:
     main: ./cmd/ace-dt/
 
 archives:
-  - ids:
+  - id: ace-dt-archives
+    ids:
       - ace-dt
     format: "tar.gz"
     builds_info:
-      mode: 111 # ---x--x--x
+      mode: 755
 
 release:
   github:
@@ -44,17 +45,16 @@ checksum:
 
 brews:
   - name: ace-dt
-    ids: [ace-dt]
+    ids: [ace-dt-archives]
     commit_author:
       name: "{{.Env.RELEASE_AUTHOR}}"
       email: "{{.Env.RELEASE_AUTHOR_EMAIL}}"
     commit_msg_template: |
       fix(ace-dt): updated to {{.Tag}}
-    directory: Formula
     homepage: https://github.com/act3-ai/data-tool
     description: "A CLI tool for packaging, uploading, and downloading data from OCI registries."
     license: "MIT"
-    skip_upload: auto
+    skip_upload: auto # don't upload if prerelease
     test: |
       system "#{bin}/ace-dt version"
     extra_install: |
@@ -65,6 +65,7 @@ brews:
         system bin/"ace-dt", "gendocs", "man", "."
         man1.install Dir["*.1"]
       end
+    directory: Formula
     repository:
       owner: act3-ai
       name: homebrew-tap
@@ -72,4 +73,6 @@ brews:
       git:
         url: git@github.com:act3-ai/homebrew-tap.git
         private_key: "{{.Env.GITHUB_TOKEN}}" # set in .envrc.private
+      pull_request:
+        enabled: true
     url_template: "https://github.com/act3-ai/data-tool/releases/download/{{.Tag}}/ace-dt-{{.Tag}}-{{.Runtime.Goos}}-{{.Runtime.Goarch}}"
