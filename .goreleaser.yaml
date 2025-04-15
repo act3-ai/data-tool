@@ -47,10 +47,10 @@ brews:
   - name: ace-dt
     ids: [ace-dt-archives]
     commit_author:
-      name: "{{.Env.RELEASE_AUTHOR}}"
-      email: "{{.Env.RELEASE_AUTHOR_EMAIL}}"
+      name: "{{ .Env.RELEASE_AUTHOR }}"
+      email: "{{ .Env.RELEASE_AUTHOR_EMAIL }}"
     commit_msg_template: |
-      fix(ace-dt): updated to {{.Tag}}
+      fix(ace-dt): updated to {{ .Tag }}
     homepage: https://github.com/act3-ai/data-tool
     description: "A CLI tool for packaging, uploading, and downloading data from OCI registries."
     license: "MIT"
@@ -69,10 +69,10 @@ brews:
     repository:
       owner: act3-ai
       name: homebrew-tap
-      branch: bump-ace-dt-{{.Tag}}
+      branch: bump-ace-dt-{{ .Tag }}
       git:
         url: git@github.com:act3-ai/homebrew-tap.git
-        private_key: "{{.Env.GITHUB_TOKEN}}" # set in .envrc.private
+        private_key: "{{ .Env.GITHUB_TOKEN }}" # set in .envrc.private
       pull_request:
         enabled: true
-    url_template: "https://github.com/act3-ai/data-tool/releases/download/{{.Tag}}/ace-dt-{{.Tag}}-{{.Runtime.Goos}}-{{.Runtime.Goarch}}"
+    url_template: "https://github.com/act3-ai/data-tool/releases/download/{{.Tag}}/ace-dt-{{ .Tag }}-{{ .Runtime.Goos }}-{{ .Runtime.Goarch }}"
