@@ -23,7 +23,7 @@ archives:
   - id: ace-dt-archives
     ids:
       - ace-dt
-    format: "tar.gz"
+    formats: ["tar.gz"]
     builds_info:
       mode: 755
 
@@ -32,7 +32,7 @@ release:
     owner: act3-ai
     name: data-tool
   ids:
-    - ace-dt
+    - ace-dt-archives
   make_latest: envOrDefault "RELEASE_LATEST" "true"
   mode: replace # if we need to re-release, don't duplicate the release notes
   skip_upload: false
@@ -41,7 +41,7 @@ checksum:
   name_template: "ace-dt_v{{ .Version }}_checksums.txt"
   algorithm: sha256
   ids:
-    - ace-dt
+    - ace-dt-archives
   disable: false
 
 brews:
