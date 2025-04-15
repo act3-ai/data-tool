@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.29] - 2025-04-15
+
+### 💼 Other
+
+- Strip parent releases directory from release notes add to archives
+
 ## [1.15.28] - 2025-04-15
 
 ### 💼 Other
