@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.23] - 2025-04-15
+
+### 💼 Other
+
+- Attempt to fix goreleaser token handling
+
 ## [1.15.22] - 2025-04-15
 
 ### 💼 Other
