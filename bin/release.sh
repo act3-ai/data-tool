@@ -206,14 +206,10 @@ publish)
     version=$(cat VERSION)
     fullVersion=v${version}
     platforms=linux/amd64,linux/arm64
-
-    # build for all supported platforms
-    dagger call build-platforms export --path=dist
     
     # # publish release
     dagger call \
-        with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
-        publish --token=env:GITHUB_API_TOKEN
+        publish --token=env:GITHUB_API_TOKEN --author=env:RELEASE_AUTHOR --email=env:RELEASE_AUTHOR_EMAIL
 
     # # publish image
     # # Note: Changes to existing or inclusions of additional image references should be reflected in the release notes generated in ../.dagger/release.go
