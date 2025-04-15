@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.22] - 2025-04-15
+
+### 💼 Other
+
+- Fix github repo name
+
 ## [1.15.21] - 2025-04-15
 
 ### 💼 Other
