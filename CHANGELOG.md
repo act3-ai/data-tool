@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.27] - 2025-04-15
+
+### 💼 Other
+
+- Fix homebrew formula url
+
 ## [1.15.26] - 2025-04-15
 
 ### 💼 Other
