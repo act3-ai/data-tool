@@ -29,7 +29,9 @@ archives:
     name_template: "ace-dt-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
     files:
       - LICENSE
-      - releases/v{{ .Version }}.md
+      - src: releases/v{{ .Version }}.md
+        dst: v{{ .Version }}.md
+        strip_parent: true
 
 release:
   github:
