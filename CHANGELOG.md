@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.25] - 2025-04-15
+
+### 💼 Other
+
+- Attempt to upload archives as release assets and fix homebrew install destination
+
 ## [1.15.24] - 2025-04-15
 
 ### 💼 Other
