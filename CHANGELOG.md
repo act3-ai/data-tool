@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.19] - 2025-04-15
+
+### 💼 Other
+
+- Add checksums file
+
 ## [1.15.18] - 2025-04-14
 
 ### 🗡️ Dagger
