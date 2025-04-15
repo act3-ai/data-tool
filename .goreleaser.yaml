@@ -35,13 +35,14 @@ release:
     - ace-dt
   make_latest: envOrDefault "RELEASE_LATEST" "true"
   mode: replace # if we need to re-release, don't duplicate the release notes
+  skip_upload: false
 
 checksum:
   name_template: "ace-dt_v{{ .Version }}_checksums.txt"
   algorithm: sha256
   ids:
     - ace-dt
-  disable: false # be explicit, as docs aren't clear on the default
+  disable: false
 
 brews:
   - name: ace-dt
@@ -57,6 +58,8 @@ brews:
     skip_upload: auto # don't upload if prerelease
     test: |
       system "#{bin}/ace-dt version"
+    install: |
+      bin.install ace-dt
     extra_install: |
       generate_completions_from_executable(bin/"ace-dt", "completion")
 
