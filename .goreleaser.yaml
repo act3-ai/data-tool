@@ -78,4 +78,4 @@ brews:
         private_key: "{{ .Env.SSH_PRIVATE_KEY }}" # set in .envrc.private
       pull_request:
         enabled: true
-    url_template: "https://github.com/act3-ai/data-tool/releases/download/{{.Tag}}/ace-dt-{{ .Tag }}-{{ .Runtime.Goos }}-{{ .Runtime.Goarch }}"
+    url_template: "https://github.com/act3-ai/data-tool/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
