@@ -64,7 +64,7 @@ brews:
     test: |
       system "#{bin}/ace-dt version"
     install: |
-      bin.install ace-dt
+      bin.install "ace-dt"
     extra_install: |
       generate_completions_from_executable(bin/"ace-dt", "completion")
 
