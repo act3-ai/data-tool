@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.33] - 2025-04-16
+
+### 💼 Other
+
+- Disable oci referrers garbage collection
+
+### 🗡️ Dagger
+
+- Adjust handling of GOMAXPROCS and GOMEMLIMIT inherited from host
+- Change goreleaser image to tagged version
+- Add option for snapshot builds
+
 ## [1.15.32] - 2025-04-16
 
 ### 💼 Other
