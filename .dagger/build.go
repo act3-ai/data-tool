@@ -42,7 +42,7 @@ func (t *Tool) Build(ctx context.Context,
 	// +optional
 	version string,
 ) *dagger.File {
-	return build(ctx, t.Source, platform)
+	return build(ctx, t.Source, platform, false)
 }
 
 // Create an image with an ace-dt executable.
@@ -101,6 +101,8 @@ func (t *Tool) ImageIndex(ctx context.Context,
 func build(ctx context.Context,
 	src *dagger.Directory,
 	platform dagger.Platform,
+	// snapshot build, skip goreleaser validations
+	snapshot bool,
 ) *dagger.File {
 	name := binaryName(string(platform))
 
@@ -111,7 +113,7 @@ func build(ctx context.Context,
 	return GoReleaser(src).
 		WithEnvVariable("GOOS", os).
 		WithEnvVariable("GOARCH", arch).
-		WithExec([]string{"goreleaser", "build", "--auto-snapshot", "--timeout=10m", "--single-target", "--output", name}).
+		WithExec([]string{"goreleaser", "build", "--auto-snapshot", "--timeout=10m", "--single-target", "--output", name, fmt.Sprintf("--snapshot=%v", snapshot)}).
 		File(name)
 }
 

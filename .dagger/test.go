@@ -158,7 +158,7 @@ func (t *Test) Integration(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	acedt := build(ctx, t.Source, "linux/amd64")
+	acedt := build(ctx, t.Source, "linux/amd64", true)
 
 	originalBottleRef := "ghcr.io/act3-ai/data-tool/bottles/mnist:v1.6"
 	bottleID, err := dag.Wolfi().
