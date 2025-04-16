@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.32] - 2025-04-16
+
+### 💼 Other
+
+- Fix install and binary naming convention
+
 ## [1.15.31] - 2025-04-16
 
 ### 💼 Other
