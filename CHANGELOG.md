@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.15.31] - 2025-04-16
+
+### 💼 Other
+
+- Fix install
+
 ## [1.15.30] - 2025-04-15
 
 ### 💼 Other
