@@ -2,7 +2,7 @@ version: 2
 
 builds:
   - id: ace-dt
-    binary: ace-dt-v{{.Version}}-{{.Os}}-{{.Arch}}
+    binary: ace-dt
     goos:
       - linux
       - darwin
@@ -63,8 +63,6 @@ brews:
     skip_upload: auto # don't upload if prerelease
     test: |
       system "#{bin}/ace-dt version"
-    install: |
-      bin.install "ace-dt"
     extra_install: |
       generate_completions_from_executable(bin/"ace-dt", "completion")
 
