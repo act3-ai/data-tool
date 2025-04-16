@@ -25,4 +25,4 @@ jobs:
         run: dagger call vuln-check
 
       - name: Build
-        run: dagger call build-platforms
+        run: dagger call build-platforms --snapshot=true
