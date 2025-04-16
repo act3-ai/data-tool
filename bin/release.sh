@@ -153,16 +153,16 @@ prepare)
     fi
     
     # auto-gen kube api
-    # dagger call \
-    #     generate \
-    #     export --path=./pkg/apis/config.dt.act3-ace.io
+    dagger call \
+        generate \
+        export --path=./pkg/apis/config.dt.act3-ace.io
 
-    #dagger call lint all
+    dagger call lint all
 
     # run unit, functional, and integration tests
-    # dagger call \
-    #     with-registry-auth --address="$registry" --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
-    #     test all
+    dagger call \
+        with-registry-auth --address="$registry" --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
+        test all
 
     # update changelog, release notes, semantic version
     dagger call \
@@ -170,17 +170,17 @@ prepare)
         export --path=.
 
     # govulncheck
-    # dagger call \
-    #     vuln-check
+    dagger call \
+        vuln-check
 
     # generate docs
-    # dagger call \
-    #     apidocs \
-    #     export --path=./docs/apis/config.dt.act3-ace.io
+    dagger call \
+        apidocs \
+        export --path=./docs/apis/config.dt.act3-ace.io
 
-    # dagger call \
-    #     clidocs \
-    #     export --path=./docs/cli
+    dagger call \
+        clidocs \
+        export --path=./docs/cli
 
     version=$(cat VERSION)
 
@@ -211,19 +211,19 @@ publish)
     dagger call \
         publish --token=env:GITHUB_API_TOKEN --ssh-private-key=env:SSH_PRIVATE_KEY --author=env:RELEASE_AUTHOR --email=env:RELEASE_AUTHOR_EMAIL
 
-    # # publish image
-    # # Note: Changes to existing or inclusions of additional image references should be reflected in the release notes generated in ../.dagger/release.go
-    # imageRepoRef="${registryRepo}:${fullVersion}"
-    # dagger call \
-    #     with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
-    #     image-index --version="$fullVersion" --platforms="$platforms" --address "$imageRepoRef"
+    # publish image
+    # Note: Changes to existing or inclusions of additional image references should be reflected in the release notes generated in ../.dagger/release.go
+    imageRepoRef="${registryRepo}:${fullVersion}"
+    dagger call \
+        with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
+        image-index --version="$fullVersion" --platforms="$platforms" --address "$imageRepoRef"
 
-    # # shellcheck disable=SC2046
-    # oras tag "$(oras discover "$imageRepoRef" | head -n 1)" $(resolveExtraTags "$registryRepo" "$fullVersion")
+    # shellcheck disable=SC2046
+    oras tag "$(oras discover "$imageRepoRef" | head -n 1)" $(resolveExtraTags "$registryRepo" "$fullVersion")
 
-    # # scan images with ace-dt
-    # echo "$imageRepoRef" > artifacts.txt
-    # # dagger call with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN scan --sources artifacts.txt
+    # scan images with ace-dt
+    echo "$imageRepoRef" > artifacts.txt
+    dagger call with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN scan --sources artifacts.txt
     ;;
 
 *)
