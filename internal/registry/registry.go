@@ -96,7 +96,8 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 				// Repository: parsedRef.Repository,
 				// Reference:  parsedRef.Reference,
 			},
-			PlainHTTP: endpointURL.Scheme == "http",
+			PlainHTTP:       endpointURL.Scheme == "http",
+			SkipReferrersGC: true,
 		},
 	}
 
