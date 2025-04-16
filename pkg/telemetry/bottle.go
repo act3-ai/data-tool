@@ -124,13 +124,13 @@ func NewAdapter(ctx context.Context, hosts []telemv1alpha2.Location, userName st
 			if !exists {
 				issuerURL, err := url.Parse(host.OAuth.Issuer)
 				if err != nil {
-					log.ErrorContext(ctx, "parsing host oauth issuer", "host", hostURLStr, "issuer", host.OAuth.Issuer, "clientID", host.OAuth.ClientID, "error", err) //nolint:sloglint
+					log.ErrorContext(ctx, "parsing host oauth issuer", "host", hostURLStr, "issuer", host.OAuth.Issuer, "clientID", host.OAuth.ClientID, "error", err)
 					goto CreateClient
 				}
 
 				authClient, err := device.NewOAuthClient(ctx, issuerURL, string(host.OAuth.ClientID), adapt.credStore, promptFn)
 				if err != nil {
-					log.ErrorContext(ctx, "initializing oauth client", "host", hostURLStr, "issuer", host.OAuth.Issuer, "clientID", host.OAuth.ClientID, "error", err) //nolint:sloglint
+					log.ErrorContext(ctx, "initializing oauth client", "host", hostURLStr, "issuer", host.OAuth.Issuer, "clientID", host.OAuth.ClientID, "error", err)
 					goto CreateClient
 				}
 				clients[i] = authClient
