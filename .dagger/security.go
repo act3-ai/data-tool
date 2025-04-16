@@ -40,9 +40,10 @@ func (t *Tool) Scan(ctx context.Context,
 		WithFile("/usr/local/bin/grype", grype).
 		WithFile("/usr/local/bin/syft", syft).
 		WithFile(sourcePath, sources).
-		WithMountedDirectory(cachePath, grypeDB).
+		WithDirectory(cachePath, grypeDB).
 		WithEnvVariable("GRYPE_DB_CACHE_DIR", cachePath).
 		WithUser("0").
+		WithExec([]string{"grype", "db", "update"}).
 		WithExec([]string{"ace-dt", "security", "scan", "-o=table",
 			"--source-file", sourcePath, "--push-reports"}).
 		Stdout(ctx)
