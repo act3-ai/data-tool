@@ -4,6 +4,7 @@ import (
 	"context"
 	"dagger/tool/internal/dagger"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -151,10 +152,23 @@ func (r *Release) gitCliffContainer() *dagger.Container {
 		WithMountedDirectory("/app", r.Source)
 }
 
+// GoReleaser provides a container with go-releaser, inheriting
+// GOMAXPROCS and GOMEMLIMIT from the host environment.
 func GoReleaser(src *dagger.Directory) *dagger.Container {
-	return dag.Container().
+	ctr := dag.Container().
 		From(imageGoReleaser).
 		WithMountedCache("dagger-cache", dag.CacheVolume("dagger-cache")).
 		WithMountedDirectory("/work/src", src).
 		WithWorkdir("/work/src")
+
+	goMaxProcs, ok := os.LookupEnv("GOMAXPROCS")
+	if ok {
+		ctr = ctr.WithEnvVariable("GOMAXPROCS", goMaxProcs)
+	}
+	goMemLimit, ok := os.LookupEnv("GOMEMLIMIT")
+	if ok {
+		ctr = ctr.WithEnvVariable("GOMEMLIMIT", goMemLimit)
+	}
+
+	return ctr
 }

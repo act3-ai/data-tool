@@ -4,7 +4,6 @@ import (
 	"context"
 	"dagger/tool/internal/dagger"
 	"fmt"
-	"os"
 	"path"
 	"strings"
 
@@ -23,18 +22,7 @@ func (t *Tool) BuildPlatforms(ctx context.Context,
 	// +optional
 	version string,
 ) *dagger.Directory {
-	goMaxProcs, ok := os.LookupEnv("GOMAXPROCS")
-	if !ok {
-		goMaxProcs = "6" // (len(GOOS) * len(GOARCH))
-	}
-	goMemLimit, ok := os.LookupEnv("GOMEMLIMIT")
-	if !ok {
-		goMemLimit = "8" // est. 16GB / 2
-	}
-
 	return GoReleaser(t.Source).
-		WithEnvVariable("GOMAXPROCS", goMaxProcs).
-		WithEnvVariable("GOMEMLIMIT", goMemLimit).
 		WithExec([]string{"goreleaser", "build", "--clean", "--auto-snapshot", "--timeout=10m"}).
 		Directory("dist")
 }
