@@ -21,9 +21,12 @@ func (t *Tool) BuildPlatforms(ctx context.Context,
 	// release version
 	// +optional
 	version string,
+	// snapshot build, skip goreleaser validations
+	// +optional
+	snapshot bool,
 ) *dagger.Directory {
 	return GoReleaser(t.Source).
-		WithExec([]string{"goreleaser", "build", "--clean", "--auto-snapshot", "--timeout=10m"}).
+		WithExec([]string{"goreleaser", "build", "--clean", "--auto-snapshot", "--timeout=10m", fmt.Sprintf("--snapshot=%v", snapshot)}).
 		Directory("dist")
 }
 
@@ -41,8 +44,11 @@ func (t *Tool) Build(ctx context.Context,
 	// Release version, included in file name
 	// +optional
 	version string,
+	// snapshot build, skip goreleaser validations
+	// +optional
+	snapshot bool,
 ) *dagger.File {
-	return build(ctx, t.Source, platform, false)
+	return build(ctx, t.Source, platform, snapshot)
 }
 
 // Create an image with an ace-dt executable.
@@ -56,7 +62,7 @@ func (t *Tool) Image(ctx context.Context,
 ) *dagger.Container {
 	ctr := dag.Container(dagger.ContainerOpts{Platform: platform}).
 		From(imageChainguard).
-		WithFile("/usr/local/bin/ace-dt", t.Build(ctx, platform, "")).
+		WithFile("/usr/local/bin/ace-dt", t.Build(ctx, platform, "", false)).
 		WithEntrypoint([]string{"ace-dt"}).
 		WithWorkdir("/")
 	return withCommonLabels(ctr, version)
