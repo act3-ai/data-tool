@@ -18,9 +18,6 @@ import (
 //		GOOS: linux, windows, darwin
 //		GOARCH: amd64, arm64
 func (t *Tool) BuildPlatforms(ctx context.Context,
-	// release version
-	// +optional
-	version string,
 	// snapshot build, skip goreleaser validations
 	// +optional
 	snapshot bool,
