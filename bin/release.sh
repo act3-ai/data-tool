@@ -209,6 +209,7 @@ publish)
     
     # # publish release
     dagger call \
+        release \
         publish --token=env:GITHUB_API_TOKEN --ssh-private-key=env:SSH_PRIVATE_KEY --author=env:RELEASE_AUTHOR --email=env:RELEASE_AUTHOR_EMAIL
 
     # publish image

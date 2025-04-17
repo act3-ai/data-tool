@@ -59,7 +59,7 @@ func (r *Release) Prepare(ctx context.Context) (*dagger.Directory, error) {
 }
 
 // Publish the current release. This should be tagged.
-func (t *Tool) Publish(ctx context.Context,
+func (t *Release) Publish(ctx context.Context,
 	// source code directory
 	// +defaultPath="/"
 	src *dagger.Directory,
