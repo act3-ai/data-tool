@@ -41,9 +41,6 @@ func (t *Tool) Build(ctx context.Context,
 	// +optional
 	// +default="linux/amd64"
 	platform dagger.Platform,
-	// Release version, included in file name
-	// +optional
-	version string,
 	// snapshot build, skip goreleaser validations
 	// +optional
 	snapshot bool,
@@ -62,7 +59,7 @@ func (t *Tool) Image(ctx context.Context,
 ) *dagger.Container {
 	ctr := dag.Container(dagger.ContainerOpts{Platform: platform}).
 		From(imageChainguard).
-		WithFile("/usr/local/bin/ace-dt", t.Build(ctx, platform, "", false)).
+		WithFile("/usr/local/bin/ace-dt", t.Build(ctx, platform, false)).
 		WithEntrypoint([]string{"ace-dt"}).
 		WithWorkdir("/")
 	return withCommonLabels(ctr, version)
