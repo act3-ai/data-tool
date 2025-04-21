@@ -28,7 +28,6 @@ const (
 	imageSyft       = "anchore/syft:latest"
 	imageRegistry   = "docker.io/library/registry:3.0.0-rc.3"
 	imageTelemetry  = "ghcr.io/act3-ai/data-telemetry/slim:latest"
-	imageGo         = "golang:latest" // github.com/sagikazarmark/daggerverse/go convention
 	imageChainguard = "cgr.dev/chainguard/static"
 	imagePostgres   = "postgres:17-alpine"
 	imageGoReleaser = "ghcr.io/goreleaser/goreleaser:v2.8.2"
