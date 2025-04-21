@@ -3,11 +3,9 @@ package security
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"hash"
 	"log/slog"
 
 	notationreg "github.com/notaryproject/notation-go/registry"
@@ -15,6 +13,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/errdef"
 
 	"github.com/act3-ai/bottle-schema/pkg/mediatype"
 	"github.com/act3-ai/data-tool/internal/actions/pypi"
@@ -234,59 +233,20 @@ func attachResultsReport(ctx context.Context, subjectDescriptor, configDescripto
 	return reports, nil
 }
 
-func generateEmptyBlobDescriptor(mt string, algo digest.Algorithm) (ocispec.Descriptor, error) {
-	emptyCfg := ocispec.ImageConfig{}
-	emptyData, err := json.Marshal(emptyCfg)
-	if err != nil {
-		return ocispec.Descriptor{}, fmt.Errorf("marshalling the empty config")
-	}
-	var h hash.Hash
-	switch algo {
-	case "sha256":
-		h = sha256.New()
-	case "sha384":
-		h = sha512.New384()
-	case "sha512":
-		h = sha512.New()
-	default:
-		return ocispec.Descriptor{}, fmt.Errorf("invalid algorithm %s. Expected sha256, sha384, or sha512", algo)
-	}
-
-	// Compute the digest of the empty blob using the algorithm.
-	if _, err := h.Write(emptyData); err != nil {
-		return ocispec.Descriptor{}, fmt.Errorf("failed to compute hash: %w", err)
-	}
-	emptyDigest := digest.NewDigest(algo, h)
-	// Create a descriptor using the computed digest.
-	emptyBlobDescriptor := ocispec.Descriptor{
-		MediaType: mt,
-		Digest:    emptyDigest,
-		Size:      int64(len(emptyData)), // should be 2
-	}
-	return emptyBlobDescriptor, nil
-}
-
 // VirusScan scans an artifact using clamav and reutrns a slice of virus scanning report manifests.
 func VirusScan(ctx context.Context,
 	desc ocispec.Descriptor,
-	repository oras.GraphTarget,
+	target oras.GraphTarget,
 	clamavChecksums []ClamavDatabase,
 	pushResults bool,
 	cachePath string) ([]*VirusScanManifestReport, error) {
 
 	// do reports exist with matching clamav checksums?
-
-	var reports []*VirusScanManifestReport
-
-	descCfg, err := generateEmptyBlobDescriptor(ocispec.MediaTypeImageConfig, digest.Canonical)
-	if err != nil {
-		return nil, err
-	}
-
 	// output any errors but do not fail until the end.
+	var reports []*VirusScanManifestReport
 	if encoding.IsIndex(desc.MediaType) {
 		var idx ocispec.Index
-		b, err := content.FetchAll(ctx, repository, desc)
+		b, err := content.FetchAll(ctx, target, desc)
 		if err != nil {
 			return nil, fmt.Errorf("fetching index manifest: %w", err)
 		}
@@ -294,7 +254,7 @@ func VirusScan(ctx context.Context,
 			return nil, fmt.Errorf("parsing the image manifest: %w", err)
 		}
 		for _, man := range idx.Manifests {
-			rl, err := VirusScan(ctx, man, repository, clamavChecksums, pushResults, cachePath)
+			rl, err := VirusScan(ctx, man, target, clamavChecksums, pushResults, cachePath)
 			if err != nil {
 				return nil, err
 			}
@@ -302,7 +262,7 @@ func VirusScan(ctx context.Context,
 		}
 	} else {
 		report := VirusScanManifestReport{}
-		rl, err := scanManifestForViruses(ctx, desc, repository, cachePath)
+		rl, err := scanManifestForViruses(ctx, desc, target, cachePath)
 		if err != nil {
 			return nil, err
 		}
@@ -310,20 +270,8 @@ func VirusScan(ctx context.Context,
 		report.ManifestDigest = desc.Digest.String()
 		reports = append(reports, &report)
 		if pushResults {
-			// is this really the best spot to push the empty descriptor?
-			cfgExists, err := repository.Exists(ctx, descCfg)
-			if err != nil {
-				return nil, fmt.Errorf("checking existence of config: %w", err)
-			}
-			if !cfgExists {
-				imgcfg := ocispec.ImageConfig{}
-				cfg, err := json.Marshal(imgcfg)
-				if err != nil {
-					return nil, fmt.Errorf("marshalling empty config: %w", err)
-				}
-				if err := repository.Push(ctx, descCfg, bytes.NewReader(cfg)); err != nil {
-					return nil, fmt.Errorf("pushing empty config. Do you have push permissions? If not, use --check: %w", err)
-				}
+			if err := pushEmptyDesc(ctx, target, digest.SHA256); err != nil {
+				return nil, err
 			}
 
 			data, err := json.Marshal(clamavChecksums)
@@ -331,7 +279,7 @@ func VirusScan(ctx context.Context,
 				return nil, fmt.Errorf("marshalling the virus database checksums: %w", err)
 			}
 			// attach the results report
-			rd, err := attachResultsReport(ctx, desc, descCfg, reports, repository, map[string]string{AnnotationVirusDatabaseChecksum: string(data)}, ArtifactTypeVirusScanReport)
+			rd, err := attachResultsReport(ctx, desc, ocispec.DescriptorEmptyJSON, reports, target, map[string]string{AnnotationVirusDatabaseChecksum: string(data)}, ArtifactTypeVirusScanReport)
 			if err != nil {
 				return nil, err
 			}
@@ -341,7 +289,6 @@ func VirusScan(ctx context.Context,
 		}
 	}
 	return reports, nil
-
 }
 
 func scanManifestForViruses(ctx context.Context,
@@ -400,4 +347,26 @@ func scanManifestForViruses(ctx context.Context,
 	}
 
 	return clamavResults, nil
+}
+
+// pushEmptyDesc pushes an empty blob, i.e. `{}`, exiting gracefully if it already exists.
+// https://github.com/opencontainers/image-spec/blob/main/manifest.md#guidance-for-an-empty-descriptor.
+func pushEmptyDesc(ctx context.Context, storage content.Pusher, alg digest.Algorithm) error {
+	switch alg {
+	case digest.SHA256:
+		err := storage.Push(ctx, ocispec.DescriptorEmptyJSON, bytes.NewReader([]byte(`{}`)))
+		if err != nil && !errors.Is(err, errdef.ErrAlreadyExists) {
+			return fmt.Errorf("pushing empty config with sha256 algorithm: %w", err)
+		}
+	// case digest.SHA384:
+	// TODO
+	// sha384 isn't registered with the OCI spec, but oras is looking to support it, so we might as well
+	// https://github.com/oras-project/oras-go/issues/898
+	// case digest.SHA512:
+	// TODO
+	default:
+		return fmt.Errorf("unsupported algorithm %s, accepted algorithms sha256", alg)
+	}
+
+	return nil
 }

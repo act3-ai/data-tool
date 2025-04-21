@@ -43,14 +43,11 @@ func extractAndGrypeSBOMs(ctx context.Context, subjectDescriptor ocispec.Descrip
 		if err = rc.Close(); err != nil {
 			return nil, fmt.Errorf("closing the reader: %w", err)
 		}
-		descCfg, err := generateEmptyBlobDescriptor(ocispec.MediaTypeImageConfig, digest.Canonical)
-		if err != nil {
-			return nil, err
-		}
 		calculatedResults, err := calculateResults(res)
 		if err != nil {
 			return nil, err
 		}
+		descCfg := ocispec.DescriptorEmptyJSON
 		if pushReport {
 			reports, err := attachResultsReport(ctx, subjectDescriptor, descCfg, *calculatedResults, target, map[string]string{AnnotationGrypeDatabaseChecksum: grypeDBChecksum}, ArtifactTypeVulnerabilityReport)
 			if err != nil {
@@ -81,23 +78,8 @@ func GenerateSBOM( //nolint:gocognit
 		return nil, fmt.Errorf("error resolving descriptor for %s: %w", reference, err)
 	}
 
-	descCfg, err := generateEmptyBlobDescriptor(ocispec.MediaTypeImageConfig, digest.Canonical)
-	if err != nil {
+	if err := pushEmptyDesc(ctx, repository, digest.SHA256); err != nil {
 		return nil, err
-	}
-	cfgExists, err := repository.Exists(ctx, descCfg)
-	if err != nil {
-		return nil, fmt.Errorf("checking existence of config: %w", err)
-	}
-	if !cfgExists {
-		imgcfg := ocispec.ImageConfig{}
-		cfg, err := json.Marshal(imgcfg)
-		if err != nil {
-			return nil, fmt.Errorf("marshalling empty config: %w", err)
-		}
-		if err := repository.Push(ctx, descCfg, bytes.NewReader(cfg)); err != nil {
-			return nil, fmt.Errorf("pushing empty config. Do you have push permissions? If not, use --check: %w", err)
-		}
 	}
 
 	if encoding.IsIndex(desc.MediaType) {
@@ -151,7 +133,7 @@ func GenerateSBOM( //nolint:gocognit
 		packOpts := oras.PackManifestOptions{
 			Subject:          &desc,
 			Layers:           []ocispec.Descriptor{descSBOM},
-			ConfigDescriptor: &descCfg,
+			ConfigDescriptor: &ocispec.DescriptorEmptyJSON,
 		}
 
 		log.InfoContext(ctx, "pushing SBOM", "reference", reference)
@@ -173,7 +155,7 @@ func GenerateSBOM( //nolint:gocognit
 			return nil, err
 		}
 		if pushReport {
-			reports, err := attachResultsReport(ctx, desc, descCfg, *calculatedResults, repository, map[string]string{AnnotationGrypeDatabaseChecksum: grypeDBChecksum}, ArtifactTypeVulnerabilityReport)
+			reports, err := attachResultsReport(ctx, desc, ocispec.DescriptorEmptyJSON, *calculatedResults, repository, map[string]string{AnnotationGrypeDatabaseChecksum: grypeDBChecksum}, ArtifactTypeVulnerabilityReport)
 			if err != nil {
 				return nil, err
 			}
