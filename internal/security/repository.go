@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log/slog"
 
 	notationreg "github.com/notaryproject/notation-go/registry"
 	"github.com/opencontainers/go-digest"
@@ -15,8 +14,6 @@ import (
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/errdef"
 
-	"github.com/act3-ai/bottle-schema/pkg/mediatype"
-	"github.com/act3-ai/data-tool/internal/actions/pypi"
 	gitoci "github.com/act3-ai/data-tool/internal/git/oci"
 	"github.com/act3-ai/data-tool/internal/mirror"
 	"github.com/act3-ai/data-tool/internal/mirror/encoding"
@@ -155,6 +152,7 @@ func GetArtifactDetails( //nolint:gocognit
 	return maniDetails, nil
 }
 
+// handlePredecessors populates ArtifactDetails with discovered predecessors.
 func (ad *ArtifactDetails) handlePredecessors(grypeChecksumDB string, clamavChecksums []ClamavDatabase) error {
 	for _, p := range ad.predecessors {
 		switch p.ArtifactType {
@@ -181,6 +179,8 @@ func (ad *ArtifactDetails) handlePredecessors(grypeChecksumDB string, clamavChec
 	return nil
 }
 
+// attachResultsReport pushes a referrer manifest containing vulnerabiliy or
+// virus scanning results.
 func attachResultsReport(ctx context.Context, subjectDescriptor, configDescriptor ocispec.Descriptor,
 	scanReport any,
 	repository oras.GraphTarget,
@@ -227,129 +227,13 @@ func attachResultsReport(ctx context.Context, subjectDescriptor, configDescripto
 
 		manDesc, err := oras.PackManifest(ctx, repository, oras.PackManifestVersion1_1, artifactType, packOpts)
 		if err != nil {
-			return nil, fmt.Errorf("pushing vulnerability results manifest: %w", err)
+			return nil, fmt.Errorf("pushing results manifest: %w", err)
 		}
 		reports = append(reports, &manDesc)
-		log.InfoContext(ctx, "pushed vulnerability report", "digest", manDesc.Digest.String())
+		log.InfoContext(ctx, "pushed results report", "digest", manDesc.Digest.String())
 	}
 
 	return reports, nil
-}
-
-// VirusScan scans an artifact using clamav and reutrns a slice of virus scanning report manifests.
-func VirusScan(ctx context.Context,
-	desc ocispec.Descriptor,
-	target oras.GraphTarget,
-	clamavChecksums []ClamavDatabase,
-	pushResults bool,
-	cachePath string) ([]*VirusScanManifestReport, error) {
-
-	// do reports exist with matching clamav checksums?
-	// output any errors but do not fail until the end.
-	var reports []*VirusScanManifestReport
-	if encoding.IsIndex(desc.MediaType) {
-		var idx ocispec.Index
-		b, err := content.FetchAll(ctx, target, desc)
-		if err != nil {
-			return nil, fmt.Errorf("fetching index manifest: %w", err)
-		}
-		if err := json.Unmarshal(b, &idx); err != nil {
-			return nil, fmt.Errorf("parsing the image manifest: %w", err)
-		}
-		for _, man := range idx.Manifests {
-			rl, err := VirusScan(ctx, man, target, clamavChecksums, pushResults, cachePath)
-			if err != nil {
-				return nil, err
-			}
-			reports = append(reports, rl...)
-		}
-	} else {
-		report := VirusScanManifestReport{}
-		rl, err := scanManifestForViruses(ctx, desc, target, cachePath)
-		if err != nil {
-			return nil, err
-		}
-		report.Results = rl
-		report.ManifestDigest = desc.Digest.String()
-		reports = append(reports, &report)
-		if pushResults {
-			if err := pushEmptyDesc(ctx, target, digest.SHA256); err != nil {
-				return nil, err
-			}
-
-			data, err := json.Marshal(clamavChecksums)
-			if err != nil {
-				return nil, fmt.Errorf("marshalling the virus database checksums: %w", err)
-			}
-			// attach the results report
-			rd, err := attachResultsReport(ctx, desc, ocispec.DescriptorEmptyJSON, reports, target, map[string]string{AnnotationVirusDatabaseChecksum: string(data)}, ArtifactTypeVirusScanReport)
-			if err != nil {
-				return nil, err
-			}
-			for _, result := range rd {
-				slog.InfoContext(ctx, "pushed results", "reference", result.Digest.String())
-			}
-		}
-	}
-	return reports, nil
-}
-
-func scanManifestForViruses(ctx context.Context,
-	desc ocispec.Descriptor,
-	repository oras.GraphTarget,
-	cachePath string) ([]*VirusScanResults, error) {
-	var clamavResults []*VirusScanResults
-
-	// create a blob tracker
-	tracker := map[digest.Digest]string{}
-
-	// pull the image manifest
-	rc, err := repository.Fetch(ctx, desc)
-	if err != nil {
-		return nil, fmt.Errorf("fetching manifest: %w", err)
-	}
-	var manifest ocispec.Manifest
-	decoder := json.NewDecoder(rc)
-	if err := decoder.Decode(&manifest); err != nil {
-		return nil, fmt.Errorf("parsing the image manifest: %w", err)
-	}
-
-	if manifest.ArtifactType == pypi.MediaTypePythonDistribution {
-		return clamavPypiArtifact(ctx, cachePath, manifest.Layers, repository, tracker)
-	}
-
-	// pull the config
-	rcCfg, err := repository.Fetch(ctx, manifest.Config)
-	if err != nil {
-		return nil, fmt.Errorf("fetching manifest config: %w", err)
-	}
-
-	switch manifest.Config.MediaType {
-	case gitoci.MediaTypeSyncConfig:
-		slog.InfoContext(ctx, "Git Artifact Scanning is not supported at this time")
-		return nil, nil
-		// return clamavGitArtifact(ctx, cachePath, desc, repository, desc.Digest.String())
-	case mediatype.MediaTypeBottleConfig:
-		return clamavBottle(ctx, rcCfg, manifest.Layers, repository)
-	default:
-		for _, layer := range manifest.Layers {
-			lrc, err := repository.Fetch(ctx, layer)
-			if err != nil {
-				return nil, fmt.Errorf("fetching the image layer: %w", err)
-			}
-			r, err := clamavBytes(ctx, lrc, "")
-			if err != nil {
-				return nil, err
-			}
-
-			if r != nil {
-				r.LayerDigest = layer.Digest.String()
-				clamavResults = append(clamavResults, r)
-			}
-		}
-	}
-
-	return clamavResults, nil
 }
 
 // pushEmptyDesc pushes an empty blob, i.e. `{}`, exiting gracefully if it already exists.
