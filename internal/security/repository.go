@@ -32,8 +32,8 @@ type ArtifactDetails struct {
 	isOCICompliant       bool
 	isNotScanSupported   bool
 	predecessors         []ocispec.Descriptor
-	signatureDigest      string
-	manifestDigestSBOM   string
+	signatureDesc        ocispec.Descriptor
+	manifestSBOMDesc     ocispec.Descriptor
 	SBOMs                map[string][]*ocispec.Descriptor
 	resultsReport        *ocispec.Descriptor
 	virusScanReport      *ocispec.Descriptor
@@ -158,9 +158,9 @@ func (ad *ArtifactDetails) handlePredecessors(grypeChecksumDB string, clamavChec
 	for _, p := range ad.predecessors {
 		switch p.ArtifactType {
 		case notationreg.ArtifactTypeNotation:
-			ad.signatureDigest = p.Digest.String()
+			ad.signatureDesc = p
 		case ArtifactTypeSPDX, ArtifactTypeHarborSBOM:
-			ad.manifestDigestSBOM = p.Digest.String()
+			ad.manifestSBOMDesc = p
 		case ArtifactTypeVulnerabilityReport:
 			if p.Annotations[AnnotationGrypeDatabaseChecksum] == grypeChecksumDB {
 				ad.resultsReport = &p

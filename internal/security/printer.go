@@ -73,7 +73,7 @@ func PrintMarkdown(out io.Writer, results []*ArtifactDetails, vulnerabilityLevel
 		xaxis[i] = res.shortenedName
 		criticalCount[i] = len(res.CalculatedResults.CriticalVulnerabilities)
 		platformStringList := strings.Join(res.platforms, ", ")
-		tablefmt := "|" + strings.Join([]string{res.originatingReference, strconv.Itoa(len(res.CalculatedResults.CriticalVulnerabilities)), strconv.Itoa(len(res.CalculatedResults.HighVulnerabilities)), strconv.Itoa(len(res.CalculatedResults.MediumVulnerabilities)), platformStringList, strconv.FormatBool(res.isOCICompliant), strconv.FormatBool(res.manifestDigestSBOM != ""), strconv.FormatBool(res.signatureDigest != "")}, "|") + "|"
+		tablefmt := "|" + strings.Join([]string{res.originatingReference, strconv.Itoa(len(res.CalculatedResults.CriticalVulnerabilities)), strconv.Itoa(len(res.CalculatedResults.HighVulnerabilities)), strconv.Itoa(len(res.CalculatedResults.MediumVulnerabilities)), platformStringList, strconv.FormatBool(res.isOCICompliant), strconv.FormatBool(res.manifestSBOMDesc.Digest != ""), strconv.FormatBool(res.signatureDesc.Digest != "")}, "|") + "|"
 		rows[i] = tablefmt
 	}
 

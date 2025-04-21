@@ -188,7 +188,7 @@ func processVulnerabilityScanning(ctx context.Context, artifactDetails *Artifact
 	matches := make(map[string]Matches)
 
 	switch {
-	case !opts.DryRun && artifactDetails.manifestDigestSBOM == "":
+	case !opts.DryRun && artifactDetails.manifestSBOMDesc.Digest == "":
 		log.InfoContext(ctx, "Generating SBOM(s)...", "reference", artifactDetails.originatingReference)
 		grypeResults, err := GenerateSBOM(ctx, source.ArtifactReference, grypeChecksumDB, artifactDetails.repository, opts.PushReport)
 		if err != nil {
@@ -205,9 +205,9 @@ func processVulnerabilityScanning(ctx context.Context, artifactDetails *Artifact
 			}
 		}
 
-	case artifactDetails.manifestDigestSBOM != "":
-		log.InfoContext(ctx, "SBOM Manifest found", "reference", artifactDetails.originatingReference, "digest", artifactDetails.manifestDigestSBOM)
-		grypeRes, err := extractAndGrypeSBOMs(ctx, artifactDetails.desc, artifactDetails.repository, artifactDetails.manifestDigestSBOM, grypeChecksumDB, opts.PushReport)
+	case artifactDetails.manifestSBOMDesc.Digest != "":
+		log.InfoContext(ctx, "SBOM Manifest found", "reference", artifactDetails.originatingReference, "digest", artifactDetails.manifestSBOMDesc.Digest)
+		grypeRes, err := extractAndGrypeSBOMs(ctx, artifactDetails.desc, artifactDetails.repository, artifactDetails.manifestSBOMDesc, grypeChecksumDB, opts.PushReport)
 		if err != nil {
 			return nil, err
 		}

@@ -19,29 +19,29 @@ import (
 	"github.com/act3-ai/data-tool/internal/mirror/encoding"
 )
 
-func extractAndGrypeSBOMs(ctx context.Context, subjectDescriptor ocispec.Descriptor, target oras.GraphTarget, digestSBOM, grypeDBChecksum string, pushReport bool) ([]VulnerabilityScanResults, error) {
+func extractAndGrypeSBOMs(ctx context.Context, subjectDescriptor ocispec.Descriptor, target oras.GraphTarget, sbomDesc ocispec.Descriptor, grypeDBChecksum string, pushReport bool) ([]VulnerabilityScanResults, error) {
 	log := logger.FromContext(ctx)
 	results := []VulnerabilityScanResults{}
 	// try and extract sbom
-	_, manifestBytesSBOM, err := oras.FetchBytes(ctx, target, digestSBOM, oras.DefaultFetchBytesOptions)
+	manifestBytesSBOM, err := content.FetchAll(ctx, target, sbomDesc)
 	if err != nil {
-		return nil, fmt.Errorf("fetching SBOM manifest bytes for %s: %w", digestSBOM, err)
+		return nil, fmt.Errorf("fetching SBOM manifest %s: %w", sbomDesc.Digest, err)
 	}
 	var man ocispec.Manifest
 	if err := json.Unmarshal(manifestBytesSBOM, &man); err != nil {
-		return nil, fmt.Errorf("extracting SBOM manifest bytes for %s: %w", digestSBOM, err)
+		return nil, fmt.Errorf("extracting SBOM manifest %s: %w", sbomDesc.Digest, err)
 	}
 	for _, l := range man.Layers {
 		rc, err := target.Fetch(ctx, l)
 		if err != nil {
-			return nil, fmt.Errorf("fetching layer for %s: %w", digestSBOM, err)
+			return nil, fmt.Errorf("fetching layer %s for sbom manifest %s: %w", l.Digest, sbomDesc.Digest, err)
 		}
 		res, err := grypeSBOM(ctx, rc)
 		if err != nil {
 			return nil, err
 		}
 		if err = rc.Close(); err != nil {
-			return nil, fmt.Errorf("closing the reader: %w", err)
+			return nil, fmt.Errorf("closing reader: %w", err)
 		}
 		calculatedResults, err := calculateResults(res)
 		if err != nil {
