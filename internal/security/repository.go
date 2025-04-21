@@ -20,6 +20,7 @@ import (
 	gitoci "github.com/act3-ai/data-tool/internal/git/oci"
 	"github.com/act3-ai/data-tool/internal/mirror"
 	"github.com/act3-ai/data-tool/internal/mirror/encoding"
+	"github.com/act3-ai/go-common/pkg/logger"
 )
 
 // ArtifactDetails contains all of the details needed to scan for vulnerabilities of a given artifact.
@@ -186,6 +187,7 @@ func attachResultsReport(ctx context.Context, subjectDescriptor, configDescripto
 	annotations map[string]string,
 	artifactType string) ([]*ocispec.Descriptor, error) {
 
+	log := logger.FromContext(ctx)
 	var reports []*ocispec.Descriptor
 	// create the json results document
 	data, err := json.Marshal(scanReport)
@@ -223,11 +225,12 @@ func attachResultsReport(ctx context.Context, subjectDescriptor, configDescripto
 			ManifestAnnotations: annotations,
 		}
 
-		maniDesc, err := oras.PackManifest(ctx, repository, oras.PackManifestVersion1_1, artifactType, packOpts)
+		manDesc, err := oras.PackManifest(ctx, repository, oras.PackManifestVersion1_1, artifactType, packOpts)
 		if err != nil {
 			return nil, fmt.Errorf("pushing vulnerability results manifest: %w", err)
 		}
-		reports = append(reports, &maniDesc)
+		reports = append(reports, &manDesc)
+		log.InfoContext(ctx, "pushed vulnerability report", "digest", manDesc.Digest.String())
 	}
 
 	return reports, nil

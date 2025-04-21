@@ -20,7 +20,6 @@ import (
 )
 
 func extractAndGrypeSBOMs(ctx context.Context, subjectDescriptor ocispec.Descriptor, target oras.GraphTarget, sbomDesc ocispec.Descriptor, grypeDBChecksum string, pushReport bool) ([]VulnerabilityScanResults, error) {
-	log := logger.FromContext(ctx)
 	results := []VulnerabilityScanResults{}
 	// try and extract sbom
 	manifestBytesSBOM, err := content.FetchAll(ctx, target, sbomDesc)
@@ -49,12 +48,9 @@ func extractAndGrypeSBOMs(ctx context.Context, subjectDescriptor ocispec.Descrip
 		}
 		descCfg := ocispec.DescriptorEmptyJSON
 		if pushReport {
-			reports, err := attachResultsReport(ctx, subjectDescriptor, descCfg, *calculatedResults, target, map[string]string{AnnotationGrypeDatabaseChecksum: grypeDBChecksum}, ArtifactTypeVulnerabilityReport)
+			_, err := attachResultsReport(ctx, subjectDescriptor, descCfg, *calculatedResults, target, map[string]string{AnnotationGrypeDatabaseChecksum: grypeDBChecksum}, ArtifactTypeVulnerabilityReport)
 			if err != nil {
 				return nil, fmt.Errorf("failed to attach results: %w\n Do you have push permissions to the repository?", err)
-			}
-			for _, report := range reports {
-				log.InfoContext(ctx, "PUSHED REPORT", "digest", report.Digest.String())
 			}
 		}
 		results = append(results, *res)
@@ -155,12 +151,9 @@ func GenerateSBOM( //nolint:gocognit
 			return nil, err
 		}
 		if pushReport {
-			reports, err := attachResultsReport(ctx, desc, ocispec.DescriptorEmptyJSON, *calculatedResults, repository, map[string]string{AnnotationGrypeDatabaseChecksum: grypeDBChecksum}, ArtifactTypeVulnerabilityReport)
+			_, err := attachResultsReport(ctx, desc, ocispec.DescriptorEmptyJSON, *calculatedResults, repository, map[string]string{AnnotationGrypeDatabaseChecksum: grypeDBChecksum}, ArtifactTypeVulnerabilityReport)
 			if err != nil {
 				return nil, err
-			}
-			for _, report := range reports {
-				log.InfoContext(ctx, "CVE results report", "reference", reference, "digest", report.Digest.String())
 			}
 		}
 	}
