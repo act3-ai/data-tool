@@ -157,6 +157,7 @@ prepare)
         generate \
         export --path=./pkg/apis/config.dt.act3-ace.io
 
+    # run all linters
     dagger call lint all
 
     # run unit, functional, and integration tests
@@ -164,24 +165,26 @@ prepare)
         with-registry-auth --address="$registry" --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
         test all
 
-    # update changelog, release notes, semantic version
-    dagger call \
-        release prepare \
-        export --path=.
-
     # govulncheck
     dagger -m govulncheck call run-with-source --source="." stdout
 
-    # generate docs
+    # generate API docs
     dagger call \
         apidocs \
         export --path=./docs/apis/config.dt.act3-ace.io
 
+    # generate CLI docs
     dagger call \
         clidocs \
         export --path=./docs/cli
 
-    version=$(cat VERSION)
+    # resolve target version
+    vVersion=$(dagger call -m git-cliff --source="." bumped-version)
+    version=$(echo -n $vVersion | cut -c 2-) # remove 'v'
+    echo "Bumping ace-dt to $version" >&2
+
+    # generate release notes, changelog, and version file
+   dagger call release prepare export --path="."
 
     echo "Please review the local changes, especially releases/$version.md"
     ;;
