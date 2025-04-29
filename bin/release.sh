@@ -27,7 +27,7 @@ fi
 
 set -x
 
-registry=ghcr.io
+registry="ghcr.io"
 registryRepo=$registry/act3-ai/data-tool
 
 # Extract the major version of a release.
@@ -170,8 +170,7 @@ prepare)
         export --path=.
 
     # govulncheck
-    dagger call \
-        vuln-check
+    dagger -m govulncheck call run-with-source --source="." stdout
 
     # generate docs
     dagger call \

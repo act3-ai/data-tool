@@ -21,6 +21,11 @@
       "pin": "e6c14178bcaaff9e102e2a89173ca31479b80629"
     },
     {
+      "name": "govulncheck",
+      "source": "github.com/act3-ai/dagger/govulncheck",
+      "pin": "5144f77a22328d48107ac03f512e3c3e28814486"
+    },
+    {
       "name": "registry-config",
       "source": "github.com/sagikazarmark/daggerverse/registry-config@registry-config/v0.8.0",
       "pin": "126b5fbbdad70dbf2a8689600baec2eb78c05ef4"
