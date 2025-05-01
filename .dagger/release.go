@@ -4,7 +4,6 @@ import (
 	"context"
 	"dagger/tool/internal/dagger"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -92,14 +91,26 @@ func (t *Release) Publish(ctx context.Context,
 	vVersion := "v" + version
 
 	notesPath := filepath.Join("releases", vVersion+".md")
-	return GoReleaser(src).
+
+	return dag.Goreleaser(t.Source).
 		WithSecretVariable("GITHUB_TOKEN", token).
 		WithSecretVariable("SSH_PRIVATE_KEY", sshPrivateKey).
 		WithEnvVariable("RELEASE_AUTHOR", author).
 		WithEnvVariable("RELEASE_AUTHOR_EMAIL", email).
 		WithEnvVariable("RELEASE_LATEST", strconv.FormatBool(latest)).
-		WithExec([]string{"goreleaser", "release", "--fail-fast", "--release-notes", notesPath}).
+		Release().
+		WithFailFast().
+		WithNotes(t.Source.File(notesPath)).
+		Run().
 		Stdout(ctx)
+	// return GoReleaser(src).
+	// 	WithSecretVariable("GITHUB_TOKEN", token).
+	// 	WithSecretVariable("SSH_PRIVATE_KEY", sshPrivateKey).
+	// 	WithEnvVariable("RELEASE_AUTHOR", author).
+	// 	WithEnvVariable("RELEASE_AUTHOR_EMAIL", email).
+	// 	WithEnvVariable("RELEASE_LATEST", strconv.FormatBool(latest)).
+	// 	WithExec([]string{"goreleaser", "release", "--fail-fast", "--release-notes", notesPath}).
+	// 	Stdout(ctx)
 }
 
 // Generate the change log from conventional commit messages (see cliff.toml).
@@ -157,25 +168,4 @@ func (r *Release) Notes(ctx context.Context,
 	return dag.Directory().
 		WithNewFile(notesFilePath, notes).
 		File(notesFilePath), nil
-}
-
-// GoReleaser provides a container with go-releaser, inheriting
-// GOMAXPROCS and GOMEMLIMIT from the host environment.
-func GoReleaser(src *dagger.Directory) *dagger.Container {
-	ctr := dag.Container().
-		From(imageGoReleaser).
-		WithMountedCache("dagger-cache", dag.CacheVolume("dagger-cache")).
-		WithMountedDirectory("/work/src", src).
-		WithWorkdir("/work/src")
-
-	goMaxProcs, ok := os.LookupEnv("GOMAXPROCS")
-	if ok {
-		ctr = ctr.WithEnvVariable("GOMAXPROCS", goMaxProcs)
-	}
-	goMemLimit, ok := os.LookupEnv("GOMEMLIMIT")
-	if ok {
-		ctr = ctr.WithEnvVariable("GOMEMLIMIT", goMemLimit)
-	}
-
-	return ctr
 }
