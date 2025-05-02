@@ -5,16 +5,6 @@ import (
 	"dagger/tool/internal/dagger"
 )
 
-// Run govulncheck.
-func (t *Tool) VulnCheck(ctx context.Context) (string, error) {
-	return dag.Go().
-		WithSource(t.Source).
-		WithCgoDisabled().
-		Exec([]string{"go", "install", goVulnCheck}).
-		WithExec([]string{"govulncheck", "./..."}).
-		Stdout(ctx)
-}
-
 // Use ace-dt to perform a vulnerability scan on a list of OCI artifacts.
 func (t *Tool) Scan(ctx context.Context,
 	// Path to OCI artifact list

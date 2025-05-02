@@ -27,7 +27,7 @@ fi
 
 set -x
 
-registry=ghcr.io
+registry="ghcr.io"
 registryRepo=$registry/act3-ai/data-tool
 
 # Extract the major version of a release.
@@ -151,12 +151,27 @@ prepare)
         echo 'Git repo is dirty, aborting'
         exit 2
     fi
-    
+
+    # TODO: Check for required env vars
+    # TODO: Step 1 Check - consistency and testing
+
     # auto-gen kube api
+    # TODO: test not do
     dagger call \
         generate \
         export --path=./pkg/apis/config.dt.act3-ace.io
 
+    # generate API docs
+    dagger call \
+        apidocs \
+        export --path=./docs/apis/config.dt.act3-ace.io
+
+    # generate CLI docs
+    dagger call \
+        clidocs \
+        export --path=./docs/cli
+
+    # run all linters
     dagger call lint all
 
     # run unit, functional, and integration tests
@@ -164,25 +179,27 @@ prepare)
         with-registry-auth --address="$registry" --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
         test all
 
-    # update changelog, release notes, semantic version
-    dagger call \
-        release prepare \
-        export --path=.
-
     # govulncheck
-    dagger call \
-        vuln-check
+    dagger -m govulncheck call run-with-source --source="." stdout
 
-    # generate docs
-    dagger call \
-        apidocs \
-        export --path=./docs/apis/config.dt.act3-ace.io
+    # no changes before this point
+    # TODO: ensure committed and clean, no stages, no funny business
+    if [[ $(git diff --stat) != '' ]]; then
+        echo 'Git repo is dirty, aborting' # TODO: Note that the dirty changes are from the script
+        exit 2
+    fi
 
-    dagger call \
-        clidocs \
-        export --path=./docs/cli
+    # TODO: End Step 1
 
-    version=$(cat VERSION)
+    # TODO: Step 2 Prepare
+    # resolve target version
+    vVersion=$(dagger call -m git-cliff --source="." bumped-version)
+    version=$(echo -n $vVersion | cut -c 2-) # remove 'v'
+    echo "Bumping ace-dt to $version" >&2
+
+
+    # generate release notes, changelog, and version file
+    dagger call release prepare export --path="."
 
     echo "Please review the local changes, especially releases/$version.md"
     ;;
@@ -198,16 +215,19 @@ approve)
     git commit -S -m "chore(release): prepare for $version"
     # annotated and signed tag
     git tag -s -a -m "Official release $version" "$version"
+    ;;
+publish)
     # push this branch and the associated tags
     git push --follow-tags
-    ;;
 
-publish)
+    # TODO: Replace remaining with:
+    # dagger -m go-pipeline publish --source=URL
+
     version=$(cat VERSION)
     fullVersion=v${version}
     platforms=linux/amd64,linux/arm64
     
-    # # publish release
+    # publish release
     dagger call \
         release \
         publish --token=env:GITHUB_API_TOKEN --ssh-private-key=env:SSH_PRIVATE_KEY --author=env:RELEASE_AUTHOR --email=env:RELEASE_AUTHOR_EMAIL

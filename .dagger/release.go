@@ -4,7 +4,6 @@ import (
 	"context"
 	"dagger/tool/internal/dagger"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -25,6 +24,11 @@ func (t *Tool) Release(
 	}
 }
 
+const (
+	releaseNotesDir = "releases"
+	changelogPath   = "CHANGELOG.md"
+)
+
 // Release provides utilties for preparing and publishing releases
 // with git-cliff.
 type Release struct {
@@ -37,25 +41,28 @@ type Release struct {
 	Token *dagger.Secret
 }
 
-// Update the changelog, release notes, version, and helm chart versions.
+// Update the version, changelog, and release notes.
 func (r *Release) Prepare(ctx context.Context) (*dagger.Directory, error) {
-	changelog := r.Changelog(ctx)
-	version, err := r.Version(ctx)
+	targetVersion, err := r.Version(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("resolving release target version: %w", err)
 	}
 
-	notes, err := r.Notes(ctx, version)
+	changelogFile, err := r.Changelog(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("generating changelog: %w", err)
 	}
 
-	notesPath := filepath.Join("releases", fmt.Sprintf("v%s.md", version))
+	releaseNotesFile, err := r.Notes(ctx, targetVersion)
+	if err != nil {
+		return nil, fmt.Errorf("generating release notes: %w", err)
+	}
+
+	releaseNotesPath := filepath.Join(releaseNotesDir, targetVersion+".md")
 	return dag.Directory().
-			WithFile("CHANGELOG.md", changelog).
-			WithNewFile("VERSION", version+"\n").
-			WithNewFile(notesPath, notes),
-		nil
+		WithFile(changelogPath, changelogFile).
+		WithFile(releaseNotesPath, releaseNotesFile).
+		WithNewFile("VERSION", strings.TrimPrefix(targetVersion+"\n", "v")), nil
 }
 
 // Publish the current release. This should be tagged.
@@ -84,46 +91,67 @@ func (t *Release) Publish(ctx context.Context,
 	vVersion := "v" + version
 
 	notesPath := filepath.Join("releases", vVersion+".md")
-	return GoReleaser(src).
+
+	return dag.Goreleaser(t.Source).
 		WithSecretVariable("GITHUB_TOKEN", token).
 		WithSecretVariable("SSH_PRIVATE_KEY", sshPrivateKey).
 		WithEnvVariable("RELEASE_AUTHOR", author).
 		WithEnvVariable("RELEASE_AUTHOR_EMAIL", email).
 		WithEnvVariable("RELEASE_LATEST", strconv.FormatBool(latest)).
-		WithExec([]string{"goreleaser", "release", "--fail-fast", "--release-notes", notesPath}).
+		Release().
+		WithFailFast().
+		WithNotes(t.Source.File(notesPath)).
+		Run().
 		Stdout(ctx)
+	// return GoReleaser(src).
+	// 	WithSecretVariable("GITHUB_TOKEN", token).
+	// 	WithSecretVariable("SSH_PRIVATE_KEY", sshPrivateKey).
+	// 	WithEnvVariable("RELEASE_AUTHOR", author).
+	// 	WithEnvVariable("RELEASE_AUTHOR_EMAIL", email).
+	// 	WithEnvVariable("RELEASE_LATEST", strconv.FormatBool(latest)).
+	// 	WithExec([]string{"goreleaser", "release", "--fail-fast", "--release-notes", notesPath}).
+	// 	Stdout(ctx)
 }
 
 // Generate the change log from conventional commit messages (see cliff.toml).
-func (r *Release) Changelog(ctx context.Context) *dagger.File {
-	const changelogPath = "/app/CHANGELOG.md"
-	return r.gitCliffContainer().
-		WithExec([]string{"git-cliff", "--bump", "--strip=footer", "--unreleased", "--prepend", changelogPath}).
-		File(changelogPath)
+func (r *Release) Changelog(ctx context.Context) (*dagger.File, error) {
+	// generate and prepend to changelog
+	changelogPath := "CHANGELOG.md"
+	return dag.GitCliff(r.Source).
+		WithBump().
+		WithStrip("footer").
+		WithUnreleased().
+		WithPrepend(changelogPath).
+		Run().
+		File(changelogPath), nil
 }
 
-// Generate the next version from conventional commit messages (see cliff.toml)
+// Generate the next version from conventional commit messages (see cliff.toml). Includes 'v' prefix.
 func (r *Release) Version(ctx context.Context) (string, error) {
-	version, err := r.gitCliffContainer().
-		WithExec([]string{"git-cliff", "--bumped-version"}).
-		Stdout(ctx)
+	targetVersion, err := dag.GitCliff(r.Source).
+		BumpedVersion(ctx)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("resolving release target version: %w", err)
 	}
 
-	return strings.TrimSpace(version)[1:], err
+	return strings.TrimSpace(targetVersion), err
 }
 
 // Generate the initial release notes.
 func (r *Release) Notes(ctx context.Context,
 	// release version
 	version string,
-) (string, error) {
-	notes, err := r.gitCliffContainer().
-		WithExec([]string{"git-cliff", "--bump", "--unreleased", "--strip=all"}).
+) (*dagger.File, error) {
+
+	// generate and export release notes
+	notes, err := dag.GitCliff(r.Source).
+		WithBump().
+		WithUnreleased().
+		WithStrip("all").
+		Run().
 		Stdout(ctx)
 	if err != nil {
-		return "", err
+		return nil, fmt.Errorf("generating release notes: %w", err)
 	}
 
 	// Note: Changes to existing or inclusions of additional image references
@@ -131,44 +159,13 @@ func (r *Release) Notes(ctx context.Context,
 	b := &strings.Builder{}
 	b.WriteString("| Images |\n")
 	b.WriteString("| ---------------------------------------------------- |\n")
-	fmt.Fprintf(b, "| ghcr.io/act3-ai/data-tool:v%s |\n\n", version)
+	fmt.Fprintf(b, "| ghcr.io/act3-ai/data-tool:%s |\n\n", version)
 
 	b.WriteString("### ")
 	notes = strings.Replace(notes, "### ", b.String(), 1)
 
-	return notes, nil
-}
-
-func (r *Release) gitCliffContainer() *dagger.Container {
-	return dag.Container().
-		From(imageGitCliff).
-		With(func(c *dagger.Container) *dagger.Container {
-			if r.Token != nil {
-				return c.WithSecretVariable("GITHUB_TOKEN", r.Token).
-					WithEnvVariable("GITHUB_REPO", gitRepo)
-			}
-			return c
-		}).
-		WithMountedDirectory("/app", r.Source)
-}
-
-// GoReleaser provides a container with go-releaser, inheriting
-// GOMAXPROCS and GOMEMLIMIT from the host environment.
-func GoReleaser(src *dagger.Directory) *dagger.Container {
-	ctr := dag.Container().
-		From(imageGoReleaser).
-		WithMountedCache("dagger-cache", dag.CacheVolume("dagger-cache")).
-		WithMountedDirectory("/work/src", src).
-		WithWorkdir("/work/src")
-
-	goMaxProcs, ok := os.LookupEnv("GOMAXPROCS")
-	if ok {
-		ctr = ctr.WithEnvVariable("GOMAXPROCS", goMaxProcs)
-	}
-	goMemLimit, ok := os.LookupEnv("GOMEMLIMIT")
-	if ok {
-		ctr = ctr.WithEnvVariable("GOMEMLIMIT", goMemLimit)
-	}
-
-	return ctr
+	notesFilePath := "release-notes.md"
+	return dag.Directory().
+		WithNewFile(notesFilePath, notes).
+		File(notesFilePath), nil
 }
