@@ -13,7 +13,7 @@
     {
       "name": "git-cliff",
       "source": "github.com/act3-ai/dagger/git-cliff",
-      "pin": "5144f77a22328d48107ac03f512e3c3e28814486"
+      "pin": "499c86265caaca623010e61093974204d72c37af"
     },
     {
       "name": "go",
@@ -27,13 +27,13 @@
     },
     {
       "name": "goreleaser",
-      "source": "github.com/act3-ai/dagger/goreleaser@70ba33f694df09056c5aeb52fbc706272e65a5f4",
-      "pin": "70ba33f694df09056c5aeb52fbc706272e65a5f4"
+      "source": "github.com/act3-ai/dagger/goreleaser@0beeb456ee366b53a0b6e15446bc7803e8f16fe5",
+      "pin": "0beeb456ee366b53a0b6e15446bc7803e8f16fe5"
     },
     {
       "name": "govulncheck",
       "source": "github.com/act3-ai/dagger/govulncheck",
-      "pin": "5144f77a22328d48107ac03f512e3c3e28814486"
+      "pin": "499c86265caaca623010e61093974204d72c37af"
     },
     {
       "name": "registry-config",

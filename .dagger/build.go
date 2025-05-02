@@ -18,7 +18,7 @@ import (
 //		GOOS: linux, windows, darwin
 //		GOARCH: amd64, arm64
 func (t *Tool) BuildPlatforms(ctx context.Context,
-	// snapshot build, skip goreleaser validations
+	// Snapshot build, skipping goreleaser validations. Useful for building committed git history that isn't tagged with a release, a dirty repo does an "auto-snapshot".
 	// +optional
 	snapshot bool,
 ) *dagger.Directory {
@@ -26,9 +26,6 @@ func (t *Tool) BuildPlatforms(ctx context.Context,
 		Build().
 		WithAutoSnapshot().
 		All()
-	// return GoReleaser(t.Source).
-	// 	WithExec([]string{"goreleaser", "build", "--clean", "--auto-snapshot", "--timeout=10m", fmt.Sprintf("--snapshot=%v", snapshot)}).
-	// 	Directory("dist")
 }
 
 // Build an executable for the specified platform, named "ace-dt-v{VERSION}-{GOOS}-{GOARCH}".
