@@ -41,6 +41,11 @@
       "pin": "126b5fbbdad70dbf2a8689600baec2eb78c05ef4"
     },
     {
+      "name": "release",
+      "source": "github.com/act3-ai/dagger/release@bd1f5007ca5a056ccdc8334bcc2dd0bce5e3d635",
+      "pin": "bd1f5007ca5a056ccdc8334bcc2dd0bce5e3d635"
+    },
+    {
       "name": "shellcheck",
       "source": "github.com/dagger/dagger/modules/shellcheck@v0.14.0",
       "pin": "ec9686a4b922e278614ed1754d308c75eaa59586"

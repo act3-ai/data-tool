@@ -4,73 +4,100 @@ import (
 	"context"
 	"dagger/tool/internal/dagger"
 	"fmt"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
 )
 
+const (
+	reg  = "ghcr.io"
+	repo = "act3-ai/data-tool"
+)
+
 // Run release steps.
 func (t *Tool) Release(
-	// top level source code directory
-	// +defaultPath="/"
-	src *dagger.Directory,
 	// GitHub token
 	// +optional
 	token *dagger.Secret,
 ) *Release {
 	return &Release{
-		Source: src,
-		Token:  token,
+		Tool:  t,
+		Token: token,
 	}
 }
-
-const (
-	releaseNotesDir = "releases"
-	changelogPath   = "CHANGELOG.md"
-)
 
 // Release provides utilties for preparing and publishing releases
 // with git-cliff.
 type Release struct {
-	// source code directory
-	// +defaultPath="/"
-	Source *dagger.Directory
+	Tool *Tool
 
 	// GitHub token
 	// +optional
 	Token *dagger.Secret
 }
 
+// Run linters, unit, functional, and integration tests.
+func (r *Release) Check(ctx context.Context) (string, error) {
+	err := r.diffGenAll(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	// lint, unit test
+	_, err = dag.Release(r.Tool.Source).
+		Go().
+		Check(ctx,
+			dagger.ReleaseGolangCheckOpts{
+				UnitTestBase: dag.Go().
+					WithSource(r.Tool.Source).
+					Container().
+					WithExec([]string{"apt", "update"}).
+					WithExec([]string{"apt", "install", "-y", "git-lfs"}),
+			},
+		)
+	if err != nil {
+		return "", fmt.Errorf("running linters and unit tests: %w", err)
+	}
+
+	// functional test
+	_, err = r.Tool.Test().Functional(ctx)
+	if err != nil {
+		return "", fmt.Errorf("running functional tests: %w", err)
+	}
+
+	// integration test
+	_, err = r.Tool.Test().Integration(ctx)
+	if err != nil {
+		return "", fmt.Errorf("running integration tests: %w", err)
+	}
+
+	return "Successfully passed linters and tests", nil
+
+}
+
 // Update the version, changelog, and release notes.
 func (r *Release) Prepare(ctx context.Context) (*dagger.Directory, error) {
+	// TODO: This pattern is not ideal, as if r.Version or the same internal func in release module changes then the version number may not be the same. A bit of a chicken and egg situation at the moment...
 	targetVersion, err := r.Version(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("resolving release target version: %w", err)
 	}
 
-	changelogFile, err := r.Changelog(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("generating changelog: %w", err)
-	}
+	// Note: Changes to existing or inclusions of additional image references
+	// should be reflected here, see published images in ../bin/release.sh publish stage.
+	b := &strings.Builder{}
+	b.WriteString("| Images |\n")
+	b.WriteString("| ---------------------------------------------------- |\n")
+	fmt.Fprintf(b, "| %s/%s:%s |\n\n", reg, repo, targetVersion)
 
-	releaseNotesFile, err := r.Notes(ctx, targetVersion)
-	if err != nil {
-		return nil, fmt.Errorf("generating release notes: %w", err)
-	}
-
-	releaseNotesPath := filepath.Join(releaseNotesDir, targetVersion+".md")
-	return dag.Directory().
-		WithFile(changelogPath, changelogFile).
-		WithFile(releaseNotesPath, releaseNotesFile).
-		WithNewFile("VERSION", strings.TrimPrefix(targetVersion+"\n", "v")), nil
+	return dag.Release(r.Tool.Source).
+		Prepare(dagger.ReleasePrepareOpts{ExtraNotes: b.String()}), nil
 }
 
-// Publish the current release. This should be tagged.
-func (t *Release) Publish(ctx context.Context,
-	// source code directory
-	// +defaultPath="/"
-	src *dagger.Directory,
-	// github personal access token
+// Create release and publish artifacts. This should already be tagged.
+func (r *Release) Publish(ctx context.Context,
+	// github API token
 	token *dagger.Secret,
 	// commit ssh private key
 	sshPrivateKey *dagger.Secret,
@@ -83,16 +110,17 @@ func (t *Release) Publish(ctx context.Context,
 	// +optional
 	latest bool,
 ) (string, error) {
-	version, err := src.File("VERSION").Contents(ctx)
+	version, err := r.Tool.Source.File("VERSION").Contents(ctx)
 	if err != nil {
 		return "", err
 	}
 	version = strings.TrimSpace(version)
 	vVersion := "v" + version
-
 	notesPath := filepath.Join("releases", vVersion+".md")
+	imagePlatforms := []dagger.Platform{"linux/amd64", "linux/arm64"}
 
-	return dag.Goreleaser(t.Source).
+	_, err = dag.Goreleaser(r.Tool.Source).
+		// env vars defined in .goreleaser.yaml
 		WithSecretVariable("GITHUB_TOKEN", token).
 		WithSecretVariable("SSH_PRIVATE_KEY", sshPrivateKey).
 		WithEnvVariable("RELEASE_AUTHOR", author).
@@ -100,35 +128,25 @@ func (t *Release) Publish(ctx context.Context,
 		WithEnvVariable("RELEASE_LATEST", strconv.FormatBool(latest)).
 		Release().
 		WithFailFast().
-		WithNotes(t.Source.File(notesPath)).
+		WithNotes(r.Tool.Source.File(notesPath)).
 		Run().
 		Stdout(ctx)
-	// return GoReleaser(src).
-	// 	WithSecretVariable("GITHUB_TOKEN", token).
-	// 	WithSecretVariable("SSH_PRIVATE_KEY", sshPrivateKey).
-	// 	WithEnvVariable("RELEASE_AUTHOR", author).
-	// 	WithEnvVariable("RELEASE_AUTHOR_EMAIL", email).
-	// 	WithEnvVariable("RELEASE_LATEST", strconv.FormatBool(latest)).
-	// 	WithExec([]string{"goreleaser", "release", "--fail-fast", "--release-notes", notesPath}).
-	// 	Stdout(ctx)
-}
+	if err != nil {
+		return "", fmt.Errorf("creating release: %w", err)
+	}
 
-// Generate the change log from conventional commit messages (see cliff.toml).
-func (r *Release) Changelog(ctx context.Context) (*dagger.File, error) {
-	// generate and prepend to changelog
-	changelogPath := "CHANGELOG.md"
-	return dag.GitCliff(r.Source).
-		WithBump().
-		WithStrip("footer").
-		WithUnreleased().
-		WithPrepend(changelogPath).
-		Run().
-		File(changelogPath), nil
+	regRepo := path.Join("%s/%s", reg, repo)
+	_, err = r.Tool.ImageIndex(ctx, vVersion, regRepo, imagePlatforms)
+	if err != nil {
+		return "", fmt.Errorf("publishing image index: %w", err)
+	}
+
+	return "Successfully created release and uploaded images", nil
 }
 
 // Generate the next version from conventional commit messages (see cliff.toml). Includes 'v' prefix.
 func (r *Release) Version(ctx context.Context) (string, error) {
-	targetVersion, err := dag.GitCliff(r.Source).
+	targetVersion, err := dag.GitCliff(r.Tool.Source).
 		BumpedVersion(ctx)
 	if err != nil {
 		return "", fmt.Errorf("resolving release target version: %w", err)
@@ -137,35 +155,22 @@ func (r *Release) Version(ctx context.Context) (string, error) {
 	return strings.TrimSpace(targetVersion), err
 }
 
-// Generate the initial release notes.
-func (r *Release) Notes(ctx context.Context,
-	// release version
-	version string,
-) (*dagger.File, error) {
+// diffGenAll runs all auto generators, comparing it's output to what currently exists in the source.
+func (r *Release) diffGenAll(ctx context.Context) error {
+	existing := dag.Directory().
+		WithDirectory(cliDocsPath, r.Tool.Source.Directory(cliDocsPath)).
+		WithDirectory(apiDocsPath, r.Tool.Source.Directory(apiDocsPath)).
+		WithDirectory(pkgPath, r.Tool.Source.Directory(pkgPath))
 
-	// generate and export release notes
-	notes, err := dag.GitCliff(r.Source).
-		WithBump().
-		WithUnreleased().
-		WithStrip("all").
-		Run().
-		Stdout(ctx)
+	diff := existing.Diff(r.Tool.GenAll(ctx))
+
+	entries, err := diff.Entries(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("generating release notes: %w", err)
+		return fmt.Errorf("resolving entries for auto-gen diff: %w", err)
 	}
 
-	// Note: Changes to existing or inclusions of additional image references
-	// should be reflected here, see published images in ../bin/release.sh publish stage.
-	b := &strings.Builder{}
-	b.WriteString("| Images |\n")
-	b.WriteString("| ---------------------------------------------------- |\n")
-	fmt.Fprintf(b, "| ghcr.io/act3-ai/data-tool:%s |\n\n", version)
-
-	b.WriteString("### ")
-	notes = strings.Replace(notes, "### ", b.String(), 1)
-
-	notesFilePath := "release-notes.md"
-	return dag.Directory().
-		WithNewFile(notesFilePath, notes).
-		File(notesFilePath), nil
+	if len(entries) > 0 {
+		return fmt.Errorf("found changes from running auto generators, please run 'dagger call gen-all export --path=.'")
+	}
+	return nil
 }
