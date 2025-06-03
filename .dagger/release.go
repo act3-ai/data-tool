@@ -16,29 +16,20 @@ const (
 )
 
 // Run release steps.
-func (t *Tool) Release(
-	// GitHub token
-	// +optional
-	token *dagger.Secret,
-) *Release {
-	return &Release{
-		Tool:  t,
-		Token: token,
+func (t *Tool) Release() *Releaser {
+	return &Releaser{
+		Tool: t,
 	}
 }
 
-// Release provides utilties for preparing and publishing releases
+// Releaser provides utilties for preparing and publishing releases
 // with git-cliff.
-type Release struct {
+type Releaser struct {
 	Tool *Tool
-
-	// GitHub token
-	// +optional
-	Token *dagger.Secret
 }
 
 // Run linters, unit, functional, and integration tests.
-func (r *Release) Check(ctx context.Context) (string, error) {
+func (r *Releaser) Check(ctx context.Context) (string, error) {
 	err := r.diffGenAll(ctx)
 	if err != nil {
 		return "", err
@@ -77,7 +68,7 @@ func (r *Release) Check(ctx context.Context) (string, error) {
 }
 
 // Update the version, changelog, and release notes.
-func (r *Release) Prepare(ctx context.Context) (*dagger.Directory, error) {
+func (r *Releaser) Prepare(ctx context.Context) (*dagger.Directory, error) {
 	// TODO: This pattern is not ideal, as if r.Version or the same internal func in release module changes then the version number may not be the same. A bit of a chicken and egg situation at the moment...
 	targetVersion, err := r.Version(ctx)
 	if err != nil {
@@ -96,7 +87,7 @@ func (r *Release) Prepare(ctx context.Context) (*dagger.Directory, error) {
 }
 
 // Create release and publish artifacts. This should already be tagged.
-func (r *Release) Publish(ctx context.Context,
+func (r *Releaser) Publish(ctx context.Context,
 	// github API token
 	token *dagger.Secret,
 	// commit ssh private key
@@ -136,7 +127,11 @@ func (r *Release) Publish(ctx context.Context,
 	}
 
 	regRepo := path.Join("%s/%s", reg, repo)
-	_, err = r.Tool.ImageIndex(ctx, vVersion, regRepo, imagePlatforms)
+	extraTags, err := dag.Release(r.Tool.Source).ExtraTags(ctx, regRepo, vVersion)
+	if err != nil {
+		return "", fmt.Errorf("resolving extra image tags: %w", err)
+	}
+	_, err = r.Tool.ImageIndex(ctx, vVersion, imagePlatforms, regRepo, extraTags)
 	if err != nil {
 		return "", fmt.Errorf("publishing image index: %w", err)
 	}
@@ -145,7 +140,7 @@ func (r *Release) Publish(ctx context.Context,
 }
 
 // Generate the next version from conventional commit messages (see cliff.toml). Includes 'v' prefix.
-func (r *Release) Version(ctx context.Context) (string, error) {
+func (r *Releaser) Version(ctx context.Context) (string, error) {
 	targetVersion, err := dag.GitCliff(r.Tool.Source).
 		BumpedVersion(ctx)
 	if err != nil {
@@ -156,7 +151,7 @@ func (r *Release) Version(ctx context.Context) (string, error) {
 }
 
 // diffGenAll runs all auto generators, comparing it's output to what currently exists in the source.
-func (r *Release) diffGenAll(ctx context.Context) error {
+func (r *Releaser) diffGenAll(ctx context.Context) error {
 	existing := dag.Directory().
 		WithDirectory(cliDocsPath, r.Tool.Source.Directory(cliDocsPath)).
 		WithDirectory(apiDocsPath, r.Tool.Source.Directory(apiDocsPath)).

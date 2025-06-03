@@ -67,10 +67,13 @@ func (t *Tool) Image(ctx context.Context,
 func (t *Tool) ImageIndex(ctx context.Context,
 	// image version
 	version string,
-	// OCI Reference
-	address string,
 	// build platforms
 	platforms []dagger.Platform,
+	// OCI Reference, without tag
+	address string,
+	// extraTags
+	// +optional
+	extraTags []string,
 ) (string, error) {
 	ref, err := registry.ParseReference(address)
 	if err != nil {
@@ -93,10 +96,22 @@ func (t *Tool) ImageIndex(ctx context.Context,
 		return "", fmt.Errorf("building images: %w", err)
 	}
 
-	return dag.Container().
-		Publish(ctx, address, dagger.ContainerPublishOpts{
-			PlatformVariants: platformVariants,
-		})
+	var result strings.Builder
+	result.WriteString("Successfully published image index to:\n")
+	for _, tag := range append([]string{version}, extraTags...) {
+		ref := fmt.Sprintf("%s:%s", address, tag)
+		r, err := dag.Container().
+			Publish(ctx, ref, dagger.ContainerPublishOpts{
+				PlatformVariants: platformVariants,
+			})
+		if err != nil {
+			return "", fmt.Errorf("publishing index to %s: %w", ref, err)
+		}
+		result.WriteString(r)
+		result.WriteString("\n")
+	}
+	return result.String(), nil
+
 }
 
 func build(ctx context.Context,
