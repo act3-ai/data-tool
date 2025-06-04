@@ -90,12 +90,12 @@ done
 
 # Interactive mode begins with prepare by default, otherwise continue the release
 # process at the specified stage. Must occur after parsing commands and flags, else
-# we risk unexpected behavior, e.g. 'release.sh -f' implies prepare.
+# we risk unexpected behavior, e.g. 'release.sh -f' would imply prepare.
 if [ "$interactive" = "true" ] && [ -z "$cmd" ]; then
     cmd="prepare"
 fi
 
-# continue requests user input until a yes or no option is provided.
+# prompt_continue requests user input until a valid y/n option is provided.
 # Inputs:
 #   - $1 : name of next stage to continue to.
 prompt_continue() {
@@ -119,11 +119,11 @@ prompt_continue() {
 prepare() {
     echo "Running prepare stage..."
 
+    # linters and tests
     dagger -s="$silent" call release check
-
-    # git fetch --tags
-
-    # dagger -s="$silent" call release prepare export --path="."
+    # bump version, generate changelogs
+    git fetch --tags
+    dagger -s="$silent" call release prepare export --path="."
 
     echo -e "Successfully ran prepare stage.\n"
     if [ "$interactive" = "true" ]; then
@@ -141,16 +141,16 @@ prepare() {
 approve() {
     echo "Running approve stage..."
 
-    # version=v$(cat VERSION)
-    # notesPath="releases/$version.md"
-    # # release material
-    # git add VERSION CHANGELOG.md "$notesPath"
-    # # documentation changes (from make gendoc, apidoc, swagger)
-    # git add \*.md
-    # # signed commit
-    # git commit -S -m "chore(release): prepare for $version"
-    # # annotated and signed tag
-    # git tag -s -a -m "Official release $version" "$version"
+    version=v$(cat VERSION)
+    notesPath="releases/$version.md"
+    # release material
+    git add VERSION CHANGELOG.md "$notesPath"
+    # documentation changes (from make gendoc, apidoc, swagger)
+    git add \*.md
+    # signed commit
+    git commit -S -m "chore(release): prepare for $version"
+    # annotated and signed tag
+    git tag -s -a -m "Official release $version" "$version"
 
     echo -e "Successfully ran approve stage.\n"
     if [ "$interactive" = "true" ]; then
@@ -160,26 +160,25 @@ approve() {
     fi
 }
 
-# publish pushing the release tag, uploads release assets, and publishes images.
+# publish pushes the release tag, uploads release assets, and publishes images.
 publish() {
     echo "Running publish stage..."
 
     # push this branch and the associated tags
-    # git push --follow-tags
-
-    # version=$(cat VERSION)
-    # registry="ghcr.io"
-    # registryRepo=$registry/act3-ai/data-tool
-    # imageRepoRef="${registryRepo}:${fullVersion}"
-    # echo "$imageRepoRef" > artifacts.txt
-    
-    # # create release, upload artifacts
-    # dagger -s="$silent" call \
-    #     with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
-    #     release \
-    #     publish --token=env:GITHUB_API_TOKEN --ssh-private-key=env:SSH_PRIVATE_KEY --author=env:RELEASE_AUTHOR --email=env:RELEASE_AUTHOR_EMAIL
-
-    # dagger -s="$silent" call with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN scan --sources artifacts.txt
+    git push --follow-tags
+    # build image OCI reference
+    version=$(cat VERSION)
+    registry="ghcr.io"
+    registryRepo=$registry/act3-ai/data-tool
+    imageRepoRef="${registryRepo}:${fullVersion}"
+    echo "$imageRepoRef" > artifacts.txt
+    # create release, upload artifacts
+    dagger -s="$silent" call \
+        with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
+        release \
+        publish --token=env:GITHUB_API_TOKEN --ssh-private-key=env:SSH_PRIVATE_KEY --author=env:RELEASE_AUTHOR --email=env:RELEASE_AUTHOR_EMAIL
+    # publish SBOM and CVE results
+    dagger -s="$silent" call with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN scan --sources artifacts.txt
 
     echo -e "Successfully ran publish stage.\n"
     echo "Release process complete."
