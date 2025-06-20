@@ -1,0 +1,52 @@
+version: 2
+
+
+
+builds:
+  - id: ace-dt
+    binary: ace-dt
+    goos:
+      - linux
+      - darwin
+      # - windows
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X main.build={{.Version}}
+    env:
+      - CGO_ENABLED=0
+      - GOFIPS140=latest
+      main: ./cmd/ace-dt/
+
+archives:
+  - id: ace-dt-archives
+    ids:
+      - ace-dt
+    formats: ["tar.gz"]
+    builds_info:
+      mode: 755
+    name_template: "ace-dt-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    files:
+      - LICENSE
+      - src: "releases/v{{ .Version }}.md"
+        strip_parent: true
+
+release:
+  github:
+    owner: act3-ai
+    name: data-tool
+  ids:
+    - ace-dt-archives
+  make_latest: envOrDefault "RELEASE_LATEST" "false" # don't add 'latest' tag by default
+  mode: replace # if there's a need to re-release, don't duplicate the release notes
+  skip_upload: false
+
+checksum:
+  name_template: ace-dt-v{{ .Version }}-checksums.txt
+  algorithm: sha256
+  ids:
+    - ace-dt-archives
+  disable: false
