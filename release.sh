@@ -3,15 +3,12 @@
 # For custom changes, see https://daggerverse.dev/mod/github.com/act3-ai/dagger/release for dagger release module usage.
 
 # Custom Variables
-git_remote="https://github.com/act3-ai/data-tool.git"
 version_path="VERSION"
 changelog_path="CHANGELOG.md"
 notes_dir="releases"
 
 # Remote Dependencies
 mod_release="github.com/act3-ai/dagger/release@release/v0.1.1"
-mod_goreleaser="github.com/act3-ai/dagger/goreleaser@goreleaser/v0.1.0"
-
 
 help() {
     cat <<EOF
@@ -112,7 +109,7 @@ fi
 # Inputs:
 #   - $1 : name of next stage to continue to.
 prompt_continue() {
-    read -p "Continue to $1 stage (y/n)?" choice
+    read -pr "Continue to $1 stage (y/n)?" choice
     case "$choice" in
     y|Y )
         echo -n "true"
@@ -129,11 +126,13 @@ prompt_continue() {
 
 # check_upstream ensures remote upstream matches local HEAD.
 check_upstream() {
-    git diff @{upstream} --stat --exit-code || {
-        echo "Local HEAD does not match upstream"
-        echo "Please review 'git diff @{upstream}' and match remote upstream or use --force"
-        exit 1
-    }
+    if [ "$force" = "false " ]; then
+        git diff "@{upstream}" --stat --exit-code || {
+            echo "Local HEAD does not match upstream"
+            echo "Please review 'git diff @{upstream}' and match remote upstream or use --force"
+            exit 1
+        }
+    fi
 }
 
 # prepare runs linters and unit tests, bumps the version, and generates the changelog.
@@ -141,7 +140,7 @@ check_upstream() {
 prepare() {
     echo "Running prepare stage..."
 
-    old_version=v$(cat "$version_file")
+    old_version=v$(cat "$version_path")
 
     # linters and unit tests
     dagger -s="$silent" --src="." call release check
@@ -151,7 +150,7 @@ prepare() {
     # bump version, generate changelogs
     dagger -s="$silent" --src="." call release prepare export --path="."
 
-    version=v$(cat "$version_file")
+    version=v$(cat "$version_path")
     # verify release version with gorelease
     dagger -m="$mod_release" -s="$silent" --src="." call go verify --target-version="$version" --current-version="$old_version"
 
@@ -171,8 +170,8 @@ approve() {
     git fetch --tags
     check_upstream
 
-    version=v$(cat "$version_file")
-    notesPath="releases/$version.md"
+    version=v$(cat "$version_path")
+    notesPath="${notes_dir}/${version}.md"
 
     # stage release material
     git add "$version_path" "$changelog_path" "$notesPath"
