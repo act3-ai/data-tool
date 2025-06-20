@@ -67,8 +67,11 @@ func (r *Releaser) Check(ctx context.Context) (string, error) {
 }
 
 // Update the version, changelog, and release notes.
-func (r *Releaser) Prepare(ctx context.Context) (*dagger.Directory, error) {
-	// TODO: This pattern is not ideal, as if r.Version or the same internal func in release module changes then the version number may not be the same. A bit of a chicken and egg situation at the moment...
+func (r *Releaser) Prepare(ctx context.Context,
+	// ignore git status checks
+	// +optional
+	ignoreError bool,
+) (*dagger.Directory, error) {
 	targetVersion, err := r.Version(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("resolving release target version: %w", err)
@@ -82,7 +85,11 @@ func (r *Releaser) Prepare(ctx context.Context) (*dagger.Directory, error) {
 	fmt.Fprintf(b, "| %s/%s:%s |\n\n", reg, repo, targetVersion)
 
 	return dag.Release(r.Tool.Source).
-		Prepare(dagger.ReleasePrepareOpts{ExtraNotes: b.String()}), nil
+		Prepare(dagger.ReleasePrepareOpts{
+			Version:     targetVersion,
+			ExtraNotes:  b.String(),
+			IgnoreError: ignoreError},
+		), nil
 }
 
 // Create release and publish artifacts. This should already be tagged.

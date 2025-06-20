@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"dagger/tool/internal/dagger"
+	"fmt"
 	"strings"
 
 	"github.com/sourcegraph/conc/pool"
@@ -53,7 +54,7 @@ func (l *Lint) All(ctx context.Context,
 	p.Go(func(ctx context.Context) (string, error) {
 		ctx, span := Tracer().Start(ctx, "shellcheck")
 		defer span.End()
-		return l.Shellcheck(ctx, src.Directory("bin"))
+		return l.Shellcheck(ctx, src)
 	})
 
 	result, err := p.Wait()
@@ -92,28 +93,43 @@ func (l *Lint) Markdownlint(ctx context.Context,
 // Lint shell files.
 func (l *Lint) Shellcheck(ctx context.Context,
 	// Source code directory
-	// +defaultPath="/bin"
+	// +defaultPath="."
 	src *dagger.Directory,
 ) (string, error) {
-	filenames, err := src.Entries(ctx)
+	// TODO: Consider adding an option for specifying script files that don't have the extension, such as WithShellScripts.
+	shEntries, err := src.Glob(ctx, "**/*.sh")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("globbing shell scripts with *.sh extension: %w", err)
 	}
 
-	p := pool.New().WithContext(ctx).WithMaxGoroutines(4)
-	for _, filename := range filenames {
-		p.Go(func(ctx context.Context) error {
-			return dag.Shellcheck().
-				Check(src.File(filename)).
-				Assert(ctx)
+	bashEntries, err := src.Glob(ctx, "**/*.bash")
+	if err != nil {
+		return "", fmt.Errorf("globbing shell scripts with *.bash extension: %w", err)
+	}
+
+	p := pool.NewWithResults[string]().
+		WithMaxGoroutines(4).
+		WithErrors().
+		WithContext(ctx)
+
+	entries := append(shEntries, bashEntries...)
+	for _, entry := range entries {
+		p.Go(func(ctx context.Context) (string, error) {
+			r, err := dag.Shellcheck().
+				Check(src.File(entry)).
+				Report(ctx)
+			// this is needed because of weird error handling  in shellcheck here:
+			// https://github.com/dagger/dagger/blob/0b46ea3c49b5d67509f67747742e5d8b24be9ef7/modules/shellcheck/main.go#L137
+			if r != "" {
+				return "", fmt.Errorf("results for file %s:\n%s", entry, r)
+			}
+			// r = fmt.Sprintf("Results for file %s:\n%s", entry, r)
+			return r, err
 		})
 	}
 
-	err = p.Wait()
-	if err != nil {
-		return err.Error(), err
-	}
-	return "", nil
+	res, err := p.Wait()
+	return strings.Join(res, "\n\n"), err
 }
 
 // Lint golang files.
