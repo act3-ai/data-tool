@@ -64,7 +64,6 @@ func (r *Releaser) Check(ctx context.Context) (string, error) {
 	}
 
 	return "Successfully passed linters and tests", nil
-
 }
 
 // Update the version, changelog, and release notes.
@@ -154,17 +153,22 @@ func (r *Releaser) Version(ctx context.Context) (string, error) {
 func (r *Releaser) diffGenAll(ctx context.Context) error {
 	existing := dag.Directory().
 		WithDirectory(cliDocsPath, r.Tool.Source.Directory(cliDocsPath)).
-		WithDirectory(apiDocsPath, r.Tool.Source.Directory(apiDocsPath)).
+		WithDirectory(apiDocsPath, r.Tool.Source.Directory(apiDocsPath).Filter(dagger.DirectoryFilterOpts{Exclude: []string{"schemas/"}})).
 		WithDirectory(pkgPath, r.Tool.Source.Directory(pkgPath))
 
-	diff := existing.Diff(r.Tool.GenAll(ctx))
+	regen := r.Tool.GenAll(ctx)
 
-	entries, err := diff.Entries(ctx)
+	existingDgst, err := existing.Digest(ctx)
 	if err != nil {
-		return fmt.Errorf("resolving entries for auto-gen diff: %w", err)
+		return err
 	}
 
-	if len(entries) > 0 {
+	regenDgst, err := regen.Digest(ctx)
+	if err != nil {
+		return err
+	}
+
+	if existingDgst != regenDgst {
 		return fmt.Errorf("found changes from running auto generators, please run 'dagger call gen-all export --path=.'")
 	}
 	return nil

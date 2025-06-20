@@ -23,7 +23,7 @@ func (t *Tool) GenAll(ctx context.Context) *dagger.Directory {
 
 // Generate CLI documentation.
 func (t *Tool) CLIDocs(ctx context.Context) *dagger.Directory {
-	acedt := t.Build(ctx, "linux/amd64", false)
+	acedt := t.Build(ctx, "linux/amd64", true)
 
 	return dag.Go().
 		WithSource(t.Source).
