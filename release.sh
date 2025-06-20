@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 
-# For custom changes, see https://daggerverse.dev/mod/github.com/act3-ai/dagger/release for dagger release module usage.# Custom Variables
-git_remote="https://github.com/act3-ai/data-tool.git"
+# For custom changes, see https://daggerverse.dev/mod/github.com/act3-ai/dagger/release for dagger release module usage.
 
+# Custom Variables
+git_remote="https://github.com/act3-ai/data-tool.git"
+version_path="VERSION"
+changelog_path="CHANGELOG.md"
+notes_dir="releases"
 
 # Remote Dependencies
 mod_release="github.com/act3-ai/dagger/release@release/v0.1.1"
@@ -39,8 +43,12 @@ Options:
         Skip git status checks, e.g. uncommitted changes. Only recommended for development.
 
 Required Environment Variables:
-    TODO: Add as desired
     - GITHUB_API_TOKEN     - repo:api access
+    - GITHUB_REG_TOKEN     - write:packages access
+    - GITHUB_REG_USER      - username of GITHUB_REG_TOKEN owner
+    - RELEASE_AUTHOR       - username of release author, for homebrew tap
+    - RELEASE_AUTHOR_EMAIL - email of release author, for homebrew tap
+    - RELEASE_LATEST       - tag release as latest
 
 Dependencies:
     - dagger
@@ -136,12 +144,12 @@ prepare() {
     old_version=v$(cat "$version_file")
 
     # linters and unit tests
-    dagger -m="$mod_release" -s="$silent" --src="." call go check
+    dagger -s="$silent" --src="." call release check
 
     git fetch --tags
     check_upstream
     # bump version, generate changelogs
-    dagger -m="$mod_release" -s="$silent" --src="." call prepare export --path="."
+    dagger -s="$silent" --src="." call release prepare export --path="."
 
     version=v$(cat "$version_file")
     # verify release version with gorelease
@@ -167,9 +175,8 @@ approve() {
     notesPath="releases/$version.md"
 
     # stage release material
-    git add "VERSION" "CHANGELOG.md" "$notesPath"
+    git add "$version_path" "$changelog_path" "$notesPath"
     git add \*.md
-    
     # signed commit
     git commit -S -m "chore(release): prepare for $version"
     # annotated and signed tag
@@ -190,24 +197,21 @@ publish() {
 
     # push this branch and the associated tags
     git push --follow-tags
-
-    version=v$(cat "$version_file")
-
-    dagger -m="$mod_goreleaser" -s="$silent" --src="." call \
-    with-secret-variable --name="GITHUB_API_TOKEN" --secret=env:GITHUB_API_TOKEN \
-    with-env-variable --name="RELEASE_LATEST" --value="$RELEASE_LATEST" \
-    release
-
     
-    # For resolving extra image tags, see https://daggerverse.dev/mod/github.com/act3-ai/dagger/release#Release.extraTags
-    # extra_tags=$(dagger -m="$mod_release" -s="$silent" --src="."  call release extra-tags --ref=<OCI_REF> --version="$version")
-    # For applying extra image tags, see https://daggerverse.dev/mod/github.com/act3-ai/dagger/release#Release.addTags OR if the docker module is used, provide them directly to --tags
-    
-    # publish image
-    # TODO:
-    # - Docker dagger module - https://daggerverse.dev/mod/github.com/act3-ai/dagger/docker
-    # - Native dagger containers - https://docs.dagger.io/cookbook#perform-a-multi-stage-build
-    # - Or other methods
+    # build image OCI reference
+    version=v$(cat VERSION)
+    registry="ghcr.io"
+    registryRepo=$registry/act3-ai/data-tool
+    imageRepoRef="${registryRepo}:${version}"
+    echo "$imageRepoRef" > artifacts.txt
+
+    # create release, upload artifacts
+    dagger -s="$silent" call \
+        with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN \
+        release \
+        publish --token=env:GITHUB_API_TOKEN --ssh-private-key=env:SSH_PRIVATE_KEY --author=env:RELEASE_AUTHOR --email=env:RELEASE_AUTHOR_EMAIL
+    # publish SBOM and CVE results
+    dagger -s="$silent" call with-registry-auth --address=$registry --username="$GITHUB_REG_USER" --secret=env:GITHUB_REG_TOKEN scan --sources artifacts.txt
 
     echo -e "Successfully ran publish stage.\n"
     echo "Release process complete."
