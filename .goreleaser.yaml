@@ -38,12 +38,12 @@ release:
     name: data-tool
   ids:
     - ace-dt-archives
-  make_latest: envOrDefault "RELEASE_LATEST" "true"
-  mode: replace # if we need to re-release, don't duplicate the release notes
+  make_latest: envOrDefault "RELEASE_LATEST" "false" # don't add 'latest' tag by default
+  mode: replace # if there's a need to re-release, don't duplicate the release notes
   skip_upload: false
 
 checksum:
-  name_template: "ace-dt-v{{ .Version }}-checksums.txt"
+  name_template: ace-dt-v{{ .Version }}-checksums.txt
   algorithm: sha256
   ids:
     - ace-dt-archives

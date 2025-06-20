@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # git-cliff ~ default configuration file
+=======
+# git-cliff ~ default configuration file, with custom commit parsers.
+>>>>>>> act3-pt/blueprints/render-orphan
 # https://git-cliff.org/docs/configuration
 #
 # Lines starting with "#" are comments.
