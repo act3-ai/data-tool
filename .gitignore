@@ -1,6 +1,4 @@
 /bin/*
-!/bin/release.sh
-!/bin/homebrew.sh
 /tool
 /coverage*.*
 /report.*

@@ -1,14 +1,14 @@
 {
   "name": "tool",
-  "engineVersion": "v0.18.5",
+  "engineVersion": "v0.18.10",
   "sdk": {
     "source": "go"
   },
   "dependencies": [
     {
-      "name": "gh",
-      "source": "github.com/sagikazarmark/daggerverse/gh@gh/v0.11.0",
-      "pin": "c1be27189ce47d28f84014b715f78e47db9fbadc"
+      "name": "git-cliff",
+      "source": "github.com/act3-ai/dagger/git-cliff@git-cliff/v0.1.0",
+      "pin": "202de438183f48bf667bce3d7e1a66a93d2ccfc1"
     },
     {
       "name": "go",
@@ -21,19 +21,34 @@
       "pin": "e6c14178bcaaff9e102e2a89173ca31479b80629"
     },
     {
+      "name": "goreleaser",
+      "source": "github.com/act3-ai/dagger/goreleaser@0beeb456ee366b53a0b6e15446bc7803e8f16fe5",
+      "pin": "0beeb456ee366b53a0b6e15446bc7803e8f16fe5"
+    },
+    {
+      "name": "govulncheck",
+      "source": "github.com/act3-ai/dagger/govulncheck@govulncheck/v0.1.0",
+      "pin": "ab8312136bccd2439e9391a01d22de75e5c04b28"
+    },
+    {
       "name": "registry-config",
       "source": "github.com/sagikazarmark/daggerverse/registry-config@registry-config/v0.8.0",
       "pin": "126b5fbbdad70dbf2a8689600baec2eb78c05ef4"
     },
     {
+      "name": "release",
+      "source": "github.com/act3-ai/dagger/release@release/v0.1.1",
+      "pin": "d72e6da75a73ab8fc9b9d19829e5332a2f7da472"
+    },
+    {
       "name": "shellcheck",
-      "source": "github.com/dagger/dagger/modules/shellcheck@v0.14.0",
-      "pin": "ec9686a4b922e278614ed1754d308c75eaa59586"
+      "source": "github.com/dagger/dagger/modules/shellcheck@v0.18.10",
+      "pin": "94398f28962a76056d9d8e9383a876af59ec954d"
     },
     {
       "name": "wolfi",
-      "source": "github.com/dagger/dagger/modules/wolfi@v0.16.2",
-      "pin": "b3e6f765a547b22edc61a24336177348b9f00d94"
+      "source": "github.com/dagger/dagger/modules/wolfi@v0.18.10",
+      "pin": "94398f28962a76056d9d8e9383a876af59ec954d"
     }
   ],
   "source": ".dagger"
