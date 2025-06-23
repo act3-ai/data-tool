@@ -15,7 +15,6 @@
 package main
 
 import (
-	"context"
 	"dagger/tool/internal/dagger"
 )
 
@@ -85,12 +84,4 @@ func (t *Tool) WithNetrc(
 ) *Tool {
 	t.Netrc = netrc
 	return t
-}
-
-func (t *Tool) Renovate(ctx context.Context,
-	// GitHub token with API access to the project(s) being renovated
-	token *dagger.Secret,
-) (string, error) {
-	return dag.Renovate("act3-ai/data-tool", token, "https://github.com").
-		Update(ctx)
 }
