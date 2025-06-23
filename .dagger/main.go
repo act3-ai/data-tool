@@ -15,13 +15,11 @@
 package main
 
 import (
+	"context"
 	"dagger/tool/internal/dagger"
 )
 
 const (
-	// repository information
-	gitRepo = "act3-ai/data-tool"
-
 	// images
 	imageGitCliff   = "docker.io/orhunp/git-cliff:2.8.0"
 	imageGrype      = "anchore/grype:latest"
@@ -33,7 +31,6 @@ const (
 	imageGoReleaser = "ghcr.io/goreleaser/goreleaser:v2.8.2"
 
 	// go tools
-	goVulnCheck     = "golang.org/x/vuln/cmd/govulncheck@latest"
 	goControllerGen = "sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.2"
 	goCrdRefDocs    = "github.com/elastic/crd-ref-docs@v0.1.0"
 )
@@ -88,4 +85,12 @@ func (t *Tool) WithNetrc(
 ) *Tool {
 	t.Netrc = netrc
 	return t
+}
+
+func (t *Tool) Renovate(ctx context.Context,
+	// GitHub token with API access to the project(s) being renovated
+	token *dagger.Secret,
+) (string, error) {
+	return dag.Renovate("act3-ai/data-tool", token, "https://github.com").
+		Update(ctx)
 }

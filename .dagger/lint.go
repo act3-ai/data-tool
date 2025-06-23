@@ -52,6 +52,13 @@ func (l *Lint) All(ctx context.Context,
 	})
 
 	p.Go(func(ctx context.Context) (string, error) {
+		ctx, span := Tracer().Start(ctx, "govulncheck")
+		defer span.End()
+		return dag.Govulncheck().
+			ScanSource(ctx, l.Source)
+	})
+
+	p.Go(func(ctx context.Context) (string, error) {
 		ctx, span := Tracer().Start(ctx, "shellcheck")
 		defer span.End()
 		return l.Shellcheck(ctx, src)
