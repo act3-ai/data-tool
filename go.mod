@@ -28,7 +28,7 @@ require (
 	golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0
 	golang.org/x/net v0.39.0
 	golang.org/x/sync v0.13.0
-	golang.org/x/term v0.31.0
+	golang.org/x/term v0.32.0
 	golang.org/x/text v0.24.0
 	k8s.io/apimachinery v0.32.3
 	k8s.io/utils v0.0.0-20250321185631-1f6e0b77f77e
@@ -121,7 +121,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
-	golang.org/x/sys v0.32.0 // indirect
+	golang.org/x/sys v0.33.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
