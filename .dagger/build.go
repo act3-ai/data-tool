@@ -24,6 +24,12 @@ func (t *Tool) BuildPlatforms(ctx context.Context,
 ) *dagger.Directory {
 	return dag.Goreleaser(t.Source).
 		Build().
+		With(func(r *dagger.GoreleaserBuild) *dagger.GoreleaserBuild {
+			if snapshot {
+				r = r.WithSnapshot()
+			}
+			return r
+		}).
 		WithAutoSnapshot().
 		All()
 }
