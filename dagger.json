@@ -27,8 +27,8 @@
     },
     {
       "name": "govulncheck",
-      "source": "github.com/act3-ai/dagger/govulncheck@govulncheck/v0.1.0",
-      "pin": "ab8312136bccd2439e9391a01d22de75e5c04b28"
+      "source": "github.com/act3-ai/dagger/govulncheck@govulncheck/v0.1.1",
+      "pin": "5579aa8f127350d77c970c98784f40f56d279fbd"
     },
     {
       "name": "registry-config",
