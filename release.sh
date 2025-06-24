@@ -8,7 +8,7 @@ changelog_path="CHANGELOG.md"
 notes_dir="releases"
 
 # Remote Dependencies
-mod_release="github.com/act3-ai/dagger/release@release/v0.1.1"
+mod_release="github.com/act3-ai/dagger/release@release/v0.1.2"
 
 help() {
     cat <<EOF
