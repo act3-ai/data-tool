@@ -32,7 +32,7 @@ require (
 	golang.org/x/text v0.26.0
 	k8s.io/apimachinery v0.32.3
 	k8s.io/utils v0.0.0-20250321185631-1f6e0b77f77e
-	oras.land/oras-go/v2 v2.5.0
+	oras.land/oras-go/v2 v2.6.0
 	sigs.k8s.io/yaml v1.4.0
 )
 
