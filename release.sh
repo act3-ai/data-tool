@@ -9,6 +9,7 @@ notes_dir="releases"
 
 # Remote Dependencies
 mod_release="github.com/act3-ai/dagger/release@release/v0.1.2"
+mod_gitcliff="github.com/act3-ai/dagger/git-cliff@git-cliff/v0.1.1"
 
 help() {
     cat <<EOF
@@ -141,7 +142,7 @@ prompt_continue() {
 check_upstream() {
     if [ "$force" != "true" ]; then
         echo "Comparing local $1 to remote upstream"
-        git diff "@{upstream}" $1 --stat --exit-code
+        git diff "@{upstream}" "$1" --stat --exit-code
     fi
 }
 
@@ -175,7 +176,7 @@ prepare() {
 
     
     echo -e "Successfully ran prepare stage.\n"
-    echo -e "Please review the local changes, especially releases/$version.md\n"
+    echo -e "Please review the local changes, especially releases/$vVersion.md\n"
     if [ "$interactive" = "true" ] && [ "$(prompt_continue "approve")" = "true" ]; then
             approve
     fi
