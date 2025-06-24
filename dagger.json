@@ -7,8 +7,8 @@
   "dependencies": [
     {
       "name": "git-cliff",
-      "source": "github.com/act3-ai/dagger/git-cliff@git-cliff/v0.1.0",
-      "pin": "202de438183f48bf667bce3d7e1a66a93d2ccfc1"
+      "source": "github.com/act3-ai/dagger/git-cliff@git-cliff/v0.1.1",
+      "pin": "d59769a94c0cf34650a8495bae79c881e56c665a"
     },
     {
       "name": "go",
