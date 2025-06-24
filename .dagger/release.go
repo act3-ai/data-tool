@@ -71,10 +71,18 @@ func (r *Releaser) Prepare(ctx context.Context,
 	// ignore git status checks
 	// +optional
 	ignoreError bool,
+	// release with a specific version
+	// +optional
+	version string,
 ) (*dagger.Directory, error) {
-	targetVersion, err := r.Version(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("resolving release target version: %w", err)
+	var err error
+
+	targetVersion := version
+	if targetVersion != "" {
+		targetVersion, err = r.Version(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("resolving release target version: %w", err)
+		}
 	}
 
 	// Note: Changes to existing or inclusions of additional image references

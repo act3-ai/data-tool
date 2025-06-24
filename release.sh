@@ -17,7 +17,7 @@ Name:
     release.sh - Run a release process in stages.
 
 Usage:
-    release.sh COMMAND [-f | --force] [-i | --interactive] [-s | --silent] [-h | --help]
+    release.sh COMMAND [-f | --force] [-i | --interactive] [-s | --silent] [--version VERSION] [-h | --help]
 
 Commands:
     prepare - prepare a release locally by running linters, tests, and producing the changelog, notes, assets, etc.
@@ -38,6 +38,9 @@ Options:
 
     -f, --force
         Skip git status checks, e.g. uncommitted changes. Only recommended for development.
+
+    --version VERSION
+        Run the release process for a specific semver version, ignoring git-cliff's configured bumping strategy.
 
 Required Environment Variables:
     - GITHUB_API_TOKEN     - repo:api access
@@ -66,35 +69,41 @@ cmd=""
 force=false       # skip git status checks
 interactive=false # interactive mode
 silent=false      # silence dagger (dagger --silent)
+explicit_version=""  # release for a specific version
 
 # Get commands and flags
 while [[ $# -gt 0 ]]; do
   case "$1" in
     # Commands
     "prepare" | "approve" | "publish")
-        cmd=$1
-        shift
-        ;;
+       cmd=$1
+       shift
+       ;;
     # Flags
     "-h" | "--help")
-      help
-      ;;
+       help
+       ;;
+    "--version")
+       shift
+       explicit_version=$1
+       shift
+       ;;
     "-i" | "--interactive")
-      interactive=true
-      shift
-      ;;
+       interactive=true
+       shift
+       ;;
     "-s" | "--silent")
-      silent=true
-      shift
-      ;;
+       silent=true
+       shift
+       ;;
     "-f" | "--force")
-      force=true
-      shift
-      ;;
+       force=true
+       shift
+       ;;
     *)
-      echo "Unknown option: $1"
-      help
-      ;;
+       echo "Unknown option: $1"
+       help
+       ;;
   esac
 done
 
@@ -126,11 +135,13 @@ prompt_continue() {
     esac
 }
 
-# check_upstream ensures remote upstream matches local HEAD.
+# check_upstream ensures remote upstream matches local commit.
+# Inputs:
+#  - $1 : commit, often HEAD or HEAD~1
 check_upstream() {
     if [ "$force" != "true" ]; then
-        echo "Comparing local HEAD to remote upstream"
-        git diff "@{upstream}" HEAD --stat --exit-code
+        echo "Comparing local $1 to remote upstream"
+        git diff "@{upstream}" $1 --stat --exit-code
     fi
 }
 
@@ -145,13 +156,22 @@ prepare() {
     dagger -s="$silent" --src="." call release check
 
     git fetch --tags
-    check_upstream
-    # bump version, generate changelogs
-    dagger -s="$silent" --src="." call release prepare export --path="."
+    check_upstream "HEAD"
 
-    version=v$(cat "$version_path")
+    # bump version, generate changelogs
+    vVersion=""
+    if [ "$explicit_version" != "" ]; then
+        vVersion="$explicit_version"
+    else
+        vVersion=$(dagger -m="$mod_gitcliff" -s="$silent" --src="." call bumped-version)
+    fi
+
+    # bump version, generate changelogs
+    dagger -s="$silent" --src="." call release prepare --ignore-error="$force" --version="$vVersion" export --path="."
+
+    vVersion=v$(cat "$version_path") # use file as source of truth
     # verify release version with gorelease
-    dagger -m="$mod_release" -s="$silent" --src="." call go verify --target-version="$version" --current-version="$old_version"
+    dagger -m="$mod_release" -s="$silent" --src="." call go verify --target-version="$vVersion" --current-version="$old_version"
 
     
     echo -e "Successfully ran prepare stage.\n"
@@ -167,18 +187,18 @@ approve() {
     echo "Running approve stage..."
 
     git fetch --tags
-    check_upstream
+    check_upstream "HEAD"
 
-    version=v$(cat "$version_path")
-    notesPath="${notes_dir}/${version}.md"
+    vVersion=v$(cat "$version_path")
+    notesPath="${notes_dir}/${vVersion}.md"
 
     # stage release material
     git add "$version_path" "$changelog_path" "$notesPath"
     git add \*.md
     # signed commit
-    git commit -S -m "chore(release): prepare for $version"
+    git commit -S -m "chore(release): prepare for $vVersion"
     # annotated and signed tag
-    git tag -s -a -m "Official release $version" "$version"
+    git tag -s -a -m "Official release $vVersion" "$vVersion"
 
     echo -e "Successfully ran approve stage.\n"
     if [ "$interactive" = "true" ] && [ "$(prompt_continue "publish")" = "true" ]; then
@@ -191,16 +211,16 @@ publish() {
     echo "Running publish stage..."
 
     git fetch --tags
-    check_upstream
+    check_upstream "HEAD~1"
 
     # push this branch and the associated tags
     git push --follow-tags
     
     # build image OCI reference
-    version=v$(cat VERSION)
+    vVersion=v$(cat VERSION)
     registry="ghcr.io"
     registryRepo=$registry/act3-ai/data-tool
-    imageRepoRef="${registryRepo}:${version}"
+    imageRepoRef="${registryRepo}:${vVersion}"
     echo "$imageRepoRef" > artifacts.txt
 
     # create release, upload artifacts
