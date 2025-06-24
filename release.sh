@@ -128,12 +128,9 @@ prompt_continue() {
 
 # check_upstream ensures remote upstream matches local HEAD.
 check_upstream() {
-    if [ "$force" = "false " ]; then
-        git diff "@{upstream}" --stat --exit-code || {
-            echo "Local HEAD does not match upstream"
-            echo "Please review 'git diff @{upstream}' and match remote upstream or use --force"
-            exit 1
-        }
+    if [ "$force" != "true" ]; then
+        echo "Comparing local HEAD to remote upstream"
+        git diff "@{upstream}" --stat --exit-code
     fi
 }
 
