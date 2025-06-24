@@ -14,7 +14,7 @@ meta:
 
 # List of Blueprints configured for this project
 blueprints:
-    - ref: https://github.com/act3-ai/blueprint-release.git
+    - ref: https://github.com/act3-ai/blueprint-release.git@v0.1.2
       inputs:
         executableName: ace-dt # Name of the Go executable
         helmChartDir: "" # Version and publish helm chart
