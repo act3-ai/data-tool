@@ -130,7 +130,7 @@ prompt_continue() {
 check_upstream() {
     if [ "$force" != "true" ]; then
         echo "Comparing local HEAD to remote upstream"
-        git diff "@{upstream}" --stat --exit-code
+        git diff "@{upstream}" HEAD --stat --exit-code
     fi
 }
 
