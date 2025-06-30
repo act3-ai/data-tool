@@ -1,6 +1,6 @@
 module github.com/act3-ai/data-tool
 
-go 1.24
+go 1.24.0
 
 toolchain go1.24.2
 
@@ -30,7 +30,7 @@ require (
 	golang.org/x/sync v0.15.0
 	golang.org/x/term v0.32.0
 	golang.org/x/text v0.26.0
-	k8s.io/apimachinery v0.32.3
+	k8s.io/apimachinery v0.33.2
 	k8s.io/utils v0.0.0-20250321185631-1f6e0b77f77e
 	oras.land/oras-go/v2 v2.6.0
 	sigs.k8s.io/yaml v1.4.0
@@ -88,6 +88,7 @@ require (
 	golang.org/x/oauth2 v0.30.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 	k8s.io/api v0.32.3 // indirect
+	sigs.k8s.io/randfill v1.0.0 // indirect
 )
 
 require (
@@ -99,7 +100,6 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hashicorp/go-version v1.7.0
 	github.com/huandu/xstrings v1.5.0 // indirect
