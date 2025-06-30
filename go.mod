@@ -18,7 +18,7 @@ require (
 	github.com/klauspost/compress v1.18.0
 	github.com/kopoli/go-terminal-size v0.0.0-20170219200355-5c97524c8b54
 	github.com/notaryproject/notation-core-go v1.3.0
-	github.com/notaryproject/notation-go v1.3.1
+	github.com/notaryproject/notation-go v1.3.2
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/sourcegraph/conc v0.3.0
