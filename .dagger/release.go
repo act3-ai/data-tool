@@ -134,8 +134,7 @@ func (r *Releaser) Publish(ctx context.Context,
 		Release().
 		WithFailFast().
 		WithNotes(r.Tool.Source.File(notesPath)).
-		Run().
-		Stdout(ctx)
+		Run(ctx)
 	if err != nil {
 		return "", fmt.Errorf("creating release: %w", err)
 	}
