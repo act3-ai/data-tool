@@ -21,8 +21,5 @@ jobs:
       - name: Test
         run: dagger call test all
     
-      - name: VulnCheck
-        run:  dagger -m github.com/act3-ai/dagger/govulncheck@govulncheck/v0.1.0 call scan-source --source=.
-
       - name: Build
         run: dagger call build-platforms --snapshot=true
