@@ -110,7 +110,7 @@ func (t *Tool) ImageIndex(ctx context.Context,
 			PlatformVariants: platformVariants,
 		})
 	if err != nil {
-		return "", fmt.Errorf("publishing index to %s: %w", ref, err)
+		return "", fmt.Errorf("publishing index to %s: %w", taggedRef, err)
 	}
 	result.WriteString("Successfully published image index to:\n")
 	result.WriteString(fmt.Sprintf("%s\n", dgstRef))
