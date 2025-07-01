@@ -103,21 +103,28 @@ func (t *Tool) ImageIndex(ctx context.Context,
 	}
 
 	var result strings.Builder
+
+	taggedRef := fmt.Sprintf("%s:%s", address, version)
+	dgstRef, err := dag.Container().
+		Publish(ctx, taggedRef, dagger.ContainerPublishOpts{
+			PlatformVariants: platformVariants,
+		})
+	if err != nil {
+		return "", fmt.Errorf("publishing index to %s: %w", ref, err)
+	}
 	result.WriteString("Successfully published image index to:\n")
-	for _, tag := range append([]string{version}, extraTags...) {
-		ref := fmt.Sprintf("%s:%s", address, tag)
-		r, err := dag.Container().
-			Publish(ctx, ref, dagger.ContainerPublishOpts{
-				PlatformVariants: platformVariants,
-			})
+	result.WriteString(fmt.Sprintf("%s\n", dgstRef))
+
+	if len(extraTags) > 0 {
+		_, err := dag.Release(t.Source).AddTags(ctx, taggedRef, extraTags)
 		if err != nil {
-			return "", fmt.Errorf("publishing index to %s: %w", ref, err)
+			return result.String(), fmt.Errorf("adding extra tags to image: %w", err)
 		}
-		result.WriteString(r)
-		result.WriteString("\n")
+		for _, tag := range extraTags {
+			result.WriteString(fmt.Sprintf("%s:%s\n", address, tag))
+		}
 	}
 	return result.String(), nil
-
 }
 
 func build(ctx context.Context,
