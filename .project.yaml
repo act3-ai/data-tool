@@ -16,12 +16,12 @@ meta:
 blueprints:
     - ref: https://github.com/act3-ai/blueprint-release.git@v0.1.2
       inputs:
-        executableName: ace-dt # Name of the Go executable
-        helmChartDir: "" # Version and publish helm chart
-        host: github.com # Release target host: github.com, gitlab.com, or a private gitlab host
-        includeDockerPublish: disabled # Publish container image using Dockerfile
-        includeGoreleaser: enabled # Release with goreleaser (go only at this time)
-        projectType: Go # Type of Project
+          executableName: ace-dt # Name of the Go executable
+          helmChartDir: "" # Version and publish helm chart
+          host: github.com # Release target host: github.com, gitlab.com, or a private gitlab host
+          includeDockerPublish: disabled # Publish container image using Dockerfile
+          includeGoreleaser: enabled # Release with goreleaser (go only at this time)
+          projectType: Go # Type of Project
 
 # Edit configuration interactively:
 #   Edit metadata:         act3-pt edit
