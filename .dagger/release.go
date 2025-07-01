@@ -78,7 +78,7 @@ func (r *Releaser) Prepare(ctx context.Context,
 	var err error
 
 	targetVersion := version
-	if targetVersion != "" {
+	if targetVersion == "" {
 		targetVersion, err = r.Version(ctx)
 		if err != nil {
 			return nil, fmt.Errorf("resolving release target version: %w", err)
