@@ -70,4 +70,4 @@ The `accept` field follows the [HTTP Accept header syntax](https://developer.moz
 
 In the example above, a bottle launched in the Hub GUI from a telemetry server will have the `ACE_OPEN_PATH` variable set to the absolute path of the artifact file.  When users open this Hub environment from the GUI, they will be taken directly to TensorBoard's interactive visualization.
 
-The TensorBoard example source code is available [here](https://git.act3-ace.com/ace/examples/ace-hub-demo/-/tree/master/tb).
+The TensorBoard example source code is available in the [hub demo](https://git.act3-ace.com/ace/examples/ace-hub-demo/-/tree/master/tb).
