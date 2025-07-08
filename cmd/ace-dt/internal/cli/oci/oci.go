@@ -20,6 +20,7 @@ func NewOciCmd(tool *actions.DataTool) *cobra.Command {
 	cmd.AddCommand(
 		newPushDirCmd(action),
 		newTreeCmd(action),
+		newIdxOfIdxCmd(action),
 	)
 	return cmd
 }
