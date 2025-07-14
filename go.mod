@@ -27,9 +27,9 @@ require (
 	go.etcd.io/bbolt v1.4.2
 	golang.org/x/exp v0.0.0-20250620022241-b7579e27df2b
 	golang.org/x/net v0.41.0
-	golang.org/x/sync v0.15.0
+	golang.org/x/sync v0.16.0
 	golang.org/x/term v0.32.0
-	golang.org/x/text v0.26.0
+	golang.org/x/text v0.27.0
 	k8s.io/apimachinery v0.33.2
 	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397
 	oras.land/oras-go/v2 v2.6.0
