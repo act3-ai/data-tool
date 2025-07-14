@@ -167,14 +167,13 @@ prepare() {
         vVersion=$(dagger -m="$mod_gitcliff" -s="$silent" --src="." call bumped-version)
     fi
 
-    # bump version, generate changelogs
-    dagger -s="$silent" --src="." call release prepare --ignore-error="$force" --version="$vVersion" export --path="."
-
-    vVersion=v$(cat "$version_path") # use file as source of truth
+       vVersion=v$(cat "$version_path") # use file as source of truth
     # verify release version with gorelease
     dagger -m="$mod_release" -s="$silent" --src="." call go verify --target-version="$vVersion" --current-version="$old_version"
 
-    
+    # bump version, generate changelogs
+    dagger -s="$silent" --src="." call release prepare --ignore-error="$force" --version="$vVersion" export --path="."
+
     echo -e "Successfully ran prepare stage.\n"
     echo -e "Please review the local changes, especially releases/$vVersion.md\n"
     if [ "$interactive" = "true" ] && [ "$(prompt_continue "approve")" = "true" ]; then
