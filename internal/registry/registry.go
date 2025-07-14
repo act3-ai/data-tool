@@ -96,7 +96,7 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 	return createRepository(ctx, newReg, parsedRef)
 }
 
-func createRegistry(ctx context.Context, url *url.URL, tls *v1alpha1.TLS, noncompliant bool, userAgent string, credStore credentials.Store) (*remote.Registry, error) {
+func createRegistry(ctx context.Context, endpoint *url.URL, tlsCfg *v1alpha1.TLS, noncompliant bool, userAgent string, credStore credentials.Store) (*remote.Registry, error) {
 	log := logger.FromContext(ctx)
 
 	var cache auth.Cache
@@ -107,7 +107,7 @@ func createRegistry(ctx context.Context, url *url.URL, tls *v1alpha1.TLS, noncom
 		cache = auth.DefaultCache
 	}
 
-	c, err := newHTTPClientWithOps(tls, url.Host, "")
+	c, err := newHTTPClientWithOps(tlsCfg, endpoint.Host, "")
 	if err != nil {
 		return nil, err
 	}
@@ -124,12 +124,12 @@ func createRegistry(ctx context.Context, url *url.URL, tls *v1alpha1.TLS, noncom
 				Credential: credentials.Credential(credStore),
 			},
 			Reference: registry.Reference{
-				Registry: url.Host,
+				Registry: endpoint.Host,
 				// we want to set the repository and reference after cacheing the registry
 				// Repository: parsedRef.Repository,
 				// Reference:  parsedRef.Reference,
 			},
-			PlainHTTP:       url.Scheme == "http",
+			PlainHTTP:       endpoint.Scheme == "http",
 			SkipReferrersGC: true,
 		},
 	}
