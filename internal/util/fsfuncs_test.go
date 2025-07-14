@@ -1,4 +1,4 @@
-package util
+package util //revive:disable-line
 
 import (
 	"os"
