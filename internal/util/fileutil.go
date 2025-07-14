@@ -4,7 +4,7 @@
 // - simple http operations.
 // - a set collection implementation.
 // - an unlimited channel (buffered channel) implementation.
-package util
+package util //revive:disable-line
 
 import (
 	"errors"
