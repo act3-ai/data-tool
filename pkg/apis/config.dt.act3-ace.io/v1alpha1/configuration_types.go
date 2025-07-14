@@ -151,6 +151,8 @@ type Registry struct {
 	Endpoints []string `json:"endpoints,omitempty"`
 	// RewritePull to pull from a specified mirrored location that may be different from the original
 	RewritePull map[string]string `json:"rewritePull,omitempty"`
+	// NonCompliant indicates a registry is not OCI compliant
+	NonCompliant bool `json:"noncompliant,omitempty"`
 }
 
 // EndpointConfig contains the specified TLS configuration for an endpoint and the endpoint's referrers type. This value can be

@@ -10,7 +10,9 @@ import (
 	"io/fs"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"time"
@@ -45,14 +47,20 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 	// In the case of a non-existent entry in the config, we return a default repository.
 	r := rc.Configs[parsedRef.Registry]
 
+	// if noncompliant use cache key of registry/repository
+	regName := parsedRef.Registry
+	if r.NonCompliant {
+		regName = path.Join(parsedRef.Registry, parsedRef.Repository)
+	}
+
 	// does the registry exist in our cache?
-	cachedReg, ok := cache.Exists(parsedRef.Registry)
+	cachedReg, ok := cache.Exists(regName)
 	if ok {
 		// we need to pass reg to some repo function that handles the rest of the bits
 		if cachedReg.RemoteRegistry.Reference.Registry != parsedRef.Registry {
 			log.InfoContext(ctx, "using alternate endpoint defined by registry configuration", "original", parsedRef.Registry, "alternate", cachedReg.RemoteRegistry.Reference.Registry)
 		}
-		return createRegistryRepository(ctx, cachedReg, parsedRef)
+		return createRepository(ctx, cachedReg, parsedRef)
 	}
 
 	endpointURL, err := ResolveEndpoint(rc, parsedRef)
@@ -73,7 +81,33 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 		endpointTLS = ecfg.TLS
 	}
 
-	c, err := newHTTPClientWithOps(endpointTLS, endpointURL.Host, "")
+	endpointReg, err := createRegistry(ctx, endpointURL, endpointTLS, r.NonCompliant, userAgent, credStore)
+	if err != nil {
+		return nil, fmt.Errorf("creating registry: %w", err)
+	}
+
+	// add the registry to the cache
+	newReg := regcache.Registry{
+		RemoteRegistry: endpointReg,
+		ReferrersType:  referrersType,
+		RewritePull:    r.RewritePull,
+	}
+	cache.AddRegistryToCache(regName, newReg)
+	return createRepository(ctx, newReg, parsedRef)
+}
+
+func createRegistry(ctx context.Context, url *url.URL, tls *v1alpha1.TLS, noncompliant bool, userAgent string, credStore credentials.Store) (*remote.Registry, error) {
+	log := logger.FromContext(ctx)
+
+	var cache auth.Cache
+	if noncompliant {
+		log.InfoContext(ctx, "noncompliant registry detected, using single context auth cache")
+		cache = auth.NewSingleContextCache()
+	} else {
+		cache = auth.DefaultCache
+	}
+
+	c, err := newHTTPClientWithOps(tls, url.Host, "")
 	if err != nil {
 		return nil, err
 	}
@@ -86,29 +120,21 @@ func CreateRepoWithCustomConfig(ctx context.Context, rc *v1alpha1.RegistryConfig
 				Header: http.Header{
 					"User-Agent": {userAgent},
 				},
-				Cache: auth.DefaultCache,
-				// Cache: auth.NewSingleContextCache(), // TODO could consider using this one
+				Cache:      cache,
 				Credential: credentials.Credential(credStore),
 			},
 			Reference: registry.Reference{
-				Registry: endpointURL.Host,
+				Registry: url.Host,
 				// we want to set the repository and reference after cacheing the registry
 				// Repository: parsedRef.Repository,
 				// Reference:  parsedRef.Reference,
 			},
-			PlainHTTP:       endpointURL.Scheme == "http",
+			PlainHTTP:       url.Scheme == "http",
 			SkipReferrersGC: true,
 		},
 	}
 
-	// add the registry to the cache
-	newReg := regcache.Registry{
-		RemoteRegistry: endpointReg,
-		ReferrersType:  referrersType,
-		RewritePull:    r.RewritePull,
-	}
-	cache.AddRegistryToCache(parsedRef.Registry, newReg)
-	return createRegistryRepository(ctx, newReg, parsedRef)
+	return endpointReg, nil
 }
 
 // if a nil TLS is passed, return a client with a logging transport wrapped in a retry transport.
@@ -210,7 +236,6 @@ func fetchCertsFromLocation(certDir string) (*tls.Config, error) {
 	}
 
 	if certDir != "" {
-
 		// Load client cert
 		cert, err := tls.LoadX509KeyPair(certFilePath, keyFilePath)
 		if err != nil {
@@ -240,7 +265,7 @@ func fetchCertsFromLocation(certDir string) (*tls.Config, error) {
 	return tlscfg, nil
 }
 
-func createRegistryRepository(ctx context.Context, r regcache.Registry, parsedRef registry.Reference) (registry.Repository, error) {
+func createRepository(ctx context.Context, r regcache.Registry, parsedRef registry.Reference) (registry.Repository, error) {
 	// handle repo rewrite
 	rewrittenRepo, err := handleRepoRewrite(parsedRef.Repository, r.RewritePull)
 	if err != nil {
