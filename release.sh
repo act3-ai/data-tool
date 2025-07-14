@@ -167,7 +167,6 @@ prepare() {
         vVersion=$(dagger -m="$mod_gitcliff" -s="$silent" --src="." call bumped-version)
     fi
 
-       vVersion=v$(cat "$version_path") # use file as source of truth
     # verify release version with gorelease
     dagger -m="$mod_release" -s="$silent" --src="." call go verify --target-version="$vVersion" --current-version="$old_version"
 
