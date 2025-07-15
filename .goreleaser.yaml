@@ -41,6 +41,7 @@ release:
   make_latest: envOrDefault "RELEASE_LATEST" "false" # don't add 'latest' tag by default
   mode: replace # if there's a need to re-release, don't duplicate the release notes
   skip_upload: false
+  replace_existing_artifacts: true
 
 checksum:
   name_template: ace-dt-v{{ .Version }}-checksums.txt
@@ -49,45 +50,36 @@ checksum:
     - ace-dt-archives
   disable: false
 
-homebrew_casks:
+brews:
   - name: ace-dt
-    directory: Casks
-    conflicts:
-      - formula: ace-dt
+    ids: [ace-dt-archives]
     commit_author:
       name: "{{ .Env.RELEASE_AUTHOR }}"
       email: "{{ .Env.RELEASE_AUTHOR_EMAIL }}"
     commit_msg_template: |
-      fix(ace-dt): brew cask update for ace-dt version {{ .Tag }}
+      fix(ace-dt): updated to {{ .Tag }}
     homepage: https://github.com/act3-ai/data-tool
     description: "A CLI tool for packaging, uploading, and downloading data from OCI registries."
     license: "MIT"
     skip_upload: auto # don't upload if prerelease
+    test: |
+      system "#{bin}/ace-dt version"
+    extra_install: |
+      generate_completions_from_executable(bin/"ace-dt", "completion")
+
+      # Generate manpages
+      mkdir "man" do
+        system bin/"ace-dt", "gendocs", "man", "."
+        man1.install Dir["*.1"]
+      end
+    directory: Formula
     repository:
       owner: act3-ai
       name: homebrew-tap
       branch: bump-ace-dt-{{ .Tag }}
       git:
-        url: 'ssh://git@github.com:act3-ai/homebrew-tap.git'
+        url: git@github.com:act3-ai/homebrew-tap.git
         private_key: "{{ .Env.SSH_PRIVATE_KEY }}" # set in .envrc.private
       pull_request:
         enabled: true
-    url:
-      template: "https://github.com/act3-ai/data-tool/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
-      using: ":homebrew_curl"
-    hooks:
-      post:
-        install: |
-          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
-            # replace 'foo' with the actual binary name
-            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/foo"]
-          end
-          generate_completions_from_executable(bin/"ace-dt", "completion")
-          mkdir "man" do
-            system bin/"ace-dt", "gendocs", "man", "."
-            man1.install Dir["*.1"]
-          end
-          system "#{bin}/ace-dt version"
-    uninstall:
-      delete:
-        - "~/.cache/ace/dt/"
+    url_template: "https://github.com/act3-ai/data-tool/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
