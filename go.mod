@@ -40,7 +40,7 @@ require (
 require (
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/google/go-containerregistry v0.20.6
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.0
 )
 
 require (
