@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/registry"
 
 	"github.com/act3-ai/go-common/pkg/logger"
 
@@ -40,11 +41,11 @@ func (action *FetchSBOM) Run(ctx context.Context) error { //nolint:gocognit
 	switch {
 	case action.GatherArtifactReference != "":
 		if action.Output != "-" {
-			gatherSBOMDirName, tag, err := ParseOriginalReference(action.GatherArtifactReference)
+			directorySBOMs, err := pathFromReference(action.Output, action.GatherArtifactReference)
 			if err != nil {
 				return err
 			}
-			directorySBOMs := filepath.Join(action.Output, gatherSBOMDirName, tag)
+
 			if err := os.MkdirAll(directorySBOMs, 0775); err != nil {
 				return fmt.Errorf("creating directory structure: %w", err)
 			}
@@ -89,12 +90,11 @@ func (action *FetchSBOM) Run(ctx context.Context) error { //nolint:gocognit
 			}
 			var currentPath string
 			if action.Output != "-" {
-				baseImage, tagOrReference, err := ParseOriginalReference(manifest.Annotations[ref.AnnotationSrcRef])
+				imageDir, err := pathFromReference(sbomDirectory, manifest.Annotations[ref.AnnotationSrcRef])
 				if err != nil {
 					return err
 				}
-				log.InfoContext(ctx, "creating subdirectory", "name", baseImage)
-				imageDir := filepath.Join(sbomDirectory, baseImage, tagOrReference)
+				log.InfoContext(ctx, "creating subdirectory", "name", imageDir)
 				if err := os.MkdirAll(imageDir, 0775); err != nil {
 					return fmt.Errorf("creating directory structure: %w", err)
 				}
@@ -148,10 +148,6 @@ func (action *FetchSBOM) Run(ctx context.Context) error { //nolint:gocognit
 		if err != nil {
 			return err
 		}
-		image, tag, err := ParseOriginalReference(action.SourceImage)
-		if err != nil {
-			return err
-		}
 
 		platformSBOMs, err := sbom.FetchImageSBOM(ctx, endpointReference.String(), repository, action.Platforms)
 		if err != nil {
@@ -167,7 +163,11 @@ func (action *FetchSBOM) Run(ctx context.Context) error { //nolint:gocognit
 		}
 
 		if action.Output != "-" {
-			directorySBOMs := filepath.Join(action.Output, image, tag)
+			directorySBOMs, err := pathFromReference(action.Output, action.SourceImage)
+			if err != nil {
+				return err
+			}
+
 			// create the directory for the SBOMs to go in
 			if err := os.MkdirAll(directorySBOMs, 0775); err != nil {
 				return fmt.Errorf("creating subdirectory %s for SBOMs: %w", directorySBOMs, err)
@@ -219,22 +219,16 @@ func (action *FetchSBOM) Run(ctx context.Context) error { //nolint:gocognit
 	return nil
 }
 
-// ParseOriginalReference splits a string reference into a repository and a tag or digest reference.
-func ParseOriginalReference(reference string) (string, string, error) {
-	var image string
-	var tagOrDigest string
-
-	s := strings.Split(reference, "@")
-	if len(s) != 2 {
-		d := strings.Split(reference, ":")
-		if len(d) != 2 {
-			return "", "", fmt.Errorf("invalid reference, expecting tag or digest: %s", reference)
-		}
-		image = d[0]
-		tagOrDigest = d[1]
-	} else {
-		image = s[0]
-		tagOrDigest = s[1]
+// parseOriginalReference splits a string reference into a repository and a tag or digest reference.
+func pathFromReference(base, reference string) (string, error) {
+	r, err := registry.ParseReference(reference)
+	if err != nil {
+		return "", fmt.Errorf("parsing reference: %w", err)
 	}
-	return image, tagOrDigest, nil
+
+	if r.Reference == "" {
+		r.Reference = "latest"
+	}
+
+	return filepath.Join(base, r.Registry, r.Repository, r.Reference), nil
 }
