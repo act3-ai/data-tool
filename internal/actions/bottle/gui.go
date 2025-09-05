@@ -67,9 +67,10 @@ func (action *GUI) Run(ctx context.Context, out io.Writer) error {
 	}
 	mux.Handle("GET /assets/", http.StripPrefix("/assets", http.FileServerFS(templatesAssetsDir)))
 
-	// we create our own Listener because we need a way to get th port that it chooses (when port is 0).
+	// we create our own Listener because we need a way to get the port that it chooses (when port is 0).
 	// http server's ListenAndServe() does not provide access to that.
-	listener, err := net.Listen("tcp", action.Listen)
+	cfg := net.ListenConfig{}
+	listener, err := cfg.Listen(ctx, "tcp", action.Listen)
 	if err != nil {
 		return fmt.Errorf("could not create tcp listener: %w", err)
 	}
@@ -99,7 +100,7 @@ func (action *GUI) Run(ctx context.Context, out io.Writer) error {
 	})
 
 	if !action.DisableBrowser {
-		if err = openBrowser(u); err != nil {
+		if err = openBrowser(ctx, u); err != nil {
 			return fmt.Errorf("error occurred while opening browser: %w", err)
 		}
 	}
@@ -202,16 +203,16 @@ func (h *handlers) bottlePost(w http.ResponseWriter, r *http.Request) {
 	h.done <- nil
 }
 
-func openBrowser(u string) error {
+func openBrowser(ctx context.Context, u string) error {
 	var err error
 
 	switch runtime.GOOS {
 	case "linux":
-		err = exec.Command("xdg-open", u).Start()
+		err = exec.CommandContext(ctx, "xdg-open", u).Start()
 	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", u).Start()
+		err = exec.CommandContext(ctx, "rundll32", "url.dll,FileProtocolHandler", u).Start()
 	case "darwin":
-		err = exec.Command("open", u).Start()
+		err = exec.CommandContext(ctx, "open", u).Start()
 	default:
 		err = fmt.Errorf("unsupported platform")
 	}

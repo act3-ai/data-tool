@@ -29,7 +29,7 @@ func CheckGitVersion(ctx context.Context, altExec string) (string, error) {
 		log.InfoContext(ctx, "Using alternate git executable", "path", altExec)
 	}
 
-	gitVersion, err := getGitVersion(altExec)
+	gitVersion, err := getGitVersion(ctx, altExec)
 	if err != nil {
 		return "", fmt.Errorf("checking git version: %w", err)
 	}
@@ -47,11 +47,11 @@ var gitVersionRegex = regexp.MustCompile(`git version (\d*\.\d*\.\d*)`)
 
 // getGitVersion shells out and parses the version of git being used. Returns major, minor, patch.
 // gitExec is the path to the git executable (default is "git").
-func getGitVersion(gitExec string) (string, error) {
+func getGitVersion(ctx context.Context, gitExec string) (string, error) {
 	if gitExec == "" {
 		gitExec = "git"
 	}
-	buf, err := exec.Command(gitExec, "version").Output()
+	buf, err := exec.CommandContext(ctx, gitExec, "version").Output()
 	if err != nil {
 		return "", fmt.Errorf("running git cmd: %w", err)
 	}

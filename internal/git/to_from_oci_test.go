@@ -489,7 +489,7 @@ func Test_AltGitExec(t *testing.T) {
 
 	gitDir := t.TempDir()
 
-	whichCmd := exec.Command("which", "git")
+	whichCmd := exec.CommandContext(t.Context(), "which", "git")
 	out, err := whichCmd.Output()
 	if err != nil {
 		t.Fatalf("executing 'which git' command: %v", err)
@@ -508,7 +508,7 @@ func Test_AltGitLFSExec(t *testing.T) {
 
 	gitDir := t.TempDir()
 
-	whichCmd := exec.Command("which", "git-lfs")
+	whichCmd := exec.CommandContext(t.Context(), "which", "git-lfs")
 	out, err := whichCmd.Output()
 	if err != nil {
 		t.Fatalf("executing 'which git-lfs' command: %v", err)

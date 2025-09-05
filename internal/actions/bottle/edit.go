@@ -98,7 +98,7 @@ func OpenFileInEditor(ctx context.Context, editor string, filename string) error
 		return fmt.Errorf("error obtaining path to editor executable: %w", err)
 	}
 
-	cmd := exec.Command(executable, filename)
+	cmd := exec.CommandContext(ctx, executable, filename)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
