@@ -24,7 +24,7 @@ ace-dt sbom fetch [flags]
 ```sh
 
 		To save the SBOMs for an image to a destination directory:
-		ace-dt sbom fetch -- image reg.example.com/image1:tag1 -o dest/dir
+		ace-dt sbom fetch --image reg.example.com/image1:tag1 -o dest/dir
 
 		To print the SBOMs for a gathered image to standard out:
 		ace-dt sbom fetch --gathered-image localhost:5000/gather:sync-1 -o -
