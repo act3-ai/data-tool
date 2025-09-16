@@ -149,7 +149,7 @@ func (ow *OCILayoutSerializer) SaveBlob(ctx context.Context, fetcher content.Fet
 
 	r, err := fetcher.Fetch(ctx, blob)
 	if err != nil {
-		return fmt.Errorf("fetch blob: %w", err)
+		return fmt.Errorf("fetch blob to save: %w", err)
 	}
 	defer r.Close()
 

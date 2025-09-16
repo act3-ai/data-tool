@@ -127,8 +127,10 @@ func copyFilterOnPlatformIndex(ctx context.Context, c *Copier) ([]ocispec.Descri
 	copyErrs := make([]error, 0)
 	for _, manDesc := range idx.Manifests {
 		platform := manDesc.Platform
-		for i, wantPlatform := range c.platforms {
+		found := false
+		for _, wantPlatform := range c.platforms {
 			if match(platform, wantPlatform) {
+				found = true
 				err := oras.CopyGraph(ctx, c.src, c.dest, manDesc, c.options.CopyGraphOptions)
 				if err != nil && !errors.Is(err, errdef.ErrNotFound) {
 					copyErrs = append(copyErrs, fmt.Errorf("copying sub-DAG for platform '%s': %w", platform.OS+"/"+platform.Architecture, err))
@@ -136,12 +138,12 @@ func copyFilterOnPlatformIndex(ctx context.Context, c *Copier) ([]ocispec.Descri
 				}
 				platformDescriptors = append(platformDescriptors, manDesc)
 				break
-			} else if i == len(c.platforms) {
-				// no match
-				c.log.InfoContext(ctx, "platform not found in index", "indexDesc", c.root, "platform", platform.OS+"/"+platform.Architecture)
 			}
 		}
-
+		if !found {
+			// no match
+			c.log.InfoContext(ctx, "platform not found in index", "indexDesc", c.root, "manDesc", manDesc, "platform", platform.OS+"/"+platform.Architecture)
+		}
 	}
 	if len(copyErrs) > 0 {
 		return nil, errors.Join(copyErrs...)
@@ -178,7 +180,8 @@ func copyFilterOnPlatformManifest(ctx context.Context, c *Copier) ([]ocispec.Des
 		return nil, fmt.Errorf("decoding manifest config: %w", err)
 	}
 
-	for i, wantPlatform := range c.platforms {
+	found := false
+	for _, wantPlatform := range c.platforms {
 		if match(&platform, wantPlatform) {
 			err := oras.CopyGraph(ctx, c.src, c.dest, c.root, c.options.CopyGraphOptions)
 			if err != nil && !errors.Is(err, errdef.ErrNotFound) {
@@ -186,10 +189,11 @@ func copyFilterOnPlatformManifest(ctx context.Context, c *Copier) ([]ocispec.Des
 			}
 			platformDescriptors = append(platformDescriptors, c.root)
 			break
-		} else if i == len(c.platforms) {
-			// no match
-			c.log.InfoContext(ctx, "manifest does not match any wanted platform", "desc", c.root, "platform", platform.OS+"/"+platform.Architecture)
 		}
+	}
+	if !found {
+		// no match
+		c.log.InfoContext(ctx, "manifest does not match any wanted platform", "desc", c.root, "platform", platform.OS+"/"+platform.Architecture)
 	}
 	return platformDescriptors, nil
 }
