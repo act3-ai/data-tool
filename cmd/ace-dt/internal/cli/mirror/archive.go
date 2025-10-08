@@ -24,7 +24,7 @@ func newArchiveCmd(tool *actions.Action) *cobra.Command {
 	var existingCheckpoints []string
 
 	cmd := &cobra.Command{ //nolint:dupl
-		Use:   "archive SOURCES-FILE DEST-FILE",
+		Use:   "archive SOURCES-FILE DEST-FILE [EXISTING-IMAGE...]",
 		Short: "Efficiently copies images listed in SOURCES-FILE to the DEST-FILE in TAR format",
 		Long: `Efficiently copies images listed in SOURCES-FILE to the DEST-FILE in TAR format. If it is a tape archive better performance can be had by setting --buffer-size=1Gi or larger.  The tar file can also be written to the tape after serialization is completed (see "ace-dt util mbuffer").
 		Because this is a combination of mirror gather and mirror serialize, it inherits all of the flags and options defined in those commands.
