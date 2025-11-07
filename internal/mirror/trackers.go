@@ -88,7 +88,7 @@ func extractBlobs(ctx context.Context, exists func(ocispec.Descriptor), fetcher 
 		if encoding.IsManifest(d.MediaType) {
 			// recurse
 			if err := extractBlobs(ctx, exists, fetcher, d); err != nil {
-				return err
+				return fmt.Errorf("extracting blobs for %s: %w", desc.Digest, err)
 			}
 			// we do not record manifests (for now)
 			continue
