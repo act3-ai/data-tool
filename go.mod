@@ -15,19 +15,19 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/gosuri/uitable v0.0.4
-	github.com/klauspost/compress v1.18.0
+	github.com/klauspost/compress v1.18.1
 	github.com/kopoli/go-terminal-size v0.0.0-20170219200355-5c97524c8b54
 	github.com/notaryproject/notation-core-go v1.3.0
 	github.com/notaryproject/notation-go v1.3.2
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.1.1
 	github.com/sourcegraph/conc v0.3.0
-	github.com/spf13/cobra v1.9.1
-	github.com/spf13/pflag v1.0.6
+	github.com/spf13/cobra v1.10.1
+	github.com/spf13/pflag v1.0.9
 	go.etcd.io/bbolt v1.4.2
 	golang.org/x/exp v0.0.0-20250711185948-6ae5c78190dc
 	golang.org/x/net v0.42.0
-	golang.org/x/sync v0.16.0
+	golang.org/x/sync v0.18.0
 	golang.org/x/term v0.33.0
 	golang.org/x/text v0.27.0
 	k8s.io/apimachinery v0.33.2
@@ -39,7 +39,7 @@ require (
 // testing only dependencies
 require (
 	github.com/fortytw2/leaktest v1.3.0
-	github.com/google/go-containerregistry v0.20.6
+	github.com/google/go-containerregistry v0.20.7
 	github.com/stretchr/testify v1.10.0
 )
 
@@ -85,8 +85,8 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
 	golang.org/x/crypto v0.40.0 // indirect
-	golang.org/x/mod v0.26.0 // indirect
-	golang.org/x/oauth2 v0.30.0 // indirect
+	golang.org/x/mod v0.30.0 // indirect
+	golang.org/x/oauth2 v0.33.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	k8s.io/api v0.32.3 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
@@ -122,7 +122,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
-	golang.org/x/sys v0.34.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
