@@ -15,7 +15,7 @@ require (
 	github.com/fatih/color v1.18.0
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/gosuri/uitable v0.0.4
-	github.com/klauspost/compress v1.18.0
+	github.com/klauspost/compress v1.18.2
 	github.com/kopoli/go-terminal-size v0.0.0-20170219200355-5c97524c8b54
 	github.com/notaryproject/notation-core-go v1.3.0
 	github.com/notaryproject/notation-go v1.3.2
