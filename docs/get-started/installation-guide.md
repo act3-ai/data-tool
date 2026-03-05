@@ -8,18 +8,22 @@ This documentation is written for Data Tool users who have not run the ACT3 Logi
 
 Several alternate installation methods are available:
 
-- Docker
+- Homebrew Tap
+- OCI Image
 - Install with Go
 - Prebuilt binary
 - Build from source
 
-### Docker
+### Homebrew Tap
 
-Data Tool is included in the `reg.git.act3-ace.com/devsecops/dev-tools` image.
+A pre-built binary is available on the act3-ai homebrew tap.
 
-The [dev-tools project](https://git.act3-ace.com/ace/dev-tools) also packages Data Tool in an image by itself. This allows developers to pull the Data Tool image into another image.  
+- `brew tap act3-ai/tap`
+- `brew install ace-dt`
 
-See the example [Dockerfile](https://gitlab.com/act3-ai/asce/data/tool/-/blob/main/sample/Dockerfile?ref_type=heads) for example usage.
+### OCI Image (Docker-like Image)
+
+Container runtime images for supported platforms are available in the [Github package registry](https://github.com/act3-ai/data-tool/pkgs/container/data-tool).
 
 ### Install with Go
 
@@ -28,12 +32,6 @@ First, install and configure Go, using any of the following options:
 - [Official Go installer](https://go.dev/doc/install)
 - `brew install go`
 - `snap install go --classic`
-
-Then run:
-
-```shell
-go env -w GOPRIVATE=git.act3-ace.com
-```
 
 Installing Data Tool using the Go approach works on all platforms supported by Go. When Data Tool is installed with Go, the executable is built on the system and it is therefore not subject to security restrictions.
 
@@ -46,20 +44,18 @@ On UNIX/macOS the file is at `~/.netrc` and on Windows it is `~/_netrc`. You may
 The correct structure for the file is shown below:
 
 ```txt
-machine git.act3-ace.com
+machine github.com
     login your-username
-    password your-gitlab-personal-access-token
+    password your-github-personal-access-token
 ```
-
-> See [this post](https://seankhliao.com/blog/12021-04-29-go-private-modules-in-gitlab/) for more information and troubleshooting related to private GitLab repositories with Go.
 
 Install `ace-dt` with
 
 ```sh
-go install gitlab.com/act3-ai/asce/data/tool/cmd/ace-dt@latest
+go install github.com/act3-ai/data-tool/cmd/ace-dt@latest
 ```
 
-You may replace `<latest>` with a tag you would like to install.  
+You may replace `<latest>` with a tag you would like to install.
 
 `go install` adds the executable to your `$GOPATH/bin`, so make sure it is on your `$PATH`.
 
@@ -73,7 +69,11 @@ Depending on the installation method used, you may need to manually install auto
 
 ### Prebuilt Binary
   
-A list of prebuilt binaries is available on Data Tool's [GitLab Release page](https://gitlab.com/act3-ai/asce/data/tool/-/releases). Options are available for 64-bit Linux, macOS, and Windows.
+A list of archived prebuilt binaries is available on Data Tool's [GitHub Release page](https://github.com/act3-ai/data-tool/releases). Options are available for 64-bit Linux, macOS, and Windows.
+
+Archives include an executable, LICENSE, and release notes for the downloaded version.
+
+Download the respective archive for your system, extract it, and move `ace-dt` where desired.
 
 These are unsigned binaries.
 
@@ -84,30 +84,22 @@ These are unsigned binaries.
 
 > Updating the quarantine attribute will place the output ace-dt executable in the ./bin directory when the build is complete
 
-**Linux users** need to:
-
-- Rename the downloaded file to `ace-dt`
-- Change the permissions of the downloaded file to make it executable:
-
-```sh
-chmod +x <filename>
-```
-
-**Windows users** need to:
-
-- Rename the downloaded file to `ace-dt.exe`
-- No permissions need to be changed
-
 ### Build from Source
 
 Clone the `tool` repository to your local working directory:
 
 ```sh
-git clone git@git.act3-ace.com:ace/data/tool.git
+git clone git@github.com:act3-ai/data-tool.git
 ```
 
-Change into the the root of the cloned repository, then run:
+Then change into the the root of the cloned repository.
 
-```sh
-make
-```
+#### Build with Dagger
+
+Dagger is a tool we use to build reusable pipelines, utilized in both CI and local dev environments. You can utilize our pipeline build process to build from source. See [dagger docs](https://docs.dagger.io/).
+
+`dagger call build --platform linux/amd64 export --path path/to/destination`
+
+#### Build with Go
+
+`go build -o path/to/destination ./cmd/ace-dt`
