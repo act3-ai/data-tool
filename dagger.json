@@ -1,6 +1,6 @@
 {
   "name": "tool",
-  "engineVersion": "v0.18.12",
+  "engineVersion": "v0.20.1",
   "sdk": {
     "source": "go"
   },
@@ -51,5 +51,6 @@
       "pin": "60a0f44023632f89f3c8701435d0c8a3ed57e644"
     }
   ],
-  "source": ".dagger"
+  "source": ".dagger",
+  "disableDefaultFunctionCaching": true
 }
