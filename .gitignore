@@ -1,4 +1,6 @@
 /bin/*
+!/bin/lib.release.sh
+!/bin/release.sh
 /tool
 /coverage*.*
 /report.*
