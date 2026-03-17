@@ -47,8 +47,8 @@
     },
     {
       "name": "shellcheck",
-      "source": "github.com/dagger/dagger/modules/shellcheck@v0.18.12",
-      "pin": "60a0f44023632f89f3c8701435d0c8a3ed57e644"
+      "source": "github.com/dagger/dagger/modules/shellcheck@v0.20.1",
+      "pin": "04727b5af8fa5d399f3bf87df4ff918c1f157685"
     },
     {
       "name": "wolfi",
