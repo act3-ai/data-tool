@@ -37,8 +37,8 @@
     },
     {
       "name": "release",
-      "source": "github.com/act3-ai/dagger/release@release/v0.1.9",
-      "pin": "33748b33d71e31975d7297922fd2267341fae06d"
+      "source": "github.com/act3-ai/dagger/release@release/v0.3.11",
+      "pin": "ea47f34bdf38d52c5f66bd266d3021e2b6e37cef"
     },
     {
       "name": "shellcheck",
