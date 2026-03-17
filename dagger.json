@@ -16,6 +16,11 @@
       "pin": "04727b5af8fa5d399f3bf87df4ff918c1f157685"
     },
     {
+      "name": "go-coverage",
+      "source": "github.com/act3-ai/dagger/gocoverage@gocoverage/v0.2.2",
+      "pin": "a2ef82ee644a892da3b9bf40137e6003d9dc42a7"
+    },
+    {
       "name": "golangci-lint",
       "source": "github.com/sagikazarmark/daggerverse/golangci-lint@golangci-lint/v0.9.0",
       "pin": "e6c14178bcaaff9e102e2a89173ca31479b80629"
