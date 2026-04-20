@@ -54,7 +54,7 @@ ace-dt mirror scatter reg.example.com/repo/data:sync-45 longest-prefix=mapping.c
 ace-dt mirror scatter reg.example.com/repo/data:sync-45 all-prefix=mapping.csv
 
 To scatter by filtering on manifest labels, you can use
-ace-dt mirror scatter reg.example.com/repo/data:sync-45 nest=ref.other.com/mirror --filter-labels=component=core,module=test
+ace-dt mirror scatter reg.example.com/repo/data:sync-45 nest=ref.other.com/mirror --selector=component=core,module=test
 `,
 
 		Args: cobra.ExactArgs(2),
