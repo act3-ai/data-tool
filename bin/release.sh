@@ -14,11 +14,4 @@ changed_files+=(
     # TODO
 )
 
-# command to run the prepare phase
-function dagger_prepare() {
-    dagger "${dagger_args[@]}" call prepare-release
-    # TODO once checks are callable from dagger functions we can remove this
-    dagger "${dagger_args[@]}" check
-}
-
 main "$@"
