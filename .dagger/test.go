@@ -16,11 +16,11 @@ const (
 )
 
 // Run tests.
-func (t *Tool) Test() *Test {
+func (m *DataTool) Test() *Test {
 	return &Test{
-		Source:         t.Source,
-		Netrc:          t.Netrc,
-		RegistryConfig: t.RegistryConfig,
+		Source:         m.Source,
+		Netrc:          m.Netrc,
+		RegistryConfig: m.RegistryConfig,
 	}
 }
 
@@ -53,9 +53,10 @@ func (t *Test) All(ctx context.Context) (string, error) {
 
 // Run unit tests.
 func (t *Test) Unit(ctx context.Context) (string, error) {
-	return dag.Go().
-		WithSource(t.Source).
-		Container().
+	return dag.Go(dagger.GoOpts{
+		Source: t.Source,
+	}).
+		Env().
 		WithExec([]string{"apt", "update"}).
 		WithExec([]string{"apt", "install", "-y", "git-lfs"}).
 		WithExec([]string{"go", "test", "./..."}).
@@ -98,9 +99,10 @@ func (t *Test) Functional(ctx context.Context) (string, error) {
 		return "", err
 	}
 	acedtConfigPath := "ace-dt-config.yaml"
-	results, err := dag.Go().
-		WithSource(t.Source).
-		Container().
+	results, err := dag.Go(dagger.GoOpts{
+		Source: t.Source,
+	}).
+		Env().
 		// dependency for ace-dt git tests
 		WithExec([]string{"apt", "update"}).
 		WithExec([]string{"apt", "install", "-y", "git-lfs"}).
@@ -158,7 +160,7 @@ func (t *Test) Integration(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	acedt := build(ctx, t.Source, "linux/amd64", true)
+	acedt := build(t.Source, "linux/amd64", true)
 
 	originalBottleRef := "ghcr.io/act3-ai/data-tool/bottles/mnist:v1.6"
 	bottleID, err := dag.Wolfi().
@@ -230,9 +232,10 @@ func (t *Test) Integration(ctx context.Context) (string, error) {
 
 // Run benchmark tests.
 func (t *Test) Bench(ctx context.Context) (string, error) {
-	return dag.Go().
-		WithSource(t.Source).
-		Container().
+	return dag.Go(dagger.GoOpts{
+		Source: t.Source,
+	}).
+		Env().
 		WithExec([]string{"go", "test", "./...", "-benchmem", "-bench=.", "-run=^$"}).
 		Stdout(ctx)
 }

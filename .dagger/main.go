@@ -20,21 +20,16 @@ import (
 
 const (
 	// images
-	imageGitCliff   = "docker.io/orhunp/git-cliff:2.8.0"
 	imageGrype      = "anchore/grype:latest"
 	imageSyft       = "anchore/syft:latest"
 	imageRegistry   = "docker.io/library/registry:3.0.0-rc.3"
 	imageTelemetry  = "ghcr.io/act3-ai/data-telemetry/slim:latest"
 	imageChainguard = "cgr.dev/chainguard/static"
 	imagePostgres   = "postgres:17-alpine"
-	imageGoReleaser = "ghcr.io/goreleaser/goreleaser:v2.8.2"
-
-	// go tools
-	goControllerGen = "sigs.k8s.io/controller-tools/cmd/controller-gen@v0.17.2"
-	goCrdRefDocs    = "github.com/elastic/crd-ref-docs@v0.1.0"
+	imageGoReleaser = "ghcr.io/goreleaser/goreleaser:v2.15.3"
 )
 
-type Tool struct {
+type DataTool struct {
 	// source code directory
 	Source *dagger.Directory
 
@@ -48,40 +43,40 @@ func New(
 	// top level source code directory
 	// +defaultPath="/"
 	src *dagger.Directory,
-) *Tool {
-	return &Tool{
+) *DataTool {
+	return &DataTool{
 		Source:         src,
 		RegistryConfig: dag.RegistryConfig(),
 	}
 }
 
 // Add credentials for a registry.
-func (t *Tool) WithRegistryAuth(
+func (m *DataTool) WithRegistryAuth(
 	// registry's hostname
 	address string,
 	// username in registry
 	username string,
 	// password or token for registry
 	secret *dagger.Secret,
-) *Tool {
-	t.RegistryConfig = t.RegistryConfig.WithRegistryAuth(address, username, secret)
-	return t
+) *DataTool {
+	m.RegistryConfig = m.RegistryConfig.WithRegistryAuth(address, username, secret)
+	return m
 }
 
 // Removes credentials for a registry.
-func (t *Tool) WithoutRegistryAuth(
+func (m *DataTool) WithoutRegistryAuth(
 	// registry's hostname
 	address string,
-) *Tool {
-	t.RegistryConfig = t.RegistryConfig.WithoutRegistryAuth(address)
-	return t
+) *DataTool {
+	m.RegistryConfig = m.RegistryConfig.WithoutRegistryAuth(address)
+	return m
 }
 
 // Add netrc credentials for a private git repository.
-func (t *Tool) WithNetrc(
+func (m *DataTool) WithNetrc(
 	// NETRC credentials
 	netrc *dagger.Secret,
-) *Tool {
-	t.Netrc = netrc
-	return t
+) *DataTool {
+	m.Netrc = netrc
+	return m
 }

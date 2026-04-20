@@ -10,9 +10,9 @@ import (
 )
 
 // Run linters.
-func (t *Tool) Lint() *Lint {
+func (m *DataTool) Lint() *Lint {
 	return &Lint{
-		Source: t.Source,
+		Source: m.Source,
 	}
 }
 

@@ -17,12 +17,12 @@ import (
 //
 //		GOOS: linux, windows, darwin
 //		GOARCH: amd64, arm64
-func (t *Tool) BuildPlatforms(ctx context.Context,
+func (m *DataTool) BuildPlatforms(
 	// Snapshot build, skipping goreleaser validations. Useful for building committed git history that isn't tagged with a release, a dirty repo does an "auto-snapshot".
 	// +optional
 	snapshot bool,
 ) *dagger.Directory {
-	return dag.Goreleaser(t.Source).
+	return dag.Goreleaser(m.Source).
 		Build().
 		With(func(r *dagger.GoreleaserBuild) *dagger.GoreleaserBuild {
 			if snapshot {
@@ -40,7 +40,7 @@ func (t *Tool) BuildPlatforms(ctx context.Context,
 //
 //	GOOS: linux, windows, darwin
 //	GOARCH: amd64, arm64
-func (t *Tool) Build(ctx context.Context,
+func (m *DataTool) Build(ctx context.Context,
 	// Build target platform
 	// +optional
 	// +default="linux/amd64"
@@ -49,11 +49,11 @@ func (t *Tool) Build(ctx context.Context,
 	// +optional
 	snapshot bool,
 ) *dagger.File {
-	return build(ctx, t.Source, platform, snapshot)
+	return build(m.Source, platform, snapshot)
 }
 
 // Create an image with an ace-dt executable.
-func (t *Tool) Image(ctx context.Context,
+func (m *DataTool) Image(ctx context.Context,
 	// image version
 	version string,
 	// Build target platform
@@ -63,14 +63,14 @@ func (t *Tool) Image(ctx context.Context,
 ) *dagger.Container {
 	ctr := dag.Container(dagger.ContainerOpts{Platform: platform}).
 		From(imageChainguard).
-		WithFile("/usr/local/bin/ace-dt", t.Build(ctx, platform, false)).
+		WithFile("/usr/local/bin/ace-dt", m.Build(ctx, platform, false)).
 		WithEntrypoint([]string{"ace-dt"}).
 		WithWorkdir("/")
 	return withCommonLabels(ctr, version)
 }
 
 // Create and publish a multi-platform image index.
-func (t *Tool) ImageIndex(ctx context.Context,
+func (m *DataTool) ImageIndex(ctx context.Context,
 	// image version
 	version string,
 	// build platforms
@@ -90,7 +90,7 @@ func (t *Tool) ImageIndex(ctx context.Context,
 	p := pool.NewWithResults[*dagger.Container]().WithContext(ctx)
 	for _, platform := range platforms {
 		p.Go(func(ctx context.Context) (*dagger.Container, error) {
-			img := t.Image(ctx, version, platform).
+			img := m.Image(ctx, version, platform).
 				WithLabel("org.opencontainers.image.url", imgURL).
 				WithLabel("org.opencontainers.image.source", "https://github.com/act3-ai/data-tool")
 			return img, nil
@@ -116,7 +116,7 @@ func (t *Tool) ImageIndex(ctx context.Context,
 	result.WriteString(fmt.Sprintf("%s\n", dgstRef))
 
 	if len(extraTags) > 0 {
-		_, err := dag.Release(t.Source).AddTags(ctx, taggedRef, extraTags)
+		_, err := dag.Release(nil).AddTags(ctx, taggedRef, extraTags)
 		if err != nil {
 			return result.String(), fmt.Errorf("adding extra tags to image: %w", err)
 		}
@@ -127,7 +127,7 @@ func (t *Tool) ImageIndex(ctx context.Context,
 	return result.String(), nil
 }
 
-func build(ctx context.Context,
+func build(
 	src *dagger.Directory,
 	platform dagger.Platform,
 	// snapshot build, skip goreleaser validations
