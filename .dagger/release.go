@@ -15,74 +15,24 @@ const (
 	repo = "act3-ai/data-tool"
 )
 
-// Run release steps.
-func (t *Tool) Release() *Releaser {
-	return &Releaser{
-		Tool: t,
-	}
-}
-
-// Releaser provides utilties for preparing and publishing releases
-// with git-cliff.
-type Releaser struct {
-	Tool *Tool
-}
-
-// Run linters, unit, functional, and integration tests.
-func (r *Releaser) Check(ctx context.Context) (string, error) {
-	err := r.diffGenAll(ctx)
-	if err != nil {
-		return "", err
-	}
-
-	// lint, unit test
-	_, err = dag.Release(r.Tool.Source).
-		Go().
-		Check(ctx,
-			dagger.ReleaseGolangCheckOpts{
-				UnitTestBase: dag.Go().
-					WithSource(r.Tool.Source).
-					Container().
-					WithExec([]string{"apt", "update"}).
-					WithExec([]string{"apt", "install", "-y", "git-lfs"}),
-			},
-		)
-	if err != nil {
-		return "", fmt.Errorf("running linters and unit tests: %w", err)
-	}
-
-	// functional test
-	_, err = r.Tool.Test().Functional(ctx)
-	if err != nil {
-		return "", fmt.Errorf("running functional tests: %w", err)
-	}
-
-	// integration test
-	// _, err = r.Tool.Test().Integration(ctx)
-	// if err != nil {
-	// 	return "", fmt.Errorf("running integration tests: %w", err)
-	// }
-
-	return "Successfully passed linters and tests", nil
-}
-
 // Update the version, changelog, and release notes.
-func (r *Releaser) Prepare(ctx context.Context,
-	// ignore git status checks
-	// +optional
-	ignoreError bool,
+func (m *DataTool) PrepareRelease(ctx context.Context,
+	// Git reference to release (can use "." for the current commit)
+	// +defaultPath="."
+	gitRef *dagger.GitRef,
 	// release with a specific version
 	// +optional
 	version string,
-) (*dagger.Directory, error) {
-	var err error
+) (*dagger.Changeset, error) {
+	release := dag.Release(gitRef)
 
-	targetVersion := version
-	if targetVersion == "" {
-		targetVersion, err = r.Version(ctx)
+	// compute the version if not provided
+	if version == "" {
+		v, err := release.Version(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("resolving release target version: %w", err)
+			return nil, err
 		}
+		version = v
 	}
 
 	// Note: Changes to existing or inclusions of additional image references
@@ -90,18 +40,15 @@ func (r *Releaser) Prepare(ctx context.Context,
 	b := &strings.Builder{}
 	b.WriteString("| Images |\n")
 	b.WriteString("| ---------------------------------------------------- |\n")
-	fmt.Fprintf(b, "| %s/%s:%s |\n\n", reg, repo, targetVersion)
+	fmt.Fprintf(b, "| %s/%s:%s |\n\n", reg, repo, version)
 
-	return dag.Release(r.Tool.Source).
-		Prepare(dagger.ReleasePrepareOpts{
-			Version:     targetVersion,
-			ExtraNotes:  b.String(),
-			IgnoreError: ignoreError},
-		), nil
+	return release.Prepare(version, dagger.ReleasePrepareOpts{
+		ExtraNotes: b.String(),
+	}), nil
 }
 
 // Create release and publish artifacts. This should already be tagged.
-func (r *Releaser) Publish(ctx context.Context,
+func (m *DataTool) PublishReleasen(ctx context.Context,
 	// github API token
 	token *dagger.Secret,
 	// commit ssh private key
@@ -115,7 +62,7 @@ func (r *Releaser) Publish(ctx context.Context,
 	// +optional
 	latest bool,
 ) (string, error) {
-	version, err := r.Tool.Source.File("VERSION").Contents(ctx)
+	version, err := m.Source.File("VERSION").Contents(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -124,7 +71,7 @@ func (r *Releaser) Publish(ctx context.Context,
 	notesPath := filepath.Join("releases", vVersion+".md")
 	imagePlatforms := []dagger.Platform{"linux/amd64", "linux/arm64"}
 
-	_, err = dag.Goreleaser(r.Tool.Source, dagger.GoreleaserOpts{Version: "v2.9"}).
+	_, err = dag.Goreleaser(m.Source, dagger.GoreleaserOpts{Version: "v2.9"}).
 		// env vars defined in .goreleaser.yaml
 		WithSecretVariable("GITHUB_TOKEN", token).
 		WithSecretVariable("SSH_PRIVATE_KEY", sshPrivateKey).
@@ -133,57 +80,21 @@ func (r *Releaser) Publish(ctx context.Context,
 		WithEnvVariable("RELEASE_LATEST", strconv.FormatBool(latest)).
 		Release().
 		WithFailFast().
-		WithNotes(r.Tool.Source.File(notesPath)).
+		WithNotes(m.Source.File(notesPath)).
 		Run(ctx)
 	if err != nil {
 		return "", fmt.Errorf("creating release: %w", err)
 	}
 
 	regRepo := path.Join("%s/%s", reg, repo)
-	extraTags, err := dag.Release(r.Tool.Source).ExtraTags(ctx, regRepo, vVersion)
+	extraTags, err := dag.Release(nil).ExtraTags(ctx, regRepo, vVersion)
 	if err != nil {
 		return "", fmt.Errorf("resolving extra image tags: %w", err)
 	}
-	_, err = r.Tool.ImageIndex(ctx, vVersion, imagePlatforms, regRepo, extraTags)
+	_, err = m.ImageIndex(ctx, vVersion, imagePlatforms, regRepo, extraTags)
 	if err != nil {
 		return "", fmt.Errorf("publishing image index: %w", err)
 	}
 
 	return "Successfully created release and uploaded images", nil
-}
-
-// Generate the next version from conventional commit messages (see cliff.toml). Includes 'v' prefix.
-func (r *Releaser) Version(ctx context.Context) (string, error) {
-	targetVersion, err := dag.GitCliff(r.Tool.Source).
-		BumpedVersion(ctx)
-	if err != nil {
-		return "", fmt.Errorf("resolving release target version: %w", err)
-	}
-
-	return strings.TrimSpace(targetVersion), err
-}
-
-// diffGenAll runs all auto generators, comparing it's output to what currently exists in the source.
-func (r *Releaser) diffGenAll(ctx context.Context) error {
-	existing := dag.Directory().
-		WithDirectory(cliDocsPath, r.Tool.Source.Directory(cliDocsPath)).
-		WithDirectory(apiDocsPath, r.Tool.Source.Directory(apiDocsPath).Filter(dagger.DirectoryFilterOpts{Exclude: []string{"schemas/"}})).
-		WithDirectory(pkgPath, r.Tool.Source.Directory(pkgPath))
-
-	regen := r.Tool.GenAll(ctx)
-
-	existingDgst, err := existing.Digest(ctx)
-	if err != nil {
-		return err
-	}
-
-	regenDgst, err := regen.Digest(ctx)
-	if err != nil {
-		return err
-	}
-
-	if existingDgst != regenDgst {
-		return fmt.Errorf("found changes from running auto generators, please run 'dagger call gen-all export --path=.'")
-	}
-	return nil
 }

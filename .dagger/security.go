@@ -6,7 +6,7 @@ import (
 )
 
 // Use ace-dt to perform a vulnerability scan on a list of OCI artifacts.
-func (t *Tool) Scan(ctx context.Context,
+func (m *DataTool) Scan(ctx context.Context,
 	// Path to OCI artifact list
 	sources *dagger.File,
 ) (string, error) {
@@ -14,7 +14,7 @@ func (t *Tool) Scan(ctx context.Context,
 		From(imageGrype).
 		File("/grype")
 
-	grypeDB := t.GrypeDB(ctx)
+	grypeDB := m.GrypeDB()
 
 	syft := dag.Container().
 		From(imageSyft).
@@ -24,9 +24,9 @@ func (t *Tool) Scan(ctx context.Context,
 
 	sourcePath := "artifacts.txt"
 	return dag.Container().
-		WithMountedSecret("/root/.docker/config.json", t.RegistryConfig.Secret()).
+		WithMountedSecret("/root/.docker/config.json", m.RegistryConfig.Secret()).
 		From("cgr.dev/chainguard/bash").
-		WithFile("/usr/local/bin/ace-dt", build(ctx, t.Source, "linux/amd64", false)).
+		WithFile("/usr/local/bin/ace-dt", build(m.Source, "linux/amd64", false)).
 		WithFile("/usr/local/bin/grype", grype).
 		WithFile("/usr/local/bin/syft", syft).
 		WithFile(sourcePath, sources).
@@ -40,7 +40,7 @@ func (t *Tool) Scan(ctx context.Context,
 }
 
 // Download the Grype vulnerability database
-func (t *Tool) GrypeDB(ctx context.Context) *dagger.Directory {
+func (m *DataTool) GrypeDB() *dagger.Directory {
 	const cachePath = "/cache/grype"
 
 	return dag.Container().
