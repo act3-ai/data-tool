@@ -27,7 +27,7 @@ require (
 	golang.org/x/net v0.53.0
 	golang.org/x/sync v0.20.0
 	golang.org/x/term v0.42.0
-	golang.org/x/text v0.36.0
+	golang.org/x/text v0.37.0
 	k8s.io/apimachinery v0.35.4
 	k8s.io/utils v0.0.0-20260319190234-28399d86e0b5
 	oras.land/oras-go/v2 v2.6.0
