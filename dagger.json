@@ -37,8 +37,8 @@
     },
     {
       "name": "markdownlint",
-      "source": "github.com/act3-ai/dagger/markdownlint@markdownlint/v0.4.5",
-      "pin": "b4d6071bfdc246843440f78ab1c2c021345bd264"
+      "source": "github.com/act3-ai/dagger/markdownlint@markdownlint/v0.4.10",
+      "pin": "67df49b656f03bc931f46ae4c298336ff37cebb1"
     },
     {
       "name": "registry-config",
