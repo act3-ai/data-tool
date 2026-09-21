@@ -1,9 +1,8 @@
 module dagger/tool
 
-go 1.25.0
+go 1.26.1
 
 require (
-	dagger.io/dagger v0.20.6-0.20260415192040-7058e9313c72
 	github.com/Khan/genqlient v0.8.1
 	github.com/dagger/otel-go v1.43.0
 	github.com/sourcegraph/conc v0.3.0
@@ -38,6 +37,7 @@ require (
 require (
 	github.com/cenkalti/backoff/v5 v5.0.3 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
+	github.com/dagger/querybuilder v0.0.0-20260402040506-574a5e81cb59
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
