@@ -1,6 +1,6 @@
 {
   "name": "data-tool",
-  "engineVersion": "v0.21.9",
+  "engineVersion": "v0.21.10",
   "sdk": {
     "source": "go"
   },
@@ -39,6 +39,11 @@
       "name": "markdownlint",
       "source": "github.com/act3-ai/dagger/markdownlint@markdownlint/v0.4.10",
       "pin": "67df49b656f03bc931f46ae4c298336ff37cebb1"
+    },
+    {
+      "name": "netrc",
+      "source": "github.com/act3-ai/dagger/netrc@netrc/v0.0.1",
+      "pin": "0cd5d789d40d197fa7b5fa6eba6bd74699dbf84f"
     },
     {
       "name": "registry-config",
