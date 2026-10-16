@@ -19,6 +19,8 @@ import (
 )
 
 const (
+	githubHost = "github.com"
+
 	// images
 	imageGrype      = "anchore/grype:latest"
 	imageSyft       = "anchore/syft:latest"
@@ -30,53 +32,27 @@ const (
 )
 
 type DataTool struct {
-	// source code directory
-	Source *dagger.Directory
-
 	// +private
-	RegistryConfig *dagger.RegistryConfig
+	GithubUser string
 	// +private
-	Netrc *dagger.Secret
+	GithubToken *dagger.Secret
 }
 
 func New(
-	// top level source code directory
-	// +defaultPath="/"
-	src *dagger.Directory,
+	// GitHub username
+	githubUser string,
+	// GitHub token
+	githubToken *dagger.Secret,
 ) *DataTool {
 	return &DataTool{
-		Source:         src,
-		RegistryConfig: dag.RegistryConfig(),
+		GithubUser:  githubUser,
+		GithubToken: githubToken,
 	}
 }
 
-// Add credentials for a registry.
-func (m *DataTool) WithRegistryAuth(
-	// registry's hostname
-	address string,
-	// username in registry
-	username string,
-	// password or token for registry
-	secret *dagger.Secret,
-) *DataTool {
-	m.RegistryConfig = m.RegistryConfig.WithRegistryAuth(address, username, secret)
-	return m
-}
-
-// Removes credentials for a registry.
-func (m *DataTool) WithoutRegistryAuth(
-	// registry's hostname
-	address string,
-) *DataTool {
-	m.RegistryConfig = m.RegistryConfig.WithoutRegistryAuth(address)
-	return m
-}
-
-// Add netrc credentials for a private git repository.
-func (m *DataTool) WithNetrc(
-	// NETRC credentials
-	netrc *dagger.Secret,
-) *DataTool {
-	m.Netrc = netrc
-	return m
+func (m *DataTool) netrc() *dagger.Secret {
+	return dag.
+		Netrc().
+		WithLogin(githubHost, m.GithubUser, m.GithubToken).
+		AsSecret()
 }
