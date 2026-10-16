@@ -5,34 +5,12 @@ import (
 	"dagger/tool/internal/dagger"
 	"fmt"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/sourcegraph/conc/pool"
 	"oras.land/oras-go/v2/registry"
 )
-
-// Generate a directory of ace-dt executables built for all supported platforms, concurrently.
-//
-//	 Platform Matrix:
-//
-//		GOOS: linux, windows, darwin
-//		GOARCH: amd64, arm64
-func (m *DataTool) BuildPlatforms(
-	// Snapshot build, skipping goreleaser validations. Useful for building committed git history that isn't tagged with a release, a dirty repo does an "auto-snapshot".
-	// +optional
-	snapshot bool,
-) *dagger.Directory {
-	return dag.Goreleaser(m.Source).
-		Build().
-		With(func(r *dagger.GoreleaserBuild) *dagger.GoreleaserBuild {
-			if snapshot {
-				r = r.WithSnapshot()
-			}
-			return r
-		}).
-		WithAutoSnapshot().
-		All()
-}
 
 // Build an executable for the specified platform, named "ace-dt-v{VERSION}-{GOOS}-{GOARCH}".
 //
@@ -41,6 +19,10 @@ func (m *DataTool) BuildPlatforms(
 //	GOOS: linux, windows, darwin
 //	GOARCH: amd64, arm64
 func (m *DataTool) Build(ctx context.Context,
+	// Top level source code directory
+	// +defaultPath="/"
+	// +ignore=[".git"]
+	src *dagger.Directory,
 	// Build target platform
 	// +optional
 	// +default="linux/amd64"
@@ -49,11 +31,15 @@ func (m *DataTool) Build(ctx context.Context,
 	// +optional
 	snapshot bool,
 ) *dagger.File {
-	return build(m.Source, platform, snapshot)
+	return build(src, platform, snapshot)
 }
 
-// Create an image with an ace-dt executable.
-func (m *DataTool) Image(ctx context.Context,
+// Create a container with an ace-dt executable.
+func (m *DataTool) Container(ctx context.Context,
+	// Top level source code directory
+	// +defaultPath="/"
+	// +ignore=[".git"]
+	src *dagger.Directory,
 	// image version
 	version string,
 	// Build target platform
@@ -63,14 +49,15 @@ func (m *DataTool) Image(ctx context.Context,
 ) *dagger.Container {
 	ctr := dag.Container(dagger.ContainerOpts{Platform: platform}).
 		From(imageChainguard).
-		WithFile("/usr/local/bin/ace-dt", m.Build(ctx, platform, false)).
-		WithEntrypoint([]string{"ace-dt"}).
+		WithFile(filepath.Join("/usr/local/bin", acedtCLI), m.Build(ctx, src, platform, false)).
+		WithEntrypoint([]string{acedtCLI}).
 		WithWorkdir("/")
 	return withCommonLabels(ctr, version)
 }
 
 // Create and publish a multi-platform image index.
-func (m *DataTool) ImageIndex(ctx context.Context,
+func (m *DataTool) imageIndex(ctx context.Context,
+	src *dagger.Directory,
 	// image version
 	version string,
 	// build platforms
@@ -78,7 +65,6 @@ func (m *DataTool) ImageIndex(ctx context.Context,
 	// OCI Reference, without tag
 	address string,
 	// extraTags
-	// +optional
 	extraTags []string,
 ) (string, error) {
 	ref, err := registry.ParseReference(address)
@@ -87,10 +73,11 @@ func (m *DataTool) ImageIndex(ctx context.Context,
 	}
 	imgURL := "https://" + path.Join(ref.Registry, ref.Repository)
 
+	// build platforms
 	p := pool.NewWithResults[*dagger.Container]().WithContext(ctx)
 	for _, platform := range platforms {
 		p.Go(func(ctx context.Context) (*dagger.Container, error) {
-			img := m.Image(ctx, version, platform).
+			img := m.Container(ctx, src, version, platform).
 				WithLabel("org.opencontainers.image.url", imgURL).
 				WithLabel("org.opencontainers.image.source", "https://github.com/act3-ai/data-tool")
 			return img, nil
@@ -104,6 +91,7 @@ func (m *DataTool) ImageIndex(ctx context.Context,
 
 	var result strings.Builder
 
+	// publish index
 	taggedRef := fmt.Sprintf("%s:%s", address, version)
 	dgstRef, err := dag.Container().
 		Publish(ctx, taggedRef, dagger.ContainerPublishOpts{
@@ -115,6 +103,7 @@ func (m *DataTool) ImageIndex(ctx context.Context,
 	result.WriteString("Successfully published image index to:\n")
 	result.WriteString(fmt.Sprintf("%s\n", dgstRef))
 
+	// apply extra tags to remote index
 	if len(extraTags) > 0 {
 		_, err := dag.Release(nil).AddTags(ctx, taggedRef, extraTags)
 		if err != nil {
