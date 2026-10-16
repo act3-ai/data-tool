@@ -20,6 +20,7 @@ import (
 
 const (
 	githubHost = "github.com"
+	acedtCLI   = "ace-dt"
 
 	// images
 	imageGrype      = "anchore/grype:latest"
