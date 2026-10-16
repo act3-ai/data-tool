@@ -14,4 +14,10 @@ changed_files+=(
     # TODO
 )
 
+function dagger_prepare() {
+    dagger "${dagger_args[@]}" call release prepare
+    dagger "${dagger_args[@]}" check
+    dagger "${dagger_args[@]}" call lint sonar
+}
+
 main "$@"
