@@ -15,35 +15,30 @@ const (
 	telemetryPort = 8100
 )
 
-// Run tests.
+// Test organizes testing related commands.
 func (m *DataTool) Test() *Test {
 	return &Test{
-		Source:         m.Source,
-		Netrc:          m.Netrc,
-		RegistryConfig: m.RegistryConfig,
+		DataTool: m,
 	}
 }
 
-// Test organizes test functions.
+// Test organizes testing related commands.
 type Test struct {
-	// source code directory
-	// +defaultPath="/"
-	Source *dagger.Directory
-
-	// NETRC credentials
-	// +private
-	Netrc *dagger.Secret
-	// +private
-	RegistryConfig *dagger.RegistryConfig
+	*DataTool
 }
 
 // Run all tests.
-func (t *Test) All(ctx context.Context) (string, error) {
-	unitResults, unitErr := t.Unit(ctx)
+func (t *Test) All(ctx context.Context,
+	// Top level source code directory
+	// +defaultPath="/"
+	// +ignore=[".git"]
+	src *dagger.Directory,
+) (string, error) {
+	unitResults, unitErr := t.Unit(ctx, src)
 
-	funcResults, funcErr := t.Functional(ctx)
+	funcResults, funcErr := t.Functional(ctx, src)
 
-	intResults, intErr := t.Integration(ctx)
+	intResults, intErr := t.Integration(ctx, src)
 
 	out := "Unit Test Results:\n" + unitResults +
 		"\n=====\n\nFunctional Test Results:\n" + funcResults +
@@ -52,9 +47,14 @@ func (t *Test) All(ctx context.Context) (string, error) {
 }
 
 // Run unit tests.
-func (t *Test) Unit(ctx context.Context) (string, error) {
+func (t *Test) Unit(ctx context.Context,
+	// Top level source code directory
+	// +defaultPath="/"
+	// +ignore=[".git"]
+	src *dagger.Directory,
+) (string, error) {
 	return dag.Go(dagger.GoOpts{
-		Source: t.Source,
+		Source: src,
 	}).
 		Env().
 		WithExec([]string{"apt", "update"}).
@@ -64,7 +64,12 @@ func (t *Test) Unit(ctx context.Context) (string, error) {
 }
 
 // Run functional tests.
-func (t *Test) Functional(ctx context.Context) (string, error) {
+func (t *Test) Functional(ctx context.Context,
+	// Top level source code directory
+	// +defaultPath="/"
+	// +ignore=[".git"]
+	src *dagger.Directory,
+) (string, error) {
 	// start registry server
 	regService := t.Registry()
 	regService, err := regService.Start(ctx)
@@ -100,7 +105,7 @@ func (t *Test) Functional(ctx context.Context) (string, error) {
 	}
 	acedtConfigPath := "ace-dt-config.yaml"
 	results, err := dag.Go(dagger.GoOpts{
-		Source: t.Source,
+		Source: src,
 	}).
 		Env().
 		// dependency for ace-dt git tests
@@ -132,7 +137,12 @@ func (t *Test) Functional(ctx context.Context) (string, error) {
 	return results, err
 }
 
-func (t *Test) Integration(ctx context.Context) (string, error) {
+func (t *Test) Integration(ctx context.Context,
+	// Top level source code directory
+	// +defaultPath="/"
+	// +ignore=[".git"]
+	src *dagger.Directory,
+) (string, error) {
 	// start registry server
 	regService := t.Registry()
 	regService, err := regService.Start(ctx)
@@ -160,13 +170,13 @@ func (t *Test) Integration(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	acedt := build(t.Source, "linux/amd64", true)
+	acedt := build(src, "linux/amd64", true)
 
 	originalBottleRef := "ghcr.io/act3-ai/data-tool/bottles/mnist:v1.6"
 	bottleID, err := dag.Wolfi().
 		Container().
 		WithFile("/usr/local/bin/ace-dt", acedt).
-		WithMountedSecret("/root/.docker/config.json", t.RegistryConfig.Secret()).
+		// WithMountedSecret("/root/.docker/config.json", t.RegistryConfig.Secret()).
 		WithExec([]string{"ace-dt", "bottle", "pull", originalBottleRef, "-d", "bottle"}).
 		File("bottle/.dt/bottleid").
 		Contents(ctx)
@@ -178,7 +188,7 @@ func (t *Test) Integration(ctx context.Context) (string, error) {
 	_, err = dag.Wolfi().
 		Container().
 		WithFile("/usr/local/bin/ace-dt", acedt).
-		WithMountedSecret("/root/.docker/config.json", t.RegistryConfig.Secret()).
+		// WithMountedSecret("/root/.docker/config.json", t.RegistryConfig.Secret()).
 		// bind to registry and telemetry servers
 		WithServiceBinding("server", telemService).
 		WithServiceBinding("registry", regService).
@@ -228,16 +238,6 @@ func (t *Test) Integration(ctx context.Context) (string, error) {
 	}
 
 	return "Successful", nil // TODO: better output?
-}
-
-// Run benchmark tests.
-func (t *Test) Bench(ctx context.Context) (string, error) {
-	return dag.Go(dagger.GoOpts{
-		Source: t.Source,
-	}).
-		Env().
-		WithExec([]string{"go", "test", "./...", "-benchmem", "-bench=.", "-run=^$"}).
-		Stdout(ctx)
 }
 
 // Start a registry.
