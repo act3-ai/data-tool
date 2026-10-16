@@ -15,8 +15,20 @@ const (
 	repo = "act3-ai/data-tool"
 )
 
+// Run the release process.
+func (m *DataTool) Release() *Release {
+	return &Release{
+		DataTool: m,
+	}
+}
+
+// Release organizes release process commands.
+type Release struct {
+	*DataTool
+}
+
 // Update the version, changelog, and release notes.
-func (m *DataTool) PrepareRelease(ctx context.Context,
+func (r *Release) Prepare(ctx context.Context,
 	// Git reference to release (can use "." for the current commit)
 	// +defaultPath="."
 	gitRef *dagger.GitRef,
@@ -48,7 +60,11 @@ func (m *DataTool) PrepareRelease(ctx context.Context,
 }
 
 // Create release and publish artifacts. This should already be tagged.
-func (m *DataTool) PublishReleasen(ctx context.Context,
+func (r *Release) Publish(ctx context.Context,
+	// Top level source code directory
+	// +defaultPath="/"
+	// +ignore=[".git"]
+	src *dagger.Directory,
 	// github API token
 	token *dagger.Secret,
 	// commit ssh private key
@@ -62,7 +78,7 @@ func (m *DataTool) PublishReleasen(ctx context.Context,
 	// +optional
 	latest bool,
 ) (string, error) {
-	version, err := m.Source.File("VERSION").Contents(ctx)
+	version, err := src.File("VERSION").Contents(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -71,7 +87,7 @@ func (m *DataTool) PublishReleasen(ctx context.Context,
 	notesPath := filepath.Join("releases", vVersion+".md")
 	imagePlatforms := []dagger.Platform{"linux/amd64", "linux/arm64"}
 
-	_, err = dag.Goreleaser(m.Source, dagger.GoreleaserOpts{Version: "v2.9"}).
+	_, err = dag.Goreleaser(src, dagger.GoreleaserOpts{Version: "v2.9"}).
 		// env vars defined in .goreleaser.yaml
 		WithSecretVariable("GITHUB_TOKEN", token).
 		WithSecretVariable("SSH_PRIVATE_KEY", sshPrivateKey).
@@ -80,7 +96,7 @@ func (m *DataTool) PublishReleasen(ctx context.Context,
 		WithEnvVariable("RELEASE_LATEST", strconv.FormatBool(latest)).
 		Release().
 		WithFailFast().
-		WithNotes(m.Source.File(notesPath)).
+		WithNotes(src.File(notesPath)).
 		Run(ctx)
 	if err != nil {
 		return "", fmt.Errorf("creating release: %w", err)
@@ -91,7 +107,7 @@ func (m *DataTool) PublishReleasen(ctx context.Context,
 	if err != nil {
 		return "", fmt.Errorf("resolving extra image tags: %w", err)
 	}
-	_, err = m.ImageIndex(ctx, vVersion, imagePlatforms, regRepo, extraTags)
+	_, err = r.imageIndex(ctx, src, vVersion, imagePlatforms, regRepo, extraTags)
 	if err != nil {
 		return "", fmt.Errorf("publishing image index: %w", err)
 	}
