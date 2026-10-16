@@ -41,7 +41,6 @@ See the **[Developer Guide](docs/contribute/developer-guide.md)** for contributi
 
 ## Support
 
-- **[Mattermost channel](https://chat.git.act3-ace.com/act3/channels/ace-dt)**: create a post in the ACT3 Data Tool channel for assistance
 - **[FAQ](docs/support/faq.md)**: see the frequently asked (and answered) questions for ACE Data Tool
 <!-- TODO reactivate when functional - **[Create a GitLab issue by email](mailto:incoming+ace-data-tool-238-cpdx5kax2g659873veqpf97dt-issue@mail.act3-ace.com)** -->
 
