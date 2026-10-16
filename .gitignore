@@ -13,6 +13,7 @@ artifacts.txt
 ## Ignore logfiles
 /log
 
-.env.test
+/.env
+/.env.test
 .envrc.private
 /dist/
