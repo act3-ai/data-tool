@@ -13,25 +13,38 @@ const (
 	cliDocsPath = "docs/cli"
 )
 
+// TODO: revise caching
+
 // Generate CLI documentation.
 // +generate
-func (m *DataTool) CLIDocs(ctx context.Context) *dagger.Changeset {
-	acedt := m.Build(ctx, "linux/amd64", true)
+func (m *DataTool) CLIDocs(
+	ctx context.Context,
+	// Top level source code directory
+	// +defaultPath="/"
+	// +ignore=[".git"]
+	src *dagger.Directory,
+) *dagger.Changeset {
+	acedt := m.Build(ctx, src, "linux/amd64", true)
 
 	return dag.Container().
-		WithDirectory("/src", m.Source).
+		WithDirectory("/src", src).
 		WithWorkdir("/src").
 		WithFile("/usr/local/bin/ace-dt", acedt).
 		WithExec([]string{"ace-dt", "gendocs", "md", "--only-commands", cliDocsPath}).
 		Directory("/src").
-		Changes(m.Source)
+		Changes(src)
 }
 
 // Generate API documentation.
 // +generate
-func (m *DataTool) APIDocs() *dagger.Changeset {
+func (m *DataTool) APIDocs(
+	// Top level source code directory
+	// +defaultPath="/"
+	// +ignore=[".git"]
+	src *dagger.Directory,
+) *dagger.Changeset {
 	return dag.Go(dagger.GoOpts{
-		Source: m.Source,
+		Source: src,
 	}).
 		Env().
 		WithExec([]string{"go", "tool", "crd-ref-docs", "--config=apidocs.yaml", "--renderer=markdown",
@@ -40,17 +53,22 @@ func (m *DataTool) APIDocs() *dagger.Changeset {
 		}).
 		WithoutFile(filepath.Join(apiDocsPath, "out.md")). // TODO: Necessary?
 		Directory("/app").
-		Changes(m.Source)
+		Changes(src)
 }
 
 // Generate pkg/apis with controller-gen.
 // +generate
-func (m *DataTool) Generate() *dagger.Changeset {
+func (m *DataTool) GoGenerate(
+	// Top level source code directory
+	// +defaultPath="/"
+	// +ignore=[".git"]
+	src *dagger.Directory,
+) *dagger.Changeset {
 	return dag.Go(dagger.GoOpts{
-		Source: m.Source,
+		Source: src,
 	}).
 		Env().
 		WithExec([]string{"go", "generate", "./..."}).
 		Directory("/app").
-		Changes(m.Source)
+		Changes(src)
 }
