@@ -5,21 +5,9 @@ import (
 	"dagger/tool/internal/dagger"
 )
 
-// Run linters.
-func (m *DataTool) Lint() *Lint {
-	return &Lint{
-		DataTool: m,
-	}
-}
-
-// Lint organizes linting functions.
-type Lint struct {
-	*DataTool
-}
-
 // Lint YAML files with "yamllint"
 // +check
-func (l *Lint) Yamllint(
+func (m *DataTool) Yamllint(
 	ctx context.Context,
 	// Source code directory
 	// +defaultPath="/"
@@ -31,7 +19,7 @@ func (l *Lint) Yamllint(
 
 // Lint markdown files with "markdownlint-cli2"
 // +check
-func (l *Lint) MarkdownLint(
+func (m *DataTool) MarkdownLint(
 	ctx context.Context,
 	// Source code directory
 	// +defaultPath="/"
@@ -43,7 +31,7 @@ func (l *Lint) MarkdownLint(
 
 // Audit Go dependencies with "govulncheck"
 // +check
-func (l *Lint) Audit(
+func (m *DataTool) Audit(
 	ctx context.Context,
 	// top level source code directory
 	// +defaultPath="/"
@@ -55,7 +43,7 @@ func (l *Lint) Audit(
 
 // Lint Go code with "golangci-lint"
 // +check
-func (l *Lint) GolangciLint(
+func (m *DataTool) GolangciLint(
 	ctx context.Context,
 	// top level source code directory
 	// +defaultPath="/"
@@ -71,7 +59,7 @@ func (l *Lint) GolangciLint(
 
 // Lint shell scripts with "shellcheck"
 // +check
-func (l *Lint) Shellcheck(
+func (m *DataTool) Shellcheck(
 	ctx context.Context,
 	// top level source code directory
 	// +defaultPath="/"
@@ -93,7 +81,7 @@ func (l *Lint) Shellcheck(
 }
 
 // Run sonar scanner
-func (l *Lint) Sonar(
+func (m *DataTool) Sonar(
 	ctx context.Context,
 	// top level source code directory
 	// +defaultPath="/"

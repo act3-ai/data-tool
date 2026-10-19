@@ -15,20 +15,8 @@ const (
 	repo = "act3-ai/data-tool"
 )
 
-// Run the release process.
-func (m *DataTool) Release() *Release {
-	return &Release{
-		DataTool: m,
-	}
-}
-
-// Release organizes release process commands.
-type Release struct {
-	*DataTool
-}
-
 // Update the version, changelog, and release notes.
-func (r *Release) Prepare(ctx context.Context,
+func (m *DataTool) PrepareRelease(ctx context.Context,
 	// Git reference to release (can use "." for the current commit)
 	// +defaultPath="."
 	gitRef *dagger.GitRef,
@@ -60,7 +48,7 @@ func (r *Release) Prepare(ctx context.Context,
 }
 
 // Create release and publish artifacts. This should already be tagged.
-func (r *Release) Publish(ctx context.Context,
+func (m *DataTool) PublishRelease(ctx context.Context,
 	// Top level source code directory
 	// +defaultPath="/"
 	// +ignore=[".git"]
@@ -107,7 +95,7 @@ func (r *Release) Publish(ctx context.Context,
 	if err != nil {
 		return "", fmt.Errorf("resolving extra image tags: %w", err)
 	}
-	_, err = r.imageIndex(ctx, src, vVersion, imagePlatforms, regRepo, extraTags)
+	_, err = m.imageIndex(ctx, src, vVersion, imagePlatforms, regRepo, extraTags)
 	if err != nil {
 		return "", fmt.Errorf("publishing image index: %w", err)
 	}
