@@ -44,6 +44,7 @@ func (m *DataTool) TestUnit(ctx context.Context,
 ) (string, error) {
 	return dag.Go(dagger.GoOpts{
 		Source: src,
+		Base:   dag.Container().From("golang:trixie"), // ensure access to apt for installing git-lfs
 	}).
 		Env().
 		WithExec([]string{"apt", "update"}).
