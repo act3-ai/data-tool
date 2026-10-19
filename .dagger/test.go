@@ -93,12 +93,14 @@ func (m *DataTool) TestFunctional(ctx context.Context,
 	if err != nil {
 		return "", err
 	}
+
 	acedtConfigPath := "ace-dt-config.yaml"
 	results, err := dag.Go(dagger.GoOpts{
 		Source: src,
+		Base:   dag.Container().From("golang:trixie"), // ensure access to apt for installing git-lfs
 	}).
 		Env().
-		// dependency for ace-dt git tests
+		// install git-lfs dependency for ace-dt git tests
 		WithExec([]string{"apt", "update"}).
 		WithExec([]string{"apt", "install", "-y", "git-lfs"}).
 		// bind to registry and telemetry servers
@@ -110,7 +112,7 @@ func (m *DataTool) TestFunctional(ctx context.Context,
 		WithNewFile(acedtConfigPath, insecureRegConfig(regEndpoint)).
 		WithEnvVariable("ACE_DT_CONFIG", acedtConfigPath).
 		WithExec([]string{"go", "test", "-count=1", "./..."}).
-		Stderr(ctx)
+		CombinedOutput(ctx)
 	if err != nil {
 		return results, err
 	}
