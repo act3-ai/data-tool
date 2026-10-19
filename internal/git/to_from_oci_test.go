@@ -220,6 +220,9 @@ func Test_ToFromOCI(t *testing.T) {
 	log := tlog.Logger(t, 0)
 	ctx = logger.NewContext(ctx, log)
 
+	// exclude user's global git configurtion in tests
+	t.Setenv("GIT_CONFIG_GLOBAL", "/dev/null")
+
 	gitVersion, err := cmd.CheckGitVersion(ctx, "")
 	if err != nil {
 		t.Errorf("validating git version: %v", err)
@@ -323,6 +326,9 @@ func Test_ToFromOCIRewrite(t *testing.T) {
 	ctx := context.Background()
 	log := tlog.Logger(t, 0)
 	ctx = logger.NewContext(ctx, log)
+
+	// exclude user's global git configurtion in tests
+	t.Setenv("GIT_CONFIG_GLOBAL", "/dev/null")
 
 	gitVersion, err := cmd.CheckGitVersion(ctx, "")
 	if err != nil {

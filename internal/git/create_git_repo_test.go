@@ -255,7 +255,7 @@ func runAction(ctx context.Context, ch *cmd.Helper, action subCmd) error {
 			return err
 		}
 	case "config":
-		if err := ch.Config(ctx, action.args[0], action.args[1]); err != nil {
+		if err := ch.Config(ctx, "--local", action.args[0], action.args[1]); err != nil {
 			return err
 		}
 	case "modifyFile":
