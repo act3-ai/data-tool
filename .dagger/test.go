@@ -15,30 +15,18 @@ const (
 	telemetryPort = 8100
 )
 
-// Test organizes testing related commands.
-func (m *DataTool) Test() *Test {
-	return &Test{
-		DataTool: m,
-	}
-}
-
-// Test organizes testing related commands.
-type Test struct {
-	*DataTool
-}
-
 // Run all tests.
-func (t *Test) All(ctx context.Context,
+func (m *DataTool) TestAll(ctx context.Context,
 	// Top level source code directory
 	// +defaultPath="/"
 	// +ignore=[".git"]
 	src *dagger.Directory,
 ) (string, error) {
-	unitResults, unitErr := t.Unit(ctx, src)
+	unitResults, unitErr := m.TestUnit(ctx, src)
 
-	funcResults, funcErr := t.Functional(ctx, src)
+	funcResults, funcErr := m.TestFunctional(ctx, src)
 
-	intResults, intErr := t.Integration(ctx, src)
+	intResults, intErr := m.TestIntegration(ctx, src)
 
 	out := "Unit Test Results:\n" + unitResults +
 		"\n=====\n\nFunctional Test Results:\n" + funcResults +
@@ -47,7 +35,8 @@ func (t *Test) All(ctx context.Context,
 }
 
 // Run unit tests.
-func (t *Test) Unit(ctx context.Context,
+// +check
+func (m *DataTool) TestUnit(ctx context.Context,
 	// Top level source code directory
 	// +defaultPath="/"
 	// +ignore=[".git"]
@@ -64,14 +53,15 @@ func (t *Test) Unit(ctx context.Context,
 }
 
 // Run functional tests.
-func (t *Test) Functional(ctx context.Context,
+// +check
+func (m *DataTool) TestFunctional(ctx context.Context,
 	// Top level source code directory
 	// +defaultPath="/"
 	// +ignore=[".git"]
 	src *dagger.Directory,
 ) (string, error) {
 	// start registry server
-	regService := t.Registry()
+	regService := m.Registry()
 	regService, err := regService.Start(ctx)
 	if err != nil {
 		return "", err
@@ -88,7 +78,7 @@ func (t *Test) Functional(ctx context.Context,
 	}
 
 	// start telemetry server
-	telemService := t.TelemetryWithPostgres(ctx)
+	telemService := m.TelemetryWithPostgres(ctx)
 	telemService, err = telemService.Start(ctx)
 	if err != nil {
 		return "", err
@@ -137,14 +127,16 @@ func (t *Test) Functional(ctx context.Context,
 	return results, err
 }
 
-func (t *Test) Integration(ctx context.Context,
+// Run integration tests.
+// +check
+func (m *DataTool) TestIntegration(ctx context.Context,
 	// Top level source code directory
 	// +defaultPath="/"
 	// +ignore=[".git"]
 	src *dagger.Directory,
 ) (string, error) {
 	// start registry server
-	regService := t.Registry()
+	regService := m.Registry()
 	regService, err := regService.Start(ctx)
 	if err != nil {
 		return "", err
@@ -158,7 +150,7 @@ func (t *Test) Integration(ctx context.Context,
 	regHost := strings.TrimPrefix(regEndpoint, "http://")
 
 	// start telemetry server
-	telemService := t.TelemetryWithPostgres(ctx)
+	telemService := m.TelemetryWithPostgres(ctx)
 	telemService, err = telemService.Start(ctx)
 	if err != nil {
 		return "", err
@@ -241,7 +233,7 @@ func (t *Test) Integration(ctx context.Context,
 }
 
 // Start a registry.
-func (t *Test) Registry() *dagger.Service {
+func (m *DataTool) Registry() *dagger.Service {
 	return dag.Container().
 		From(imageRegistry).
 		WithExposedPort(registryPort).
@@ -252,12 +244,12 @@ func (t *Test) Registry() *dagger.Service {
 //
 // This function makes it easier to expose a telemetry server to the host
 // with less hassle connecting it to postgres.
-func (tt *Test) TelemetryWithPostgres(ctx context.Context) *dagger.Service {
-	return tt.Telemetry(tt.Postgres())
+func (m *DataTool) TelemetryWithPostgres(ctx context.Context) *dagger.Service {
+	return m.Telemetry(m.Postgres())
 }
 
 // Start a telemetry server.
-func (tt *Test) Telemetry(
+func (m *DataTool) Telemetry(
 	// postgres service
 	postgres *dagger.Service,
 ) *dagger.Service {
@@ -277,7 +269,7 @@ func (tt *Test) Telemetry(
 }
 
 // Start postgres as a service.
-func (tt *Test) Postgres() *dagger.Service {
+func (tm *DataTool) Postgres() *dagger.Service {
 	return dag.Container().
 		From(imagePostgres).
 		// Notice: changes to these env vars must be reflected in uses of
