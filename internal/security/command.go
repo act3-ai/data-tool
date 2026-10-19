@@ -87,7 +87,7 @@ func getGrypeDBChecksum(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "grype", "db", "status", "--output", "json")
 	res, err := cmd.CombinedOutput()
 	if err != nil {
-		return "", fmt.Errorf("getting the grype db checksum: %w", err)
+		return "", fmt.Errorf("getting grype db checksum: command %q failed: %w: %s", cmd.String(), err, string(res))
 	}
 
 	var grypeStatus grypeDBChecksum
