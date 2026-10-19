@@ -145,7 +145,8 @@ func (c *Link) UpdateLFSFromGit(ctx context.Context, gitRemote string, commits .
 		return fmt.Errorf("configuring LFS: %w", err)
 	}
 
-	args := []string{"--all"}
+	args := make([]string, 0, 1+len(commits))
+	args = append(args, "--all")
 	args = append(args, commits...)
 	err := c.CmdHelper.LFS.Fetch(ctx, gitRemote, args...)
 	if err != nil {

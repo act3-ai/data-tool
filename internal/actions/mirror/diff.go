@@ -72,14 +72,16 @@ func (action *Diff) Run(ctx context.Context, artifactReference string, existingI
 					return fmt.Errorf("error printing JSON output: %w", err)
 				}
 			case "csv":
-				table := [][]string{{"reference", "digest"}}
+				table := make([][]string, 0, 2+len(manifestOriginalReferences))
+				table = append(table, []string{"reference", "digest"})
 				table = append(table, manifestOriginalReferences...)
 				w := csv.NewWriter(writer)
 				if err := w.WriteAll(table); err != nil {
 					return fmt.Errorf("writing csv table: %w", err)
 				}
 			case "table":
-				table := [][]string{{"reference", "digest"}}
+				table := make([][]string, 0, 2+len(manifestOriginalReferences))
+				table = append(table, []string{"reference", "digest"})
 				table = append(table, manifestOriginalReferences...)
 				if err := security.PrintCustomTable(writer, table); err != nil {
 					return err

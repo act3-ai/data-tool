@@ -62,11 +62,12 @@ func SigDir(path string) string {
 // bottle configuration.  LocalPath and YAML file options will be
 // set by the path argument, so will not need to be supplied.
 func LoadBottle(path string, opts ...BOption) (*Bottle, error) {
-	bottleOptions := []BOption{
+	bottleOptions := make([]BOption, 0, 3+len(opts))
+	bottleOptions = append(bottleOptions,
 		WithLocalPath(path),
 		WithVirtualParts,
 		fromFile(path),
-	}
+	)
 	bottleOptions = append(bottleOptions, opts...)
 
 	return NewBottle(bottleOptions...)

@@ -265,7 +265,7 @@ func archivePart(ctx context.Context, btlPartMutex sync.Locker, progress *ui.Pro
 		return err
 	}
 
-	if !archpipe.checkCompressionRatio(log.With("part name", part.GetName())) {
+	if !archpipe.checkCompressionRatio(log.With("partName", part.GetName())) {
 		// Compression was too inefficient for this file/directory, so the output is just the original data, either
 		// archived or plain.  We need to update the media type accordingly
 		if mediatype.IsArchived(part.GetMediaType()) {

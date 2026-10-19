@@ -64,7 +64,7 @@ func parseAnnotation(arg string) (string, string, error) {
 
 	// verify if item is valid annotation
 	if err := apivalidation.ValidateAnnotations(map[string]string{key: val}, nil).ToAggregate(); err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("validating annotations: %w", err)
 	}
 
 	return key, val, nil

@@ -76,7 +76,7 @@ func (lbi *LayerBlobInfo) GetSources(ctx context.Context, bic BIC) map[digest.Di
 	destRef := ref.RepoFromString("https://any.host/any/reg")
 	for _, l := range lbi.layerIDs {
 		refs := LocateLayerDigest(ctx, bic, l, destRef, false)
-		var refStrs []string
+		refStrs := make([]string, 0, len(refs))
 		for _, r := range refs {
 			refStrs = append(refStrs, r.String())
 		}

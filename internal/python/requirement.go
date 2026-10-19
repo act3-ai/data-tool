@@ -139,7 +139,8 @@ func (rr *Requirements) AddRequirement(req Requirement) {
 
 // Indexes is the list of ordered python package indexes to use.
 func (rr *Requirements) Indexes() []string {
-	pypis := []string{rr.IndexURL}
+	pypis := make([]string, 0, 1+len(rr.ExtraIndexURLs))
+	pypis = append(pypis, rr.IndexURL)
 	pypis = append(pypis, rr.ExtraIndexURLs...)
 	return pypis
 }

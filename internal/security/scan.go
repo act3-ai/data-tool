@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 
@@ -152,7 +153,9 @@ func scan(ctx context.Context, //nolint:gocognit
 				}
 
 			case artifactDetails.manifestDigestSBOM != "":
-				log.Info("SBOM Manifest found", "reference", artifactDetails.originatingReference, "digest", artifactDetails.manifestDigestSBOM)
+				log.InfoContext(ctx, "SBOM Manifest found",
+					slog.String("reference", artifactDetails.originatingReference),
+					slog.String("digest", artifactDetails.manifestDigestSBOM))
 				grypeRes, err := extractAndGrypeSBOMs(gctx, artifactDetails.desc, artifactDetails.repository, artifactDetails.manifestDigestSBOM, checksum, opts.PushReport)
 				if err != nil {
 					return err

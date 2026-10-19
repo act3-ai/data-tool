@@ -59,7 +59,7 @@ func parseLabel(arg string) (string, string, error) {
 	key, val := arg[:idx], arg[idx+1:]
 
 	if err := v1validation.ValidateLabels(map[string]string{key: val}, nil).ToAggregate(); err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("validating labels: %w", err)
 	}
 
 	return key, val, nil

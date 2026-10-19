@@ -1,3 +1,4 @@
+//nolint:revive
 package telemetry
 
 import (

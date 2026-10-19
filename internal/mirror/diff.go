@@ -52,7 +52,7 @@ func ListArtifacts(ctx context.Context, opts DiffOptions) ([][]string, error) {
 	}
 	// this is the table for printing
 	manifestOriginalReferences := [][]string{}
-	indexDesciptors := []ocispec.Descriptor{}
+	indexDesciptors := []ocispec.Descriptor{} //nolint:prealloc
 	// add in any indexes that are in the annotations if the artifact was created with --index-fallback
 	v, ok := idx.Annotations[encoding.AnnotationExtraManifests]
 	if ok {

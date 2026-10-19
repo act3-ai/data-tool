@@ -32,7 +32,7 @@ type fsmap map[string][]byte
 // desired filePath: fileData
 func setup(t *testing.T, fileMap fsmap) (string, []string) {
 	t.Helper()
-	files := []string{}
+	files := make([]string, 0, len(fileMap))
 	dir := t.TempDir()
 	for k, v := range fileMap {
 		newFile := filepath.Join(dir, k)
