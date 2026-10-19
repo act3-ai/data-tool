@@ -57,7 +57,6 @@ func (m *DataTool) TestUnit(ctx context.Context,
 func (m *DataTool) TestFunctional(ctx context.Context,
 	// Top level source code directory
 	// +defaultPath="/"
-	// +ignore=[".git"]
 	src *dagger.Directory,
 ) (string, error) {
 	// start registry server

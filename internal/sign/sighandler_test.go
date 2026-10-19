@@ -18,25 +18,6 @@ import (
 	"github.com/act3-ai/bottle-schema/pkg/mediatype"
 )
 
-// TODO: We'll likely have to update the bottle's signature if we change
-// the payload to the actual descriptor (which previously used the notation
-// example but with the subject digest)
-
-// bottle
-const testBottlePath = "testdata/testbottle"
-
-var testBottleManDesc = ocispec.Descriptor{
-	MediaType: ocispec.MediaTypeImageManifest,
-	Digest:    "sha256:1ab73444bf20635135ac8a289401a10c9990023e6f37993d93172974fe87704d",
-	Size:      453,
-}
-
-// keys
-// const testBottleKeysPath = "testdata/testkeys"
-// const testPubKey = "test.pub"
-// const testPrivKey = "test.key"
-// const testCert = "test.crt"
-
 // Test_SignNotaryCert creates a new bottle and signing keys (with cert), then
 // signs it using the private key and notary certificate.
 //
@@ -84,8 +65,12 @@ func Test_VerifyNotaryCert(t *testing.T) {
 	log := tlog.Logger(t, 0)
 	ctx = logger.NewContext(ctx, log)
 
+	// create a fresh bottle - we don't want to risk overwriting the testdata.
+	testBottleDir := t.TempDir()
+	manifestDesc := CreateSignedBottle(t, testBottleDir)
+
 	// load signatures from testdata
-	sigsHandler, err := LoadLocalSignatures(ctx, testBottleManDesc, filepath.Join(testBottlePath, ".signature"))
+	sigsHandler, err := LoadLocalSignatures(ctx, manifestDesc, filepath.Join(testBottleDir, ".signature"))
 	if err != nil {
 		t.Fatalf("loading signatures handler: %v", err)
 	}
@@ -93,7 +78,7 @@ func Test_VerifyNotaryCert(t *testing.T) {
 	// verify
 	pass, err := sigsHandler.Verify(ctx)
 	if err != nil {
-		t.Errorf("Testing Bottle failed verification with an error")
+		t.Errorf("Testing Bottle failed verification: %v", err)
 	}
 
 	if pass {
@@ -108,9 +93,6 @@ func Test_VerifyNotaryCert(t *testing.T) {
 	}
 	for _, fp := range sigsHandler.FailedSignatures() {
 		t.Errorf("    Failed Signature Digest: %s", fp)
-	}
-	if err != nil {
-		t.Errorf("Test Bottle verify: %v", err) // verification failed.
 	}
 }
 
@@ -136,7 +118,7 @@ func CreateSampleBottle(t *testing.T, dir string) ocispec.Descriptor {
 }
 
 // CreateSignedBottle creates and signs a bottle for testing purposes. All internal errors are fatal.
-func CreateSignedBottle(t *testing.T, testBottleDir string) {
+func CreateSignedBottle(t *testing.T, testBottleDir string) ocispec.Descriptor {
 	t.Helper()
 	ctx := context.Background()
 	log := tlog.Logger(t, -2)
@@ -150,7 +132,7 @@ func CreateSignedBottle(t *testing.T, testBottleDir string) {
 		cert: certPair.Cert,
 	}
 
-	sigsHandler, err := LoadLocalSignatures(ctx, manifestDesc, testBottleDir)
+	sigsHandler, err := LoadLocalSignatures(ctx, manifestDesc, filepath.Join(testBottleDir, ".signature"))
 	if err != nil {
 		t.Fatalf("loading signatures handler: %v", err)
 	}
@@ -163,6 +145,8 @@ func CreateSignedBottle(t *testing.T, testBottleDir string) {
 	if err := sigsHandler.Sign(ctx, &pkp, unsignedAnnos, nil); err != nil {
 		t.Fatalf("signing test bottle: %v", err)
 	}
+
+	return manifestDesc
 }
 
 // BuildWriteConfig creates a config with the given layers, writes it to path, and returns a
