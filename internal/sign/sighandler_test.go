@@ -34,10 +34,11 @@ func Test_SignNotaryCert(t *testing.T) {
 	manifestDesc := CreateSampleBottle(t, testBottleDir)
 
 	// get priv key and cert - we can safely use existing keys from testdata.
-	keysDir := filepath.Join("testdata", "testkeys")
-	privKeyPath := filepath.Join(keysDir, "test.key")
-	certPath := filepath.Join(keysDir, "test.crt")
-	pkp := NewFilePrivateKeyProvider(privKeyPath, certPath)
+	certPair := MakeEcdsaCertPair("ace-dt self signed signing cert", nil, nil)
+	pkp := filePrivateKeyProvider{ // we can avoid writing to a file if we pre-populate the fields
+		pKey: certPair.PrivateKey,
+		cert: certPair.Cert,
+	}
 
 	// create an empty sigsHandler
 	sigsHandler := NotarySignatures{
@@ -53,7 +54,7 @@ func Test_SignNotaryCert(t *testing.T) {
 	unsignedAnnos[AnnotationVerifyAPI] = "cert-basic"
 	unsignedAnnos[AnnotationKeyID] = "testKeyID"
 
-	if err := sigsHandler.Sign(ctx, pkp, unsignedAnnos, nil); err != nil {
+	if err := sigsHandler.Sign(ctx, &pkp, unsignedAnnos, nil); err != nil {
 		t.Fatalf("signing test bottle: %v", err)
 	}
 }
