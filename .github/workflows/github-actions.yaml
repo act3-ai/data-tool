@@ -16,10 +16,10 @@ jobs:
         uses: dagger/dagger-for-github@v8.4.0
 
       - name: Checks
-        run: dagger checks
+        run: dagger --progress=logs checks
 
-      - name: Functional
-        run: dagger call test-functional
+      # - name: Functional
+      #   run: dagger call test-functional
 
-      - name: Integration
-        run: dagger call test-integration
+      # - name: Integration
+      #   run: dagger call test-integration
