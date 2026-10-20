@@ -21,7 +21,6 @@ func (m *DataTool) CLIDocs(
 	ctx context.Context,
 	// Top level source code directory
 	// +defaultPath="/"
-	// +ignore=[".git"]
 	src *dagger.Directory,
 ) *dagger.Changeset {
 	acedt := m.Build(ctx, src, "linux/amd64", true)
@@ -40,7 +39,6 @@ func (m *DataTool) CLIDocs(
 func (m *DataTool) APIDocs(
 	// Top level source code directory
 	// +defaultPath="/"
-	// +ignore=[".git"]
 	src *dagger.Directory,
 ) *dagger.Changeset {
 	return dag.Go(dagger.GoOpts{
@@ -61,7 +59,6 @@ func (m *DataTool) APIDocs(
 func (m *DataTool) GoGenerate(
 	// Top level source code directory
 	// +defaultPath="/"
-	// +ignore=[".git"]
 	src *dagger.Directory,
 ) *dagger.Changeset {
 	return dag.Go(dagger.GoOpts{
