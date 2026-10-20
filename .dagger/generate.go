@@ -21,6 +21,7 @@ func (m *DataTool) CLIDocs(
 	ctx context.Context,
 	// Top level source code directory
 	// +defaultPath="/"
+	// +ignore=["**", "!go.*", "!pkg", "!internal", "!cmd", "!docs"]
 	src *dagger.Directory,
 ) *dagger.Changeset {
 	acedt := m.Build(ctx, src, "linux/amd64", true)
