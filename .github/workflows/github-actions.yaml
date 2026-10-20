@@ -15,5 +15,11 @@ jobs:
       - name: Dagger Engine
         uses: dagger/dagger-for-github@v8.4.0
 
-      - name: Test
+      - name: Checks
         run: dagger checks
+
+      - name: Functional
+        run: dagger call test-functional
+
+      - name: Integration
+        run: dagger call test-integration

@@ -34,7 +34,6 @@ func (m *DataTool) TestUnit(ctx context.Context,
 }
 
 // Run functional tests.
-// +check
 func (m *DataTool) TestFunctional(ctx context.Context,
 	// Top level source code directory
 	// +defaultPath="/"
@@ -110,7 +109,6 @@ func (m *DataTool) TestFunctional(ctx context.Context,
 }
 
 // Run integration tests.
-// +check
 func (m *DataTool) TestIntegration(ctx context.Context,
 	// Top level source code directory
 	// +defaultPath="/"
