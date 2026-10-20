@@ -12,8 +12,8 @@
     },
     {
       "name": "go",
-      "source": "github.com/dagger/dagger/toolchains/go@v0.21.9",
-      "pin": "f2aefc20cf41b5ed7922df7244e0f10ddc6031f7"
+      "source": "github.com/dagger/dagger/toolchains/go@v0.21.10",
+      "pin": "02b2558d9997a77bf5d357032c45cdf5bf7d5ce1"
     },
     {
       "name": "go-coverage",
@@ -56,19 +56,14 @@
       "pin": "12c8228145117cbd3651556e48390d41c21a9dc4"
     },
     {
-      "name": "shellcheck",
-      "source": "github.com/dagger/dagger/modules/shellcheck@v0.20.6",
-      "pin": "220be71b0cc1c09f4d70a37df1615800187c9fad"
-    },
-    {
       "name": "sonarqube",
       "source": "github.com/act3-ai/dagger/sonarqube@sonarqube/v0.0.4",
       "pin": "82f619b132629a23cc6b994f619220f69088d094"
     },
     {
       "name": "wolfi",
-      "source": "github.com/dagger/dagger/modules/wolfi@v0.21.9",
-      "pin": "f2aefc20cf41b5ed7922df7244e0f10ddc6031f7"
+      "source": "github.com/dagger/dagger/modules/wolfi@v0.21.10",
+      "pin": "02b2558d9997a77bf5d357032c45cdf5bf7d5ce1"
     },
     {
       "name": "yamllint",
