@@ -41,7 +41,9 @@ type DataTool struct {
 
 func New(
 	// GitHub username
+	// +optional
 	githubUser string,
+	// +optional
 	// GitHub token
 	githubToken *dagger.Secret,
 ) *DataTool {
@@ -49,11 +51,4 @@ func New(
 		GithubUser:  githubUser,
 		GithubToken: githubToken,
 	}
-}
-
-func (m *DataTool) netrc() *dagger.Secret {
-	return dag.
-		Netrc().
-		WithLogin(githubHost, m.GithubUser, m.GithubToken).
-		AsSecret()
 }

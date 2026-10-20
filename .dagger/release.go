@@ -53,12 +53,8 @@ func (m *DataTool) PublishRelease(ctx context.Context,
 	// +defaultPath="/"
 	// +ignore=[".git"]
 	src *dagger.Directory,
-	// github API token
-	token *dagger.Secret,
-	// commit ssh private key
+	// commit ssh private key, for act3-ai homebrew tap
 	sshPrivateKey *dagger.Secret,
-	// releaser username
-	author string,
 	//releaser email
 	email string,
 	// tag release as latest
@@ -77,9 +73,9 @@ func (m *DataTool) PublishRelease(ctx context.Context,
 
 	_, err = dag.Goreleaser(src, dagger.GoreleaserOpts{Version: "v2.9"}).
 		// env vars defined in .goreleaser.yaml
-		WithSecretVariable("GITHUB_TOKEN", token).
+		WithSecretVariable("GITHUB_TOKEN", m.GithubToken).
 		WithSecretVariable("SSH_PRIVATE_KEY", sshPrivateKey).
-		WithEnvVariable("RELEASE_AUTHOR", author).
+		WithEnvVariable("RELEASE_AUTHOR", m.GithubUser).
 		WithEnvVariable("RELEASE_AUTHOR_EMAIL", email).
 		WithEnvVariable("RELEASE_LATEST", strconv.FormatBool(latest)).
 		Release().
