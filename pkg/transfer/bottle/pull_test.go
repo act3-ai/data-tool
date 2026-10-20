@@ -1,4 +1,3 @@
-//nolint:revive
 package bottle
 
 import (
@@ -139,7 +138,7 @@ func ExamplePull() {
 	if err != nil {
 		panic(fmt.Sprintf("Bottle pull failed: %v\n", err))
 	}
-	fmt.Fprintf(os.Stdout, "Success")
+	fmt.Fprintf(os.Stdout, "Success") //nolint:revive,nolintlint
 
 	// Output: Success
 }
@@ -182,7 +181,7 @@ func ExamplePull_partselection() {
 	if err != nil {
 		panic(fmt.Sprintf("Bottle pull failed: %v\n", err))
 	}
-	fmt.Fprintf(os.Stdout, "Success")
+	fmt.Fprintf(os.Stdout, "Success") //nolint:revive,nolintlint
 
 	// Output: Success
 }

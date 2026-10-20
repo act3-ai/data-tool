@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"dagger/tool/internal/dagger"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,25 +13,6 @@ const (
 	registryPort  = 5000
 	telemetryPort = 8100
 )
-
-// Run all tests.
-func (m *DataTool) TestAll(ctx context.Context,
-	// Top level source code directory
-	// +defaultPath="/"
-	// +ignore=[".git"]
-	src *dagger.Directory,
-) (string, error) {
-	unitResults, unitErr := m.TestUnit(ctx, src)
-
-	funcResults, funcErr := m.TestFunctional(ctx, src)
-
-	intResults, intErr := m.TestIntegration(ctx, src)
-
-	out := "Unit Test Results:\n" + unitResults +
-		"\n=====\n\nFunctional Test Results:\n" + funcResults +
-		"\n=====\n\nIntegration TestResults:\n" + intResults
-	return out, errors.Join(unitErr, funcErr, intErr)
-}
 
 // Run unit tests.
 // +check
