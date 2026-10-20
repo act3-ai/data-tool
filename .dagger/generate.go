@@ -40,6 +40,7 @@ func (m *DataTool) CLIDocs(
 func (m *DataTool) APIDocs(
 	// Top level source code directory
 	// +defaultPath="/"
+	// +ignore=["**", "!go.*", "!pkg", "!internal", "!cmd", "!docs"]
 	src *dagger.Directory,
 ) *dagger.Changeset {
 	return dag.Go(dagger.GoOpts{
@@ -60,6 +61,7 @@ func (m *DataTool) APIDocs(
 func (m *DataTool) GoGenerate(
 	// Top level source code directory
 	// +defaultPath="/"
+	// +ignore=["**", "!go.*", "!pkg", "!internal", "!cmd", "!docs"]
 	src *dagger.Directory,
 ) *dagger.Changeset {
 	return dag.Go(dagger.GoOpts{
