@@ -40,7 +40,7 @@ func (m *DataTool) CLIDocs(
 func (m *DataTool) APIDocs(
 	// Top level source code directory
 	// +defaultPath="/"
-	// +ignore=["**", "!go.*", "!pkg", "!internal", "!cmd", "!docs"]
+	// +ignore=["**", "!go.*", "!pkg", "!internal", "!cmd", "!docs", "!apidocs.yaml"]
 	src *dagger.Directory,
 ) *dagger.Changeset {
 	return dag.Go(dagger.GoOpts{
