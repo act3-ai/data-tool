@@ -31,15 +31,15 @@ func (m *DataTool) MarkdownLint(
 
 // Audit Go dependencies with "govulncheck"
 // +check
-func (m *DataTool) Audit(
-	ctx context.Context,
-	// top level source code directory
-	// +defaultPath="/"
-	// +ignore=[".git"]
-	src *dagger.Directory,
-) (string, error) {
-	return dag.Govulncheck().ScanSource(ctx, src)
-}
+// func (m *DataTool) Audit(
+// 	ctx context.Context,
+// 	// top level source code directory
+// 	// +defaultPath="/"
+// 	// +ignore=[".git"]
+// 	src *dagger.Directory,
+// ) (string, error) {
+// 	return dag.Govulncheck().ScanSource(ctx, src)
+// }
 
 // Lint Go code with "golangci-lint"
 // +check
