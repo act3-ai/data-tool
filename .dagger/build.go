@@ -21,7 +21,6 @@ import (
 func (m *DataTool) Build(ctx context.Context,
 	// Top level source code directory
 	// +defaultPath="/"
-	// +ignore=[".git"]
 	src *dagger.Directory,
 	// Build target platform
 	// +optional
