@@ -17,15 +17,6 @@ import (
 	vv "github.com/act3-ai/go-common/pkg/version"
 )
 
-// getVersionInfo retrieves the proper version information for this executable.
-func getVersionInfo() vv.Info {
-	info := vv.Get()
-	if version != "" {
-		info.Version = version
-	}
-	return info
-}
-
 // main launches the root CLI handler, implemented with cobra.
 func main() {
 	info := getVersionInfo()
@@ -55,4 +46,13 @@ func main() {
 	if err := root.Execute(); err != nil {
 		os.Exit(1)
 	}
+}
+
+// getVersionInfo retrieves the proper version information for this executable.
+func getVersionInfo() vv.Info {
+	info := vv.Get()
+	if version != "" {
+		info.Version = version
+	}
+	return info
 }
