@@ -37,7 +37,6 @@ func (m *DataTool) Build(ctx context.Context,
 func (m *DataTool) Container(ctx context.Context,
 	// Top level source code directory
 	// +defaultPath="/"
-	// +ignore=[".git"]
 	src *dagger.Directory,
 	// image version
 	version string,
@@ -56,7 +55,12 @@ func (m *DataTool) Container(ctx context.Context,
 
 // Create and publish a multi-platform image index.
 func (m *DataTool) imageIndex(ctx context.Context,
+	// Top level source code directory
+	// +defaultPath="/"
 	src *dagger.Directory,
+	// Git reference to release (can use "." for the current commit)
+	// +defaultPath="."
+	gitRef *dagger.GitRef,
 	// image version
 	version string,
 	// build platforms
@@ -104,7 +108,7 @@ func (m *DataTool) imageIndex(ctx context.Context,
 
 	// apply extra tags to remote index
 	if len(extraTags) > 0 {
-		_, err := dag.Release(nil).AddTags(ctx, taggedRef, extraTags)
+		_, err := dag.Release(gitRef).WithRegistryAuth(reg, m.GithubUser, m.GithubToken).AddTags(ctx, taggedRef, extraTags)
 		if err != nil {
 			return result.String(), fmt.Errorf("adding extra tags to image: %w", err)
 		}

@@ -52,12 +52,15 @@ func (m *DataTool) PublishRelease(ctx context.Context,
 	// Top level source code directory
 	// +defaultPath="/"
 	src *dagger.Directory,
+	// Git reference to release (can use "." for the current commit)
+	// +defaultPath="."
+	gitRef *dagger.GitRef,
 	// tag release as latest
 	// +default=true
 	// +optional
 	latest bool,
 ) (string, error) {
-	version, err := src.File("VERSION").Contents(ctx)
+	version, err := gitRef.Tree().File("VERSION").Contents(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -81,12 +84,12 @@ func (m *DataTool) PublishRelease(ctx context.Context,
 		return "", fmt.Errorf("creating release: %w", err)
 	}
 
-	regRepo := path.Join("%s/%s", reg, repo)
-	extraTags, err := dag.Release(nil).ExtraTags(ctx, regRepo, vVersion)
+	regRepo := path.Join(reg, repo)
+	extraTags, err := dag.Release(gitRef).ExtraTags(ctx, regRepo, vVersion)
 	if err != nil {
 		return "", fmt.Errorf("resolving extra image tags: %w", err)
 	}
-	_, err = m.imageIndex(ctx, src, vVersion, imagePlatforms, regRepo, extraTags)
+	_, err = m.imageIndex(ctx, src, gitRef, vVersion, imagePlatforms, regRepo, extraTags)
 	if err != nil {
 		return "", fmt.Errorf("publishing image index: %w", err)
 	}
