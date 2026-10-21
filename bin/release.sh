@@ -17,7 +17,11 @@ changed_files+=(
 function dagger_prepare() {
     dagger "${dagger_args[@]}" call prepare-release
     dagger "${dagger_args[@]}" check
-    dagger "${dagger_args[@]}" call sonar
+    # dagger "${dagger_args[@]}" call sonar
+}
+
+function dagger_publish() {
+    dagger "${dagger_args[@]}" call publish-release
 }
 
 main "$@"

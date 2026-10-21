@@ -37,15 +37,25 @@ type DataTool struct {
 	GithubUser string
 	// +private
 	GithubToken *dagger.Secret
+	// +private
+	SSHKey *dagger.Secret
+	// +private
+	Email string
 }
 
 func New(
 	// GitHub username
 	// +optional
 	githubUser string,
-	// +optional
 	// GitHub token
+	// +optional
 	githubToken *dagger.Secret,
+	// ssh key for homebrew cask PR
+	// +optional
+	sshKey *dagger.Secret,
+	// email for ssh key
+	// +optional
+	email string,
 ) *DataTool {
 	return &DataTool{
 		GithubUser:  githubUser,
