@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.16.2] - 2026-10-21
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Prepare release with version 1.16.2
+
+### 🐛 Bug Fixes (deps)
+
+- *(deps)* Bump dependency versions in go.mod and dagger
+- *(deps)* Upgrade a few vulnerable transient dependencies
+
+### 🐛 Bug Fixes (docs)
+
+- *(docs)* Update installation guide
+
+### 💼 Other
+
+- Use more robust OCI reference parsing
+- Correct new lint findings
+- "platform not found" test was incorrect in the copiers
+
+### 📚 Documentation
+
+- Correct a typo in the help for "sbom fetch"
+- Update help for "ace-dt mirror archive"
+- Correct typo in usage example
+
 ## [1.16.1] - 2025-07-15
 
 ### 🐛 Bug Fixes (actions)
