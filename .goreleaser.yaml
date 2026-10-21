@@ -50,7 +50,7 @@ checksum:
     - ace-dt-archives
   disable: false
 
-brews:
+homebrew_casks:
   - name: ace-dt
     ids: [ace-dt-archives]
     commit_author:
@@ -62,17 +62,18 @@ brews:
     description: "A CLI tool for packaging, uploading, and downloading data from OCI registries."
     license: "MIT"
     skip_upload: auto # don't upload if prerelease
-    test: |
-      system "#{bin}/ace-dt version"
-    extra_install: |
-      generate_completions_from_executable(bin/"ace-dt", "completion")
-
-      # Generate manpages
-      mkdir "man" do
-        system bin/"ace-dt", "gendocs", "man", "."
-        man1.install Dir["*.1"]
-      end
-    directory: Formula
+    generate_completions_from_executable:
+      executable: "bin/ace-dt"
+      args:
+        - completions
+    hooks:
+      post:
+        install: |
+            # Generate manpages
+            system_command "mkdir", args: ["man"]
+            system_command "bin/ace-dt", args: ["gendocs", "man", "."]
+            system_command 'man1.install Dir["*.1"]'
+    directory: Casks
     repository:
       owner: act3-ai
       name: homebrew-tap
@@ -82,4 +83,7 @@ brews:
         private_key: "{{ .Env.SSH_PRIVATE_KEY }}" # set in .envrc.private
       pull_request:
         enabled: true
-    url_template: "https://github.com/act3-ai/data-tool/releases/download/{{ .Tag }}/{{ .ArtifactName }}"
+        # body: |
+        #   cc/ @nathan-joslin
+    url:
+      template: "https://github.com/act3-ai/data-tool/releases/download/{{ .Tag }}/{{ .ArtifactName }}"

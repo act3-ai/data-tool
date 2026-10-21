@@ -1,7 +1,6 @@
 package bottle
 
 import (
-	"io"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -16,11 +15,11 @@ import (
 	"github.com/act3-ai/go-common/pkg/config"
 )
 
-// Yes they all test different logic in ace-dt
+// This file is used to ensure we properly handle symlinks throughout ace-dt
 
 func getConfig(configLoc string) (*v1alpha1.Configuration, error) {
 	c := &v1alpha1.Configuration{}
-	discard := slog.New(slog.NewTextHandler(io.Discard, nil))
+	discard := slog.New(slog.DiscardHandler)
 	err := config.Load(discard, apis.NewScheme(), c, []string{configLoc})
 	if err != nil {
 		return nil, err

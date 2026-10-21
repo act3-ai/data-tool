@@ -1,4 +1,6 @@
 /bin/*
+!/bin/lib.release.sh
+!/bin/release.sh
 /tool
 /coverage*.*
 /report.*
@@ -11,6 +13,7 @@ artifacts.txt
 ## Ignore logfiles
 /log
 
-.env.test
+/.env
+/.env.test
 .envrc.private
 /dist/

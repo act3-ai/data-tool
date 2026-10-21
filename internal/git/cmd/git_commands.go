@@ -122,7 +122,8 @@ func (gc *gitCmd) Fetch(ctx context.Context, args ...string) error {
 //
 // i.e. pushes a local git repository to the local/remote reference, with tags.
 func (gc *gitCmd) Push(ctx context.Context, gitRemote string, refs ...string) error {
-	args := []string{gitRemote}
+	args := make([]string, 0, 1+len(refs))
+	args = append(args, gitRemote)
 	args = append(args, refs...)
 	_, err := gc.Run(ctx, "push", args...)
 	return err

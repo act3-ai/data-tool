@@ -17,8 +17,8 @@ It is assumed that readers have familiarity with Data Tools's key concepts and c
 | Task or Tool | Type | Resources |
 | ------------ | ---- | --------- |
 | Data Tool configuration file established at `~/.config/ace/dt/config.yaml` | Required | [Data Tool Configuration Guide](../../get-started/configuration-guide.md) |
-| Podman installed | Required| [Install ASCE Tools](https://gitlab.com/act3-ai/asce/up/-/blob/main/act3-login/README.md#new-user-setup) or follow [Podman Installation Instructions](https://podman.io/docs/installation) |
-| Authentication to `reg.git.act3-ace.com` | Required |Run the [ACT3 Login script](https://gitlab.com/act3-ai/asce/up/-/blob/main/act3-login/README.md) or complete manual registry authentication |
+| Podman installed | Required | [Install ASCE Tools](https://gitlab.com/act3-ai/asce/up/-/blob/main/act3-login/README.md#new-user-setup) or follow [Podman Installation Instructions](https://podman.io/docs/installation) |
+| Authentication to `reg.git.act3-ace.com` | Required | Run the [ACT3 Login script](https://gitlab.com/act3-ai/asce/up/-/blob/main/act3-login/README.md) or complete manual registry authentication |
 | Connected to ACT3 VPN | Required | |
 
 ## Workflow Overview

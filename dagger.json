@@ -1,24 +1,29 @@
 {
-  "name": "tool",
-  "engineVersion": "v0.20.6",
+  "name": "data-tool",
+  "engineVersion": "v0.21.10",
   "sdk": {
     "source": "go"
   },
   "dependencies": [
     {
       "name": "git-cliff",
-      "source": "github.com/act3-ai/dagger/git-cliff@git-cliff/v0.1.2",
-      "pin": "86ec5dc4ee1fd4d168d51946bc82aa4110cc8d96"
+      "source": "github.com/act3-ai/dagger/git-cliff@git-cliff/v0.2.2",
+      "pin": "c2915e4ed29dfeceb2336ea61223d84288c0cceb"
     },
     {
       "name": "go",
-      "source": "github.com/sagikazarmark/daggerverse/go@go/v0.9.0",
-      "pin": "d9ba06776c4c1ccf6f329bd862b9b439c4582ab6"
+      "source": "github.com/dagger/dagger/toolchains/go@v0.21.10",
+      "pin": "02b2558d9997a77bf5d357032c45cdf5bf7d5ce1"
+    },
+    {
+      "name": "go-coverage",
+      "source": "github.com/act3-ai/dagger/gocoverage@gocoverage/v0.2.9",
+      "pin": "43d42be09467bc44e95c96914baa16910194a3a4"
     },
     {
       "name": "golangci-lint",
-      "source": "github.com/sagikazarmark/daggerverse/golangci-lint@golangci-lint/v0.9.0",
-      "pin": "e6c14178bcaaff9e102e2a89173ca31479b80629"
+      "source": "github.com/sagikazarmark/daggerverse/golangci-lint@28399f9a1034092debf655e31e919090d2181837",
+      "pin": "28399f9a1034092debf655e31e919090d2181837"
     },
     {
       "name": "goreleaser",
@@ -27,8 +32,18 @@
     },
     {
       "name": "govulncheck",
-      "source": "github.com/act3-ai/dagger/govulncheck@govulncheck/v0.1.1",
-      "pin": "5579aa8f127350d77c970c98784f40f56d279fbd"
+      "source": "github.com/act3-ai/dagger/govulncheck@govulncheck/v0.2.11",
+      "pin": "cdad260b725fa8e80d2967c4547fc442d11e6ff4"
+    },
+    {
+      "name": "markdownlint",
+      "source": "github.com/act3-ai/dagger/markdownlint@markdownlint/v0.4.10",
+      "pin": "67df49b656f03bc931f46ae4c298336ff37cebb1"
+    },
+    {
+      "name": "netrc",
+      "source": "github.com/act3-ai/dagger/netrc@netrc/v0.0.1",
+      "pin": "0cd5d789d40d197fa7b5fa6eba6bd74699dbf84f"
     },
     {
       "name": "registry-config",
@@ -37,20 +52,24 @@
     },
     {
       "name": "release",
-      "source": "github.com/act3-ai/dagger/release@release/v0.1.9",
-      "pin": "33748b33d71e31975d7297922fd2267341fae06d"
+      "source": "github.com/act3-ai/dagger/release@release/v0.3.19",
+      "pin": "12c8228145117cbd3651556e48390d41c21a9dc4"
     },
     {
-      "name": "shellcheck",
-      "source": "github.com/dagger/dagger/modules/shellcheck@v0.18.12",
-      "pin": "60a0f44023632f89f3c8701435d0c8a3ed57e644"
+      "name": "sonarqube",
+      "source": "github.com/act3-ai/dagger/sonarqube@sonarqube/v0.0.4",
+      "pin": "82f619b132629a23cc6b994f619220f69088d094"
     },
     {
       "name": "wolfi",
-      "source": "github.com/dagger/dagger/modules/wolfi@v0.18.12",
-      "pin": "60a0f44023632f89f3c8701435d0c8a3ed57e644"
+      "source": "github.com/dagger/dagger/modules/wolfi@v0.21.10",
+      "pin": "02b2558d9997a77bf5d357032c45cdf5bf7d5ce1"
+    },
+    {
+      "name": "yamllint",
+      "source": "github.com/act3-ai/dagger/yamllint@yamllint/v0.3.11",
+      "pin": "d5dc92694979870553cf7db73ae7f45193a0d328"
     }
   ],
-  "source": ".dagger",
-  "disableDefaultFunctionCaching": true
+  "source": ".dagger"
 }

@@ -164,7 +164,10 @@ func ToFromOCICacheTestFunc(ctx context.Context, tt lfsTest, target oras.GraphTa
 // The results are used for validation.
 func reachableOIDs(t *testing.T, ctx context.Context, argRevList []string, lfsSrcCmdHelper *cmd.Helper) ([]string, []string) { //nolint
 	t.Helper()
-	args := []string{"--objects"} // --objects is crucial, as this will tell us all objects that are fetched to the cache; else its just commits
+
+	// --objects is crucial, as this will tell us all objects that are fetched to the cache; else its just commits
+	args := make([]string, 0, 1+len(argRevList))
+	args = append(args, "--objects")
 	args = append(args, argRevList...)
 	reachableGitOids, err := revList(ctx, lfsSrcCmdHelper, args...)
 	if err != nil {

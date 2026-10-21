@@ -144,7 +144,7 @@ func ExamplePull_telemetry() {
 	if err != nil {
 		panic(fmt.Sprintf("Bottle pull failed: %v\n", err))
 	}
-	fmt.Fprintf(os.Stdout, "Success")
+	fmt.Fprintf(os.Stdout, "Success") //nolint:revive,nolintlint
 
 	// notify telemetry of pull event
 	_, err = telemAdapt.NotifyTelemetry(ctx, src, desc, pullDir, event)

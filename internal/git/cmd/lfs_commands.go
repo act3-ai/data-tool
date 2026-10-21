@@ -72,7 +72,8 @@ func (lfs *gitLFSCmd) Run(ctx context.Context, subCmd string, args ...string) ([
 // i.e. downloads git lfs objects at the provided refs. Requires a
 // remote to be provided if a default is not set (same default as git fetch).
 func (lfs *gitLFSCmd) Fetch(ctx context.Context, gitRemote string, argRevList ...string) error {
-	args := []string{gitRemote}
+	args := make([]string, 0, 1+len(argRevList))
+	args = append(args, gitRemote)
 	args = append(args, argRevList...)
 	_, err := lfs.Run(ctx, "fetch", args...)
 	return err
@@ -80,7 +81,8 @@ func (lfs *gitLFSCmd) Fetch(ctx context.Context, gitRemote string, argRevList ..
 
 // Push calls `git lfs push <gitRemote> <args>...`.
 func (lfs *gitLFSCmd) Push(ctx context.Context, gitRemote string, args ...string) error {
-	a := []string{gitRemote}
+	a := make([]string, 0, 1+len(args))
+	a = append(a, gitRemote)
 	a = append(a, args...)
 	_, err := lfs.Run(ctx, "push", a...)
 	return err

@@ -67,6 +67,9 @@ func Test_ToFromOCILFS(t *testing.T) {
 	ctx := context.Background()
 	ctx = logger.NewContext(ctx, tlog.Logger(t, -2))
 
+	// exclude user's global git configurtion in tests
+	t.Setenv("GIT_CONFIG_GLOBAL", "/dev/null")
+
 	srcRepo, srcHandler, srcServer, dstRepo, dstHandler, dstServer := setupLFSServerHandlers(t, ctx)
 	defer srcHandler.cleanup() //nolint
 	defer srcServer.Close()
@@ -207,6 +210,9 @@ func ToFromOCILFSTestFunc(ctx context.Context, tt lfsTest, target oras.GraphTarg
 func setupLFSServerHandlers(t *testing.T, ctx context.Context) (lfsSrc string, lfsSrcHandler *ToOCI, srcServer *httptest.Server, //nolint
 	lfsDst string, lfsDstHandler *FromOCI, dstServer *httptest.Server,
 ) {
+	// exclude user's global git configurtion in tests
+	t.Setenv("GIT_CONFIG_GLOBAL", "/dev/null")
+
 	// setup source repository backed by its own lfs server.
 	lfsSrc = t.TempDir()
 

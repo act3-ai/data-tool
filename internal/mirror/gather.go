@@ -79,7 +79,7 @@ func Gather(ctx context.Context, dataToolVersion string, opts GatherOptions) (oc
 			defer task.Complete()
 			task.Infof("Copying %s", src.Name)
 			log := logger.V(opts.Log, 1)
-			log.InfoContext(gctx, "copying", "srcReference", src.Name, "dest reference", opts.Dest)
+			log.InfoContext(gctx, "copying", slog.String("srcReference", src.Name), slog.String("destReference", opts.Dest))
 			// TODO: add progress back in... use GraphCopyOptions pre and post manifest
 			numBytes := atomic.Int64{}
 

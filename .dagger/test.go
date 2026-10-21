@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"dagger/tool/internal/dagger"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,47 +14,19 @@ const (
 	telemetryPort = 8100
 )
 
-// Run tests.
-func (t *Tool) Test() *Test {
-	return &Test{
-		Source:         t.Source,
-		Netrc:          t.Netrc,
-		RegistryConfig: t.RegistryConfig,
-	}
-}
-
-// Test organizes test functions.
-type Test struct {
-	// source code directory
-	// +defaultPath="/"
-	Source *dagger.Directory
-
-	// NETRC credentials
-	// +private
-	Netrc *dagger.Secret
-	// +private
-	RegistryConfig *dagger.RegistryConfig
-}
-
-// Run all tests.
-func (t *Test) All(ctx context.Context) (string, error) {
-	unitResults, unitErr := t.Unit(ctx)
-
-	funcResults, funcErr := t.Functional(ctx)
-
-	intResults, intErr := t.Integration(ctx)
-
-	out := "Unit Test Results:\n" + unitResults +
-		"\n=====\n\nFunctional Test Results:\n" + funcResults +
-		"\n=====\n\nIntegration TestResults:\n" + intResults
-	return out, errors.Join(unitErr, funcErr, intErr)
-}
-
 // Run unit tests.
-func (t *Test) Unit(ctx context.Context) (string, error) {
-	return dag.Go().
-		WithSource(t.Source).
-		Container().
+// +check
+func (m *DataTool) TestUnit(ctx context.Context,
+	// Top level source code directory
+	// +defaultPath="/"
+	// +ignore=[".git"]
+	src *dagger.Directory,
+) (string, error) {
+	return dag.Go(dagger.GoOpts{
+		Source: src,
+		Base:   dag.Container().From("golang:trixie"), // ensure access to apt for installing git-lfs
+	}).
+		Env().
 		WithExec([]string{"apt", "update"}).
 		WithExec([]string{"apt", "install", "-y", "git-lfs"}).
 		WithExec([]string{"go", "test", "./..."}).
@@ -63,9 +34,13 @@ func (t *Test) Unit(ctx context.Context) (string, error) {
 }
 
 // Run functional tests.
-func (t *Test) Functional(ctx context.Context) (string, error) {
+func (m *DataTool) TestFunctional(ctx context.Context,
+	// Top level source code directory
+	// +defaultPath="/"
+	src *dagger.Directory,
+) (string, error) {
 	// start registry server
-	regService := t.Registry()
+	regService := m.Registry()
 	regService, err := regService.Start(ctx)
 	if err != nil {
 		return "", err
@@ -82,7 +57,7 @@ func (t *Test) Functional(ctx context.Context) (string, error) {
 	}
 
 	// start telemetry server
-	telemService := t.TelemetryWithPostgres(ctx)
+	telemService := m.TelemetryWithPostgres(ctx)
 	telemService, err = telemService.Start(ctx)
 	if err != nil {
 		return "", err
@@ -97,11 +72,14 @@ func (t *Test) Functional(ctx context.Context) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
 	acedtConfigPath := "ace-dt-config.yaml"
-	results, err := dag.Go().
-		WithSource(t.Source).
-		Container().
-		// dependency for ace-dt git tests
+	results, err := dag.Go(dagger.GoOpts{
+		Source: src,
+		Base:   dag.Container().From("golang:trixie"), // ensure access to apt for installing git-lfs
+	}).
+		Env().
+		// install git-lfs dependency for ace-dt git tests
 		WithExec([]string{"apt", "update"}).
 		WithExec([]string{"apt", "install", "-y", "git-lfs"}).
 		// bind to registry and telemetry servers
@@ -113,7 +91,7 @@ func (t *Test) Functional(ctx context.Context) (string, error) {
 		WithNewFile(acedtConfigPath, insecureRegConfig(regEndpoint)).
 		WithEnvVariable("ACE_DT_CONFIG", acedtConfigPath).
 		WithExec([]string{"go", "test", "-count=1", "./..."}).
-		Stderr(ctx)
+		CombinedOutput(ctx)
 	if err != nil {
 		return results, err
 	}
@@ -130,9 +108,15 @@ func (t *Test) Functional(ctx context.Context) (string, error) {
 	return results, err
 }
 
-func (t *Test) Integration(ctx context.Context) (string, error) {
+// Run integration tests.
+func (m *DataTool) TestIntegration(ctx context.Context,
+	// Top level source code directory
+	// +defaultPath="/"
+	// +ignore=[".git"]
+	src *dagger.Directory,
+) (string, error) {
 	// start registry server
-	regService := t.Registry()
+	regService := m.Registry()
 	regService, err := regService.Start(ctx)
 	if err != nil {
 		return "", err
@@ -146,7 +130,7 @@ func (t *Test) Integration(ctx context.Context) (string, error) {
 	regHost := strings.TrimPrefix(regEndpoint, "http://")
 
 	// start telemetry server
-	telemService := t.TelemetryWithPostgres(ctx)
+	telemService := m.TelemetryWithPostgres(ctx)
 	telemService, err = telemService.Start(ctx)
 	if err != nil {
 		return "", err
@@ -158,13 +142,13 @@ func (t *Test) Integration(ctx context.Context) (string, error) {
 		return "", err
 	}
 
-	acedt := build(ctx, t.Source, "linux/amd64", true)
+	acedt := build(src, "linux/amd64", true)
 
 	originalBottleRef := "ghcr.io/act3-ai/data-tool/bottles/mnist:v1.6"
 	bottleID, err := dag.Wolfi().
 		Container().
 		WithFile("/usr/local/bin/ace-dt", acedt).
-		WithMountedSecret("/root/.docker/config.json", t.RegistryConfig.Secret()).
+		// WithMountedSecret("/root/.docker/config.json", t.RegistryConfig.Secret()).
 		WithExec([]string{"ace-dt", "bottle", "pull", originalBottleRef, "-d", "bottle"}).
 		File("bottle/.dt/bottleid").
 		Contents(ctx)
@@ -176,7 +160,7 @@ func (t *Test) Integration(ctx context.Context) (string, error) {
 	_, err = dag.Wolfi().
 		Container().
 		WithFile("/usr/local/bin/ace-dt", acedt).
-		WithMountedSecret("/root/.docker/config.json", t.RegistryConfig.Secret()).
+		// WithMountedSecret("/root/.docker/config.json", t.RegistryConfig.Secret()).
 		// bind to registry and telemetry servers
 		WithServiceBinding("server", telemService).
 		WithServiceBinding("registry", regService).
@@ -228,17 +212,8 @@ func (t *Test) Integration(ctx context.Context) (string, error) {
 	return "Successful", nil // TODO: better output?
 }
 
-// Run benchmark tests.
-func (t *Test) Bench(ctx context.Context) (string, error) {
-	return dag.Go().
-		WithSource(t.Source).
-		Container().
-		WithExec([]string{"go", "test", "./...", "-benchmem", "-bench=.", "-run=^$"}).
-		Stdout(ctx)
-}
-
 // Start a registry.
-func (t *Test) Registry() *dagger.Service {
+func (m *DataTool) Registry() *dagger.Service {
 	return dag.Container().
 		From(imageRegistry).
 		WithExposedPort(registryPort).
@@ -249,12 +224,12 @@ func (t *Test) Registry() *dagger.Service {
 //
 // This function makes it easier to expose a telemetry server to the host
 // with less hassle connecting it to postgres.
-func (tt *Test) TelemetryWithPostgres(ctx context.Context) *dagger.Service {
-	return tt.Telemetry(tt.Postgres())
+func (m *DataTool) TelemetryWithPostgres(ctx context.Context) *dagger.Service {
+	return m.Telemetry(m.Postgres())
 }
 
 // Start a telemetry server.
-func (tt *Test) Telemetry(
+func (m *DataTool) Telemetry(
 	// postgres service
 	postgres *dagger.Service,
 ) *dagger.Service {
@@ -274,7 +249,7 @@ func (tt *Test) Telemetry(
 }
 
 // Start postgres as a service.
-func (tt *Test) Postgres() *dagger.Service {
+func (tm *DataTool) Postgres() *dagger.Service {
 	return dag.Container().
 		From(imagePostgres).
 		// Notice: changes to these env vars must be reflected in uses of

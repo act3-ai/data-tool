@@ -95,7 +95,7 @@ func (a *App) handleFile(w http.ResponseWriter, r *http.Request) error {
 
 	man, ok := pyDistIdx.LookupDistribution(filename)
 	if !ok {
-		return httputil.NewHTTPError(nil, http.StatusNotFound, "File not found in python distribution index", "filename", filename)
+		return httputil.NewHTTPError(nil, http.StatusNotFound, "File not found in python distribution index", "filename", filename) //nolint:wrapcheck
 	}
 
 	dist, meta, err := pyDistIdx.FetchDistribution(ctx, man)
@@ -106,7 +106,7 @@ func (a *App) handleFile(w http.ResponseWriter, r *http.Request) error {
 	desc := dist
 	if metadata {
 		if meta == nil {
-			return httputil.NewHTTPError(nil, http.StatusNotFound, "Metadata not available for this distribution", "filename", filename)
+			return httputil.NewHTTPError(nil, http.StatusNotFound, "Metadata not available for this distribution", "filename", filename) //nolint:wrapcheck
 		}
 		desc = *meta
 	}

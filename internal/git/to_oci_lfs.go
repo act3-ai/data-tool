@@ -97,7 +97,8 @@ func (t *ToOCI) fetchLFSFilesGit(ctx context.Context, gitRemote string, argRevLi
 			return fmt.Errorf("creating fake LFS files: %w", err)
 		}
 
-		args := []string{"--all"}
+		args := make([]string, 0, 1+len(argRevList))
+		args = append(args, "--all")
 		args = append(args, argRevList...)
 		err := t.cmdHelper.LFS.Fetch(ctx, gitRemote, args...)
 		if err != nil {

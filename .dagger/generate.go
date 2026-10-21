@@ -13,45 +13,62 @@ const (
 	cliDocsPath = "docs/cli"
 )
 
-// Run all auto generators: CLI docs, API docs, and go generate
-func (t *Tool) GenAll(ctx context.Context) *dagger.Directory {
-	return dag.Directory().
-		WithDirectory(cliDocsPath, t.CLIDocs(ctx)).
-		WithDirectory(apiDocsPath, t.APIDocs()).
-		WithDirectory(pkgPath, t.Generate())
-}
+// TODO: revise caching
 
 // Generate CLI documentation.
-func (t *Tool) CLIDocs(ctx context.Context) *dagger.Directory {
-	acedt := t.Build(ctx, "linux/amd64", true)
+// +generate
+func (m *DataTool) CLIDocs(
+	ctx context.Context,
+	// Top level source code directory
+	// +defaultPath="/"
+	// +ignore=["**", "!go.*", "!pkg", "!internal", "!cmd", "!docs", "!apidocs.yaml", "!.git", "!.goreleaser.yaml"]
+	src *dagger.Directory,
+) *dagger.Changeset {
+	acedt := m.Build(ctx, src, "linux/amd64", true)
 
-	return dag.Go().
-		WithSource(t.Source).
-		Container().
+	return dag.Container().
+		WithDirectory("/src", src).
+		WithWorkdir("/src").
 		WithFile("/usr/local/bin/ace-dt", acedt).
 		WithExec([]string{"ace-dt", "gendocs", "md", "--only-commands", cliDocsPath}).
-		Directory(cliDocsPath)
+		Directory("/src").
+		Changes(src)
 }
 
 // Generate API documentation.
-func (t *Tool) APIDocs() *dagger.Directory {
-	return dag.Go().
-		WithSource(t.Source).
-		Exec([]string{"go", "install", goCrdRefDocs}).
-		WithExec([]string{"crd-ref-docs", "--config=apidocs.yaml", "--renderer=markdown",
+// +generate
+func (m *DataTool) APIDocs(
+	// Top level source code directory
+	// +defaultPath="/"
+	// +ignore=["**", "!go.*", "!pkg", "!internal", "!cmd", "!docs", "!apidocs.yaml"]
+	src *dagger.Directory,
+) *dagger.Changeset {
+	return dag.Go(dagger.GoOpts{
+		Source: src,
+	}).
+		Env().
+		WithExec([]string{"go", "tool", "crd-ref-docs", "--config=apidocs.yaml", "--renderer=markdown",
 			fmt.Sprintf("--source-path=%s/", pkgPath),
 			fmt.Sprintf("--output-path=%s/", apiDocsPath),
 		}).
 		WithoutFile(filepath.Join(apiDocsPath, "out.md")). // TODO: Necessary?
-		Directory(apiDocsPath)
+		Directory("/app").
+		Changes(src)
 }
 
 // Generate pkg/apis with controller-gen.
-func (t *Tool) Generate() *dagger.Directory {
-	return dag.Go().
-		WithSource(t.Source).
-		WithEnvVariable("GOBIN", "/work/src/tool").
-		Exec([]string{"go", "install", goControllerGen}).
+// +generate
+func (m *DataTool) GoGenerate(
+	// Top level source code directory
+	// +defaultPath="/"
+	// +ignore=["**", "!go.*", "!pkg", "!internal", "!cmd", "!docs"]
+	src *dagger.Directory,
+) *dagger.Changeset {
+	return dag.Go(dagger.GoOpts{
+		Source: src,
+	}).
+		Env().
 		WithExec([]string{"go", "generate", "./..."}).
-		Directory(pkgPath)
+		Directory("/app").
+		Changes(src)
 }

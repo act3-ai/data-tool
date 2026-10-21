@@ -80,8 +80,8 @@ Bottles may be referenced in many ways.
 | Syntax                                    | Description                        | Mutable | Example                                                                                                |
 |-------------------------------------------|------------------------------------|---------|--------------------------------------------------------------------------------------------------------|
 | `<registry>/<repository>/<name>:<tag>`    | name and tag                       | yes     | `reg.example.com/repo/dataset:1.2`                                                                     |
-| `<registry>/<repository>/<name>:latest`   | name and tag "latest"              | yes     | `reg.example.com/repo/dataset:latest`                                                                         |
-| `<registry>/<repository>/<name>@<digest>` | Manifest ID (i.e., manifest digest | no      | `reg.example.com/repo/dataset@sha256:1234123412341234123412341234123412341234123412341234123412341234` |
+| `<registry>/<repository>/<name>:latest`   | name and tag "latest"              | yes     | `reg.example.com/repo/dataset:latest`                                                                  |
+| `<registry>/<repository>/<name>@<digest>` | Manifest ID (i.e., manifest digest)| no      | `reg.example.com/repo/dataset@sha256:1234123412341234123412341234123412341234123412341234123412341234` |
 | `bottle:<digest>`                         | Bottle ID (i.e., bottle digest)    | no      | `bottle:sha256:deedbeef12341234123412341234123412341234123412341234123412341234`                       |
 
 The first three examples are identical to how Docker references images. The last one is unique to Data Tool.

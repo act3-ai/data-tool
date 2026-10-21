@@ -61,37 +61,37 @@ func Upload(ctx context.Context, client remote.Client, getContent func() (io.Rea
 		go func() {
 			for k, v := range fields {
 				if err := mp.WriteField(k, v); err != nil {
-					w.CloseWithError(err)
+					w.CloseWithError(err) //nolint:revive,nolintlint
 					return
 				}
 			}
 
 			cw, err := mp.CreateFormFile("content", entry.Filename)
 			if err != nil {
-				w.CloseWithError(err)
+				w.CloseWithError(err) //nolint:revive,nolintlint
 				return
 			}
 
 			cr, err := getContent()
 			if err != nil {
-				w.CloseWithError(err)
+				w.CloseWithError(err) //nolint:revive,nolintlint
 				return
 			}
 			defer cr.Close()
 
 			_, err = io.Copy(cw, cr)
 			if err != nil {
-				w.CloseWithError(err)
+				w.CloseWithError(err) //nolint:revive,nolintlint
 				return
 			}
 
 			err = mp.Close()
 			if err != nil {
-				w.CloseWithError(err)
+				w.CloseWithError(err) //nolint:revive,nolintlint
 				return
 			}
 
-			w.Close()
+			w.Close() //nolint:revive,nolintlint
 		}()
 
 		return r, mp.FormDataContentType(), nil

@@ -182,7 +182,6 @@ func PrintCSV(out io.Writer, results []*ArtifactDetails, vulnerabilityLevel stri
 
 // PrintTable prints out the ArtifactDetails in a printed table format to the io.Writer defined.
 func PrintTable(out io.Writer, results []*ArtifactDetails, vulnerabilityLevel string, displayCVEs, displayPlatforms bool) error {
-	table := [][]string{}
 	orderedSeverities := []string{"critical", "high", "medium", "low", "negligible", "unknown"}
 	minLevel := SeverityLevels[strings.ToLower(vulnerabilityLevel)]
 	columns := 2
@@ -193,7 +192,7 @@ func PrintTable(out io.Writer, results []*ArtifactDetails, vulnerabilityLevel st
 			columns++
 		}
 	}
-
+	table := make([][]string, 0, 2+len(results))
 	table = append(table, []string{}, tableHeader)
 	for _, res := range results {
 		data := []string{res.originatingReference, humanize.Bytes(uint64(res.size))}
@@ -229,12 +228,10 @@ func printCVETable(out io.Writer, results []*ArtifactDetails, vulnerabilityLevel
 		isTerminal = term.IsTerminal(int(f.Fd()))
 	}
 
-	table := [][]string{{}}
 	orderedSeverities := []string{"critical", "high", "medium", "low", "negligible", "unknown"}
 	minLevel := SeverityLevels[strings.ToLower(vulnerabilityLevel)]
 	// create the table header
 	tableHeader := []string{"reference", "CVE", "severity"}
-	table[0] = tableHeader
 	data := [][]string{}
 	for _, res := range results {
 		for _, sev := range orderedSeverities {
@@ -253,6 +250,8 @@ func printCVETable(out io.Writer, results []*ArtifactDetails, vulnerabilityLevel
 			continue
 		}
 	}
+	table := make([][]string, 0, 1+len(data))
+	table = append(table, tableHeader)
 	table = append(table, data...)
 	if len(table) == 1 {
 		_, err := out.Write([]byte("no CVE vulnerabilities found\n\n"))
@@ -273,7 +272,7 @@ func printPlatformsTable(out io.Writer, results []*ArtifactDetails) error {
 		}
 		return nil
 	}
-	table := [][]string{}
+	table := make([][]string, 0, 2+len(platformMap))
 	table = append(table, []string{"platform", "platform support"})
 	var numHelmFiles int
 	for _, res := range results {
@@ -443,7 +442,7 @@ func analyzePlatforms(results []*ArtifactDetails) map[string]int {
 }
 
 func separatorString(maxSeparatorLength []int) []string {
-	separator := []string{}
+	separator := make([]string, 0, len(maxSeparatorLength))
 	for _, width := range maxSeparatorLength {
 		separator = append(separator, strings.Repeat("-", width))
 	}
