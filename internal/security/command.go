@@ -86,14 +86,11 @@ func grypeSBOM(ctx context.Context, sbom io.ReadCloser) (*Results, error) {
 func getGrypeDBChecksum(ctx context.Context) (string, error) {
 	cmd := exec.CommandContext(ctx, "grype", "db", "status", "--output", "json")
 	var stdout, stderr bytes.Buffer
-
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
-
 	_ = cmd.Run()
 
 	var grypeStatus grypeDBChecksum
-	//only reads stdout and prints grypeStatus.Error
 	if err := json.Unmarshal(stdout.Bytes(), &grypeStatus); err != nil {
 		return "", fmt.Errorf("getting grype db checksum: %s", strings.TrimSpace(stdout.String()+"\n"+stderr.String()))
 	}
@@ -138,7 +135,7 @@ func getGrypeDBChecksum(ctx context.Context) (string, error) {
 type grypeDBChecksum struct {
 	Checksum string `json:"checksum,omitempty"` // v0.89.0 and prior
 	From     string `json:"from,omitempty"`     // v0.90.0 (latest at this time)
-	Error	 string `json:"error,omitempty"`   // for backwards compatibility
+	Error    string `json:"error,omitempty"`    // for backwards compatibility
 }
 
 func (g *grypeDBChecksum) value() (string, error) {
