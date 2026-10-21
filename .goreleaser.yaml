@@ -79,7 +79,7 @@ homebrew_casks:
       name: homebrew-tap
       branch: bump-ace-dt-{{ .Tag }}
       git:
-        url: 'ssh://git@github.com:act3-ai/homebrew-tap.git'
+        url: 'git@github.com:act3-ai/homebrew-tap.git'
         private_key: "{{ .Env.SSH_PRIVATE_KEY }}" # set in .envrc.private
       pull_request:
         enabled: true
