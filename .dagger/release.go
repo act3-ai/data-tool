@@ -66,7 +66,7 @@ func (m *DataTool) PublishRelease(ctx context.Context,
 	notesPath := filepath.Join("releases", vVersion+".md")
 	imagePlatforms := []dagger.Platform{"linux/amd64", "linux/arm64"}
 
-	_, err = dag.Goreleaser(src, dagger.GoreleaserOpts{Version: "v2.9"}).
+	_, err = dag.Goreleaser(src).
 		// env vars defined in .goreleaser.yaml
 		WithSecretVariable("GITHUB_TOKEN", m.GithubToken).
 		WithSecretVariable("SSH_PRIVATE_KEY", m.GithubToken).
