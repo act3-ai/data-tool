@@ -60,5 +60,7 @@ func New(
 	return &DataTool{
 		GithubUser:  githubUser,
 		GithubToken: githubToken,
+		SSHKey:      sshKey,
+		Email:       email,
 	}
 }
