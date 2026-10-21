@@ -69,7 +69,7 @@ func (m *DataTool) PublishRelease(ctx context.Context,
 	_, err = dag.Goreleaser(src).
 		// env vars defined in .goreleaser.yaml
 		WithSecretVariable("GITHUB_TOKEN", m.GithubToken).
-		WithSecretVariable("SSH_PRIVATE_KEY", m.GithubToken).
+		WithSecretVariable("SSH_PRIVATE_KEY", m.SSHKey).
 		WithEnvVariable("RELEASE_AUTHOR", m.GithubUser).
 		WithEnvVariable("RELEASE_AUTHOR_EMAIL", m.Email).
 		WithEnvVariable("RELEASE_LATEST", strconv.FormatBool(latest)).
