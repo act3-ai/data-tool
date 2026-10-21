@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.16.3] - 2026-10-21
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Prepare release with version 1.16.3
+
+### 🐛 Bug Fixes (dagger)
+
+- *(dagger)* Handling of private keys in release process
+
 ## [1.16.2] - 2026-10-21
 
 ### ⚙️ Miscellaneous Tasks
