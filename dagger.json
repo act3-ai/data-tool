@@ -12,8 +12,8 @@
     },
     {
       "name": "go",
-      "source": "github.com/dagger/dagger/toolchains/go@v0.21.10",
-      "pin": "02b2558d9997a77bf5d357032c45cdf5bf7d5ce1"
+      "source": "github.com/dagger/dagger/toolchains/go@v0.21.11",
+      "pin": "631cdb609aaddc0037c2ba713e7642cadf645ff4"
     },
     {
       "name": "go-coverage",
