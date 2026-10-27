@@ -4,23 +4,24 @@ import (
 	"github.com/spf13/cobra"
 
 	mirroractions "github.com/act3-ai/data-tool/internal/actions/mirror"
-	"github.com/act3-ai/data-tool/internal/mirror"
 )
 
 func newViewCmd(action *mirroractions.Action) *cobra.Command {
-	var verbose bool
+	var detailed bool
 
 	cmd := &cobra.Command{
-		Use:   "view <path-to-index.json>",
-		Short: "View images and manifests contained in a gather index",
+		Use:   "view <path>",
+		Short: "View images and manifests contained in a gather index, OCI store, or tarball",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			indexPath := args[0]
-			return mirror.ViewGatherIndex(indexPath, verbose)
+			path := args[0]
+			
+			// Call it using the existing mirroractions alias
+			return mirroractions.ViewGatherIndex(cmd.Context(), path, detailed)
 		},
 	}
 
-	cmd.Flags().BoolVar(&verbose, "verbose", false, "Display detailed manifest information")
+	cmd.Flags().BoolVarP(&detailed, "detailed", "d", false, "Display detailed manifest information")
 
 	return cmd
 }
