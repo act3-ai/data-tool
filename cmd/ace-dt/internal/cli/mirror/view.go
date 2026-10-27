@@ -8,20 +8,21 @@ import (
 
 func newViewCmd(action *mirroractions.Action) *cobra.Command {
 	var detailed bool
+	var showRefs bool
+	var showImages bool
 
 	cmd := &cobra.Command{
 		Use:   "view <path>",
-		Short: "View images and manifests contained in a gather index, OCI store, or tarball",
+		Short: "View images and manifests in an extracted OCI layout or its index.json",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			path := args[0]
-			
-			// Call it using the existing mirroractions alias
-			return mirroractions.ViewGatherIndex(cmd.Context(), path, detailed)
+			return mirroractions.ViewGatherIndex(cmd.Context(), args[0], detailed, showRefs, showImages)
 		},
 	}
 
 	cmd.Flags().BoolVarP(&detailed, "detailed", "d", false, "Display detailed manifest information")
+	cmd.Flags().BoolVar(&showRefs, "refs", false, "List top-level digest, reference name, and type (tab-separated)")
+	cmd.Flags().BoolVar(&showImages, "images", false, "List index digest/type/ref and image digest/type/platform (tab-separated)")
 
 	return cmd
 }
