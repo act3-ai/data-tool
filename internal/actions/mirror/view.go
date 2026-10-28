@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"text/tabwriter"
 
 	digest "github.com/opencontainers/go-digest"
@@ -19,19 +20,24 @@ import (
 var _ content.ReadOnlyGraphStorage = (*oci.ReadOnlyStore)(nil)
 
 // ViewGatherIndex renders references or image metadata from an extracted OCI layout.
-func ViewGatherIndex(ctx context.Context, inputPath string, detailed, showRefs, showImages bool) error {
+// When diffPath is set, it compares this layout's top-level index entries against
+// diffPath and writes tab-separated additions and removals.
+func ViewGatherIndex(ctx context.Context, inputPath string, detailed, showRefs, showImages bool, diffPath string) error {
+	if diffPath != "" {
+		if detailed || showRefs || showImages {
+			return fmt.Errorf("--diff cannot be combined with --detailed, --refs, or --images")
+		}
+		return diffIndexes(inputPath, diffPath)
+	}
+
 	storeDir, err := prepareOCIStoreDir(inputPath)
 	if err != nil {
 		return fmt.Errorf("preparing OCI store: %w", err)
 	}
 
-	indexData, err := os.ReadFile(filepath.Join(storeDir, "index.json"))
+	index, err := readOCIIndex(storeDir)
 	if err != nil {
-		return fmt.Errorf("reading index.json from OCI store: %w", err)
-	}
-	var index ocispec.Index
-	if err := json.Unmarshal(indexData, &index); err != nil {
-		return fmt.Errorf("unmarshaling index.json: %w", err)
+		return err
 	}
 	if len(index.Manifests) == 0 {
 		if !showRefs && !showImages {
@@ -68,10 +74,7 @@ func ViewGatherIndex(ctx context.Context, inputPath string, detailed, showRefs, 
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	for _, desc := range index.Manifests {
-		ref := desc.Annotations[ocispec.AnnotationRefName]
-		if ref == "" {
-			ref = "<unnamed>"
-		}
+		ref := referenceName(desc)
 		manifestBytes, err := fetchMetadata(ctx, graph, desc)
 		if err != nil {
 			fmt.Fprintf(w, "%s\t%s\t(manifest missing)\n", desc.Digest, ref)
@@ -119,6 +122,94 @@ func ViewGatherIndex(ctx context.Context, inputPath string, detailed, showRefs, 
 	return w.Flush()
 }
 
+// diffIndexes compares top-level descriptors only. A row is identified by its
+// digest, OCI reference name, and normalized kind. This makes a retag or a
+// change from image to index visible as one removal and one addition.
+// Output is stable and tab-separated: +/-<TAB>digest<TAB>ref<TAB>kind.
+func diffIndexes(inputPath, againstPath string) error {
+	inputDir, err := prepareOCIStoreDir(inputPath)
+	if err != nil {
+		return fmt.Errorf("preparing input OCI store: %w", err)
+	}
+	againstDir, err := prepareOCIStoreDir(againstPath)
+	if err != nil {
+		return fmt.Errorf("preparing comparison OCI store: %w", err)
+	}
+
+	inputIndex, err := readOCIIndex(inputDir)
+	if err != nil {
+		return err
+	}
+	againstIndex, err := readOCIIndex(againstDir)
+	if err != nil {
+		return err
+	}
+
+	inputEntries, err := indexEntries(inputIndex)
+	if err != nil {
+		return err
+	}
+	againstEntries, err := indexEntries(againstIndex)
+	if err != nil {
+		return err
+	}
+
+	// Entries present only in --diff's argument were removed from the input.
+	printIndexDiff("-", againstEntries, inputEntries)
+	// Entries present only in the input were added relative to --diff's argument.
+	printIndexDiff("+", inputEntries, againstEntries)
+	return nil
+}
+
+type indexEntry struct {
+	digest digest.Digest
+	ref    string
+	kind   string
+}
+
+func readOCIIndex(storeDir string) (ocispec.Index, error) {
+	indexData, err := os.ReadFile(filepath.Join(storeDir, "index.json"))
+	if err != nil {
+		return ocispec.Index{}, fmt.Errorf("reading index.json from OCI store: %w", err)
+	}
+	var index ocispec.Index
+	if err := json.Unmarshal(indexData, &index); err != nil {
+		return ocispec.Index{}, fmt.Errorf("unmarshaling index.json: %w", err)
+	}
+	return index, nil
+}
+
+func indexEntries(index ocispec.Index) (map[string]indexEntry, error) {
+	entries := make(map[string]indexEntry, len(index.Manifests))
+	for _, desc := range index.Manifests {
+		parsed, err := parseBlobDigest(desc.Digest)
+		if err != nil {
+			return nil, err
+		}
+		entry := indexEntry{digest: parsed, ref: referenceName(desc), kind: getKindFromMediaType(desc.MediaType)}
+		entries[indexEntryKey(entry)] = entry
+	}
+	return entries, nil
+}
+
+func indexEntryKey(entry indexEntry) string {
+	return entry.digest.String() + "\x00" + entry.ref + "\x00" + entry.kind
+}
+
+func printIndexDiff(prefix string, entries, other map[string]indexEntry) {
+	keys := make([]string, 0, len(entries))
+	for key := range entries {
+		if _, found := other[key]; !found {
+			keys = append(keys, key)
+		}
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		entry := entries[key]
+		fmt.Printf("%s\t%s\t%s\t%s\n", prefix, entry.digest, entry.ref, entry.kind)
+	}
+}
+
 func referenceName(desc ocispec.Descriptor) string {
 	if ref := desc.Annotations[ocispec.AnnotationRefName]; ref != "" {
 		return ref
@@ -135,10 +226,6 @@ func getKindFromMediaType(mediaType string) string {
 	default:
 		return "artifact"
 	}
-}
-
-func isIndexMediaType(mediaType string) bool {
-	return getKindFromMediaType(mediaType) == "index"
 }
 
 // Parse before reading: the digest selects blobs/<algorithm>/<encoded>, not blobs/sha256.
