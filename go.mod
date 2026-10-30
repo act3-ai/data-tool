@@ -2,7 +2,6 @@ module github.com/act3-ai/data-tool
 
 go 1.27.0
 
-// testing only dependencies
 require (
 	github.com/Masterminds/sprig/v3 v3.3.0
 	github.com/act3-ai/bottle-schema v1.2.16
@@ -41,7 +40,6 @@ require (
 	github.com/fortytw2/leaktest v1.3.0
 	github.com/google/go-containerregistry v0.22.1
 	github.com/stretchr/testify v1.12.1
-
 )
 require (
 	cel.dev/expr v0.25.2 // indirect
