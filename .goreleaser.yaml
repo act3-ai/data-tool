@@ -63,16 +63,9 @@ homebrew_casks:
     license: "MIT"
     skip_upload: auto # don't upload if prerelease
     generate_completions_from_executable:
-      executable: "bin/ace-dt"
+      executable: "ace-dt"
       args:
-        - completions
-    hooks:
-      post:
-        install_steps: |
-            # Generate manpages
-            run "mkdir", args: ["man"]
-            run "bin/ace-dt", args: ["gendocs", "man", "."]
-            run 'man1.install Dir["*.1"]'
+        - completion
     directory: Casks
     repository:
       owner: act3-ai
