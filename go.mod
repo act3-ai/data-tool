@@ -12,9 +12,7 @@ require (
 	github.com/djherbis/atime v1.1.0
 	github.com/dustin/go-humanize v1.1.0
 	github.com/fatih/color v1.19.0
-	github.com/fortytw2/leaktest v1.3.0
 	github.com/go-ozzo/ozzo-validation/v4 v4.5.0
-	github.com/google/go-containerregistry v0.22.1
 	github.com/gosuri/uitable v0.0.4
 	github.com/hashicorp/go-version v1.9.0
 	github.com/klauspost/compress v1.20.3
@@ -26,7 +24,6 @@ require (
 	github.com/sourcegraph/conc v0.3.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
-	github.com/stretchr/testify v1.12.1
 	go.etcd.io/bbolt v1.5.0
 	golang.org/x/exp v0.0.0-20261014143641-f0251eb4aa3e
 	golang.org/x/net v0.62.0
@@ -39,6 +36,13 @@ require (
 	sigs.k8s.io/yaml v1.6.0
 )
 
+//testing only dependencies
+require (
+	github.com/fortytw2/leaktest v1.3.0
+	github.com/google/go-containerregistry v0.22.1
+	github.com/stretchr/testify v1.12.1
+
+)
 require (
 	cel.dev/expr v0.25.2 // indirect
 	dario.cat/mergo v1.0.2 // indirect
