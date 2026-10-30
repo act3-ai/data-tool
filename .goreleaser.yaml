@@ -68,11 +68,11 @@ homebrew_casks:
         - completions
     hooks:
       post:
-        install: |
+        install_steps: |
             # Generate manpages
-            system_command "mkdir", args: ["man"]
-            system_command "bin/ace-dt", args: ["gendocs", "man", "."]
-            system_command 'man1.install Dir["*.1"]'
+            run "mkdir", args: ["man"]
+            run "bin/ace-dt", args: ["gendocs", "man", "."]
+            run 'man1.install Dir["*.1"]'
     directory: Casks
     repository:
       owner: act3-ai
