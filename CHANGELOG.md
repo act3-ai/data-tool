@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.16.5] - 2026-10-30
+
+### ⚙️ Miscellaneous Tasks
+
+- *(release)* Prepare release with version 1.16.5
+
+### 🐛 Bug Fixes (dagger)
+
+- *(dagger)* Release image publishing
+
+### 🐛 Bug Fixes (deps): update direct dependencies (#165)
+
+- *(deps)* Update direct dependencies (#165)
+
+### 🐛 Bug Fixes (goreleaser)
+
+- *(goreleaser)* Address breaking change to configuration file
+
+### 🐛 Bug Fixes (security scan)
+
+- *(security scan)* Update error message for grype db status check
+
+### 📦 Dependencies
+
+- *(dagger)* Bump to v0.21.11
+- *(dagger)* Bump github.com/dagger/dagger/toolchains/go@v0.21.10
+
 ## [1.16.4] - 2026-10-21
 
 ### 🐛 Bug Fixes (goreleaser)
