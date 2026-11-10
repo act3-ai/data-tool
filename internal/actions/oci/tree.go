@@ -11,6 +11,7 @@ import (
 	"oras.land/oras-go/v2/content/oci"
 
 	"github.com/act3-ai/data-tool/internal/print"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // Tree represents the oci tree action.
@@ -24,6 +25,7 @@ type Tree struct {
 	ShowBlobs       bool
 	ShortDigests    bool
 	ShowAnnotations bool
+	CheckBlobs      bool
 
 	OnlyReferrers bool
 	ArtifactType  string
@@ -33,6 +35,22 @@ type Tree struct {
 func (action *Tree) Run(ctx context.Context, out io.Writer, rawRef string) error {
 	var storage oras.ReadOnlyGraphTarget
 	var ref string
+
+	var roots []ocispec.Descriptor
+
+	archivePath := ""
+	archiveRef := ""
+	if !action.OCILayout {
+		var found bool
+		var err error
+		archivePath, archiveRef, found, err = localArchiveReference(rawRef)
+		if err != nil {
+			return err
+		}
+		if !found {
+			archivePath = ""
+		}
+	}
 
 	switch {
 	case action.OCILayout:
@@ -49,6 +67,26 @@ func (action *Tree) Run(ctx context.Context, out io.Writer, rawRef string) error
 
 		storage = store
 		ref = r
+
+	case archivePath != "":
+		tempDir, err := extractOCILayoutTar(ctx, archivePath)
+		if err != nil {
+			return fmt.Errorf("extracting OCI layout tarball %q: %w", archivePath, err)
+		}
+		defer os.RemoveAll(tempDir)
+
+		store, err := oci.NewFromFS(ctx, os.DirFS(tempDir))
+		if err != nil {
+			return fmt.Errorf("opening OCI image layout tarball: %w", err)
+		}
+		storage = store
+		ref = archiveRef
+		if ref == "" {
+			roots, err = archiveRoots(tempDir)
+			if err != nil {
+				return err
+			}
+		}
 	default:
 		// remote reference
 		repo, err := action.Config.Repository(ctx, rawRef)
@@ -59,9 +97,13 @@ func (action *Tree) Run(ctx context.Context, out io.Writer, rawRef string) error
 		ref = repo.Reference.ReferenceOrDefault()
 	}
 
-	node, err := storage.Resolve(ctx, ref)
-	if err != nil {
-		return fmt.Errorf("resolving image reference %s failed: %w", ref, err)
+	var node ocispec.Descriptor
+	if len(roots) == 0 {
+		var err error
+		node, err = storage.Resolve(ctx, ref)
+		if err != nil {
+			return fmt.Errorf("resolving image reference %s failed: %w", ref, err)
+		}
 	}
 
 	o := print.Options{}
@@ -71,8 +113,27 @@ func (action *Tree) Run(ctx context.Context, out io.Writer, rawRef string) error
 	o.ShowAnnotations = action.ShowAnnotations
 	o.OnlyReferrers = action.OnlyReferrers
 	o.ArtifactType = action.ArtifactType
+	o.CheckBlobs = action.CheckBlobs
 
+	if len(roots) != 0 {
+		return printTreeRoots(ctx, out, storage, roots, o)
+	}
 	return print.All(ctx, out, storage, node, o)
+}
+
+// printTreeRoots prints each archive root in index order.
+func printTreeRoots(ctx context.Context, out io.Writer, storage oras.ReadOnlyGraphTarget, roots []ocispec.Descriptor, options print.Options) error {
+	for i, root := range roots {
+		if i != 0 {
+			if _, err := fmt.Fprintln(out); err != nil {
+				return err
+			}
+		}
+		if err := print.All(ctx, out, storage, root, options); err != nil {
+			return fmt.Errorf("printing OCI archive descriptor %s: %w", root.Digest, err)
+		}
+	}
+	return nil
 }
 
 // parseOCILayoutReference parses the raw in format of <path>[:<tag>|@<digest>].

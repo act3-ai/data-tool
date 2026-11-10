@@ -73,6 +73,7 @@ type Options struct {
 	DisableBlobs    bool
 	ShortDigests    bool
 	ShowAnnotations bool
+	CheckBlobs      bool
 
 	OnlyReferrers bool   // only used by predecessors
 	ArtifactType  string // used when OnlyReferrers is true
@@ -165,7 +166,7 @@ func (pp prettyPrinter) printSuccessors(ctx context.Context, fetcher content.Fet
 
 // printPredecessors prints the predecessors only.
 func (pp prettyPrinter) printPredecessors(ctx context.Context, storage content.ReadOnlyGraphStorage, node ocispec.Descriptor) error {
-	if err := pp.printDescriptor("", node); err != nil {
+	if err := pp.printDescriptor("", node, false); err != nil {
 		return err
 	}
 
@@ -262,8 +263,14 @@ func (pp prettyPrinter) processDescriptor(ctx context.Context, fetcher content.F
 	}
 	pp.depth++
 
-	if err := pp.printDescriptor("", desc); err != nil {
-		return 0, err
+	if encoding.IsManifest(desc.MediaType) {
+		if err := pp.printDescriptor("", desc, false); err != nil {
+			return 0, err
+		}
+	} else {
+		if err := pp.printBlob(ctx, fetcher, "", desc); err != nil {
+			return 0, err
+		}
 	}
 
 	var size int64
@@ -390,7 +397,7 @@ func (pp prettyPrinter) printImageManifest(ctx context.Context, fetcher content.
 	info := pp.nest(prefixContinueInfo)
 
 	sum += manifest.Config.Size
-	if err := info.entry(false).printDescriptor(nameConfig, manifest.Config); err != nil {
+	if err := info.entry(false).printBlob(ctx, fetcher, nameConfig, manifest.Config); err != nil {
 		return 0, err
 	}
 
@@ -405,7 +412,7 @@ func (pp prettyPrinter) printImageManifest(ctx context.Context, fetcher content.
 		sum += desc.Size
 		last := i+1 == n
 		entry := layersNested.entry(last)
-		if err := entry.printDescriptor("", desc); err != nil {
+		if err := entry.printBlob(ctx, fetcher, "", desc); err != nil {
 			return 0, err
 		}
 	}
@@ -428,10 +435,29 @@ func (pp prettyPrinter) printImageManifest(ctx context.Context, fetcher content.
 	return sum, pp.nest(prefixLastInfo).printSummary(sum)
 }
 
-func (pp prettyPrinter) printDescriptor(itemName string, desc ocispec.Descriptor) error {
+// printBlob checks a leaf without downloading its content.
+func (pp prettyPrinter) printBlob(ctx context.Context, fetcher content.Fetcher, itemName string, desc ocispec.Descriptor) error {
+	missing := false
+	if pp.CheckBlobs && desc.Data == nil {
+		storage, ok := fetcher.(content.ReadOnlyStorage)
+		if !ok {
+			return fmt.Errorf("checking blobs requires storage with Exists")
+		}
+
+		exists, err := storage.Exists(ctx, desc)
+		if err != nil {
+			return fmt.Errorf("checking blob %s: %w", desc.Digest, err)
+		}
+		missing = !exists
+	}
+
+	return pp.printDescriptor(itemName, desc, missing)
+}
+
+func (pp prettyPrinter) printDescriptor(itemName string, desc ocispec.Descriptor, missing bool) error {
 	pp.bt.Add(desc)
 
-	if pp.DisableBlobs && !encoding.IsManifest(desc.MediaType) {
+	if pp.DisableBlobs && !encoding.IsManifest(desc.MediaType) && !missing {
 		return nil
 	}
 
@@ -461,7 +487,11 @@ func (pp prettyPrinter) printDescriptor(itemName string, desc ocispec.Descriptor
 		annos = formatAnnotations(desc.Annotations)
 	}
 
-	_, err := fmt.Fprintf(pp.out, "%s%s[%6s] %s%s%s %s %s\n", pp.prefix, itemName, size, formatMediaType(desc.MediaType), artifactType, platform, dgst, annos)
+	var status string
+	if missing {
+		status = " MISSING"
+	}
+	_, err := fmt.Fprintf(pp.out, "%s%s[%6s] %s%s%s %s %s%s\n", pp.prefix, itemName, size, formatMediaType(desc.MediaType), artifactType, platform, dgst, annos, status)
 	return err
 }
 
