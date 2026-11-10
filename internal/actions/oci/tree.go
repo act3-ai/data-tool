@@ -12,7 +12,6 @@ import (
 
 	"github.com/act3-ai/data-tool/internal/print"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-
 )
 
 // Tree represents the oci tree action.
@@ -117,19 +116,24 @@ func (action *Tree) Run(ctx context.Context, out io.Writer, rawRef string) error
 	o.CheckBlobs = action.CheckBlobs
 
 	if len(roots) != 0 {
-    for i, root := range roots {
-        if i != 0 {
-            if _, err := fmt.Fprintln(out); err != nil {
-                return err
-            }
-        }
-        if err := print.All(ctx, out, storage, root, o); err != nil {
-            return fmt.Errorf("printing OCI archive descriptor %s: %w", root.Digest, err)
-        }
-    }
-    return nil
-}
+		return printTreeRoots(ctx, out, storage, roots, o)
+	}
 	return print.All(ctx, out, storage, node, o)
+}
+
+// printTreeRoots prints each archive root in index order.
+func printTreeRoots(ctx context.Context, out io.Writer, storage oras.ReadOnlyGraphTarget, roots []ocispec.Descriptor, options print.Options) error {
+	for i, root := range roots {
+		if i != 0 {
+			if _, err := fmt.Fprintln(out); err != nil {
+				return err
+			}
+		}
+		if err := print.All(ctx, out, storage, root, options); err != nil {
+			return fmt.Errorf("printing OCI archive descriptor %s: %w", root.Digest, err)
+		}
+	}
+	return nil
 }
 
 // parseOCILayoutReference parses the raw in format of <path>[:<tag>|@<digest>].

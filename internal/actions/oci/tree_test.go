@@ -75,7 +75,7 @@ func TestTree_Run_Errors(t *testing.T) {
 		OCILayout: true,
 	}
 	var buf bytes.Buffer
-	
+
 	err := tree.Run(context.Background(), &buf, "invalid-reference")
 	if err == nil {
 		t.Error("expected error for invalid OCI layout reference, got nil")

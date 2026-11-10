@@ -19,7 +19,7 @@ func newTreeCmd(base *oci.Action) *cobra.Command {
 		Short: "Show the tree view of the OCI data graph for a remote image or a local OCI directory.",
 		Long: `IMAGE is an OCI image reference.
 With --oci-layout, OCILAYOUT is an OCI layout directory and reference: path/to/dir:tag or path/to/dir@sha256:...
-OCITARBALL is a local tar or tar.gz containing an OCI layout at its root. Use ./image.tar:tag or ./image.tar@sha256:...; if its index has exactly one descriptor, ./image.tar also works. Existing local files take precedence over remote references.`,		Args: cobra.ExactArgs(1),
+OCITARBALL is a local tar or tar.gz containing an OCI layout at its root. Use ./image.tar:tag or ./image.tar@sha256:...; if its index has exactly one descriptor, ./image.tar also works. Existing local files take precedence over remote references.`, Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return ui.RunUI(cmd.Context(), uiOptions, func(ctx context.Context) error {
 				return action.Run(ctx, cmd.OutOrStdout(), args[0])

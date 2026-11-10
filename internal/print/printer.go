@@ -73,7 +73,7 @@ type Options struct {
 	DisableBlobs    bool
 	ShortDigests    bool
 	ShowAnnotations bool
-	CheckBlobs	    bool
+	CheckBlobs      bool
 
 	OnlyReferrers bool   // only used by predecessors
 	ArtifactType  string // used when OnlyReferrers is true
@@ -435,7 +435,7 @@ func (pp prettyPrinter) printImageManifest(ctx context.Context, fetcher content.
 	return sum, pp.nest(prefixLastInfo).printSummary(sum)
 }
 
-// printBlob checks a leaf without downloading its content 
+// printBlob checks a leaf without downloading its content.
 func (pp prettyPrinter) printBlob(ctx context.Context, fetcher content.Fetcher, itemName string, desc ocispec.Descriptor) error {
 	missing := false
 	if pp.CheckBlobs && desc.Data == nil {
