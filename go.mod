@@ -17,7 +17,7 @@ require (
 	github.com/google/go-containerregistry v0.22.1
 	github.com/gosuri/uitable v0.0.4
 	github.com/hashicorp/go-version v1.9.0
-	github.com/klauspost/compress v1.20.3
+	github.com/klauspost/compress v1.20.4
 	github.com/kopoli/go-terminal-size v0.0.0-20170219200355-5c97524c8b54
 	github.com/notaryproject/notation-core-go v1.3.0
 	github.com/notaryproject/notation-go v1.3.2
