@@ -104,7 +104,7 @@ func (action *View) Run(ctx context.Context, out, errOut io.Writer, layoutPath s
 		}
 		return printRefs(out, index)
 	}
-	if len(index.Manifests) == 0 {
+	if len(index.Manifests) == 0 && (action.Tree || action.Images || action.Detailed) {
 		if !action.Images {
 			fmt.Fprintln(out, "No images or manifests found in index.json.")
 		}
@@ -115,6 +115,9 @@ func (action *View) Run(ctx context.Context, out, errOut io.Writer, layoutPath s
 	store, err := oci.NewFromFS(ctx, os.DirFS(storeDir))
 	if err != nil {
 		return fmt.Errorf("opening OCI layout %s (this mode needs an extracted layout with oci-layout and blobs/; --refs and --diff accept a bare index.json): %w", storeDir, err)
+	}
+	if !action.Tree && !action.Images && !action.Detailed {
+		return printSourcesList(out, index)
 	}
 	v := &viewer{graph: store, errOut: errOut, color: useColor(out)}
 
@@ -180,6 +183,16 @@ func referenceName(desc ocispec.Descriptor) string {
 		return ref
 	}
 	return unnamedRef
+}
+
+// printSourcesList writes the root references in index order.
+func printSourcesList(w io.Writer, index ocispec.Index) error {
+	for _, desc := range index.Manifests {
+		if _, err := fmt.Fprintln(w, desc.Annotations[ocispec.AnnotationRefName]); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // descriptorKind classifies using only what the parent index says about a
