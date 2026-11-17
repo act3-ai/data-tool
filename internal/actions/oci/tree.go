@@ -39,11 +39,10 @@ func (action *Tree) Run(ctx context.Context, out io.Writer, rawRef string) error
 	var roots []ocispec.Descriptor
 
 	archivePath := ""
-	archiveRef := ""
 	if !action.OCILayout {
 		var found bool
 		var err error
-		archivePath, archiveRef, found, err = localArchiveReference(rawRef)
+		archivePath, _, found, err = localArchiveReference(rawRef)
 		if err != nil {
 			return err
 		}
@@ -69,23 +68,24 @@ func (action *Tree) Run(ctx context.Context, out io.Writer, rawRef string) error
 		ref = r
 
 	case archivePath != "":
-		tempDir, err := extractOCILayoutTar(ctx, archivePath)
+		tempDir, err := os.MkdirTemp("", "ace-dt-oci-tree-*")
 		if err != nil {
-			return fmt.Errorf("extracting OCI layout tarball %q: %w", archivePath, err)
+			return fmt.Errorf("creating temporary extraction directory: %w", err)
 		}
 		defer os.RemoveAll(tempDir)
+
+		if err := extractOCILayoutTar(ctx, archivePath, tempDir); err != nil {
+			return fmt.Errorf("extracting OCI layout tarball %q: %w", archivePath, err)
+		}
 
 		store, err := oci.NewFromFS(ctx, os.DirFS(tempDir))
 		if err != nil {
 			return fmt.Errorf("opening OCI image layout tarball: %w", err)
 		}
 		storage = store
-		ref = archiveRef
-		if ref == "" {
-			roots, err = archiveRoots(tempDir)
-			if err != nil {
-				return err
-			}
+		roots, err = archiveRoots(tempDir)
+		if err != nil {
+			return err
 		}
 	default:
 		// remote reference
@@ -123,11 +123,15 @@ func (action *Tree) Run(ctx context.Context, out io.Writer, rawRef string) error
 
 // printTreeRoots prints each archive root in index order.
 func printTreeRoots(ctx context.Context, out io.Writer, storage oras.ReadOnlyGraphTarget, roots []ocispec.Descriptor, options print.Options) error {
-	for i, root := range roots {
-		if i != 0 {
-			if _, err := fmt.Fprintln(out); err != nil {
-				return err
-			}
+	if len(roots) == 0 {
+		return nil
+	}
+	if err := print.All(ctx, out, storage, roots[0], options); err != nil {
+		return fmt.Errorf("printing OCI archive descriptor %s: %w", roots[0].Digest, err)
+	}
+	for _, root := range roots[1:] {
+		if _, err := fmt.Fprintln(out); err != nil {
+			return err
 		}
 		if err := print.All(ctx, out, storage, root, options); err != nil {
 			return fmt.Errorf("printing OCI archive descriptor %s: %w", root.Digest, err)

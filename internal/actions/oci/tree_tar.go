@@ -13,41 +13,25 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/klauspost/compress/zstd"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/registry"
 )
 
 // localArchiveReference prefers an existing local regular file over a repository reference.
 // Try the whole argument first so a filename containing ':' or '@' is not split.
 func localArchiveReference(raw string) (path, ref string, found bool, err error) {
 	// check if the raw string is a file
-	if info, statErr := os.Stat(raw); statErr == nil {
-		if info.Mode().IsRegular() {
-			return raw, "", true, nil
-		}
-		// A directory named like a registry component is not an archive.
-		return "", "", false, nil
-	} else if !errors.Is(statErr, os.ErrNotExist) {
+	info, statErr := os.Stat(raw)
+	if statErr == nil && info.Mode().IsRegular() {
+		return raw, "", true, nil
+	}
+	if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
 		return "", "", false, fmt.Errorf("checking local path %q: %w", raw, statErr)
 	}
 
-	// Only split at a delimiter whose left side is an existing regular file.
-	for _, i := range []int{strings.LastIndex(raw, "@"), strings.LastIndex(raw, ":")} {
-		if i <= 0 || i == len(raw)-1 {
-			continue // skip if delimiter is at the beginning or end.
-		}
-		candidate := raw[:i]
-		info, statErr := os.Stat(candidate)
-		if errors.Is(statErr, os.ErrNotExist) {
-			continue // Canidate file DNE, try next delimiter.
-		}
-		if statErr != nil {
-			return "", "", false, fmt.Errorf("checking local path %q: %w", candidate, statErr)
-		}
-		if !info.Mode().IsRegular() {
-			return "", "", false, fmt.Errorf("local path %q is not a regular file", candidate)
-		}
-		// Return the file path and tag/digest reference on the right side.
-		return candidate, raw[i+1:], true, nil
+	if _, err := registry.ParseReference(raw); err != nil {
+		return "", "", false, fmt.Errorf("invalid registry reference %q: %w", raw, err)
 	}
 	return "", "", false, nil
 }
@@ -64,75 +48,65 @@ func archiveRoots(dir string) ([]ocispec.Descriptor, error) {
 		return nil, fmt.Errorf("parsing OCI index: %w", err)
 	}
 	if len(index.Manifests) == 0 {
-		return nil, fmt.Errorf("OCI archive index has no root descriptors")
+		return nil, errors.New("OCI archive index has no root descriptors")
 	}
 	return index.Manifests, nil
 }
 
-// extractOCILayoutTar extracts an OCI layout rooted at the archive root.
-// The caller owns the returned directory and must remove it.
-func extractOCILayoutTar(ctx context.Context, archivePath string) (dir string, err error) {
+// extractOCILayoutTar extracts an OCI layout rooted at the archive root into dir.
+// The caller owns dir and must remove it, including when extraction fails.
+func extractOCILayoutTar(ctx context.Context, archivePath, dir string) error {
 	f, err := os.Open(archivePath)
 	if err != nil {
-		return "", fmt.Errorf("opening archive %q: %w", archivePath, err)
+		return fmt.Errorf("opening archive %q: %w", archivePath, err)
 	}
 	defer f.Close()
-	// Read the first two bytes of a file.
+	// Read the first four bytes of a file.
 	buffered := bufio.NewReader(f)
-	magic, err := buffered.Peek(2)
+	magic, err := buffered.Peek(4)
 	if err != nil && !errors.Is(err, io.EOF) {
-		return "", fmt.Errorf("reading archive header: %w", err)
+		return fmt.Errorf("reading archive header: %w", err)
 	}
-	// decompress the tar.gz.
+	// decompress the tar.gz or tar.zst.
 	var archive io.Reader = buffered
-	if len(magic) == 2 && magic[0] == 0x1f && magic[1] == 0x8b {
+	switch {
+	case len(magic) >= 2 && magic[0] == 0x1f && magic[1] == 0x8b:
 		gz, err := gzip.NewReader(buffered)
 		if err != nil {
-			return "", fmt.Errorf("opening gzip stream: %w", err)
+			return fmt.Errorf("opening gzip stream: %w", err)
 		}
 		defer gz.Close()
 		archive = gz
-	}
-	// create a temporary directory for extraction.
-	dir, err = os.MkdirTemp("", "ace-dt-oci-tree-*")
-	if err != nil {
-		return "", fmt.Errorf("creating temporary extraction directory: %w", err)
-	}
-	// If there's an error, delete the temporary directory.
-	defer func() {
+	case len(magic) == 4 && magic[0] == 0x28 && magic[1] == 0xb5 && magic[2] == 0x2f && magic[3] == 0xfd:
+		zr, err := zstd.NewReader(buffered)
 		if err != nil {
-			_ = os.RemoveAll(dir)
+			return fmt.Errorf("opening zstd stream: %w", err)
 		}
-	}()
+		defer zr.Close()
+		archive = zr
+	}
 
 	tr := tar.NewReader(tarContextReader{canceled: ctx.Err, reader: archive})
 	if err := extractTarEntries(tr, dir); err != nil {
-		return "", err
+		return err
 	}
-	if err := validateExtractedOCILayout(dir); err != nil {
-		return "", err
-	}
-	return dir, nil
+	return validateExtractedOCILayout(dir)
+
 }
 
-// extractTarEntries enforces archive-wide entry and size limits.
+// extractTarEntries enforces the archive-wide extracted-size limit.
 func extractTarEntries(tr *tar.Reader, dir string) error {
 	// prevent tarbomb exploitation.
 	const maxExtractedBytes int64 = 100 << 30 // 100 GiB
-	const maxEntries = 100000
 	var extractedBytes int64
 
-	for entries := 0; ; entries++ {
+	for {
 		hdr, err := tr.Next()
-		if errors.Is(err, io.EOF) {
-			return nil
-		}
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
 			return fmt.Errorf("reading tar header: %w", err)
-		}
-		// checker for the maximum entries in the tarball.
-		if entries >= maxEntries {
-			return fmt.Errorf("tarball exceeds %d entries", maxEntries)
 		}
 
 		rel, err := safeTarEntryPath(hdr.Name)
@@ -146,6 +120,11 @@ func extractTarEntries(tr *tar.Reader, dir string) error {
 			return fmt.Errorf("unsafe tar entry path %q", hdr.Name)
 		}
 
+		if hdr.Typeflag == tar.TypeReg || hdr.Typeflag == 0 {
+			if hdr.Size < 0 || hdr.Size > maxExtractedBytes-extractedBytes {
+				return fmt.Errorf("OCI archive exceeds the %d-byte extraction limit; extract it yourself and pass the OCI layout directory instead", maxExtractedBytes)
+			}
+		}
 		if err := extractTarEntry(tr, hdr, filepath.Join(dir, rel), rel, &extractedBytes, maxExtractedBytes); err != nil {
 			return err
 		}
@@ -226,7 +205,8 @@ func validateExtractedOCILayout(dir string) error {
 	// looks for blobs directory.
 	info, statErr := os.Stat(filepath.Join(dir, "blobs"))
 	if statErr != nil || !info.IsDir() {
-		return fmt.Errorf("tarball must contain a blobs directory at its root")
+		return errors.New("tarball must contain a blobs directory at its root")
+
 	}
 	return nil
 }
@@ -241,12 +221,8 @@ func (r tarContextReader) Read(p []byte) (int, error) {
 	if err := r.canceled(); err != nil {
 		return 0, err
 	}
-	n, err := r.reader.Read(p)
-	if err != nil && !errors.Is(err, io.EOF) {
-		return n, fmt.Errorf("reading archive: %w", err)
-	}
-	if errors.Is(err, io.EOF) {
-		return n, io.EOF
-	}
-	return n, nil
+
+	//nolint:wrapcheck // Preserve io.Reader errors, including io.EOF, unchanged.
+	return r.reader.Read(p)
+
 }

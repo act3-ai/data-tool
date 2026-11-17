@@ -3,11 +3,12 @@ package oci
 import (
 	"bytes"
 	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
-func TestParseOCILayoutReference(t *testing.T) {
+func Test_ParseOCILayoutReference(t *testing.T) {
 	tests := []struct {
 		name     string
 		raw      string
@@ -69,24 +70,64 @@ func TestParseOCILayoutReference(t *testing.T) {
 	}
 }
 
-func TestTree_Run_Errors(t *testing.T) {
-	// Test parsing error for OCILayout
-	tree := &Tree{
-		OCILayout: true,
-	}
-	var buf bytes.Buffer
+func Test_Tree_Run(t *testing.T) {
+	tests := []struct {
+		name     string
+		setup    func(*testing.T) string
+		wantErr  string
+		validate func(*testing.T, string)
+	}{
+		{
+			name: "missing layout separator",
+			setup: func(t *testing.T) string {
+				t.Helper()
 
-	err := tree.Run(context.Background(), &buf, "invalid-reference")
-	if err == nil {
-		t.Error("expected error for invalid OCI layout reference, got nil")
-	}
-	if err != nil && !strings.Contains(err.Error(), "directory path and reference must be separated by") {
-		t.Errorf("unexpected error message: %v", err)
+				return "invalid-reference"
+			},
+			wantErr: "directory path and reference must be separated by",
+		},
+		{
+			name: "nonexistent layout directory",
+			setup: func(t *testing.T) string {
+				t.Helper()
+				return filepath.Join(t.TempDir(), "missing") + ":latest"
+			},
+			wantErr: "opening OCI image layout directory",
+		},
+		{
+			name: "valid layout digest",
+			setup: func(t *testing.T) string {
+				t.Helper()
+				dir, childDigest := createTreeLayout(t)
+				return dir + "@" + childDigest.String()
+			},
+			validate: func(t *testing.T, output string) {
+				t.Helper()
+				if output == "" {
+					t.Error("Tree.Run printed no output")
+				}
+			},
+		},
 	}
 
-	// Test non-existent directory error for OCILayout
-	err = tree.Run(context.Background(), &buf, "non-existent-dir:latest")
-	if err == nil {
-		t.Error("expected error for non-existent directory, got nil")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ref := tt.setup(t)
+			var buf bytes.Buffer
+			tree := &Tree{OCILayout: true, Depth: 1}
+			err := tree.Run(context.Background(), &buf, ref)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("Tree.Run error = %v, want it to contain %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Tree.Run expected success, got: %v", err)
+			}
+			if tt.validate != nil {
+				tt.validate(t, buf.String())
+			}
+		})
 	}
 }

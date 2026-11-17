@@ -2,7 +2,6 @@ package print
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -38,7 +37,8 @@ func TestCheckBlobs(t *testing.T) {
 
 func runCheckBlobsCase(t *testing.T, remove string, wantErr, wantMissing bool) {
 	t.Helper()
-	ctx := context.Background()
+	ctx := t.Context()
+
 	dir, root, blobs := buildCheckBlobsLayout(t)
 
 	// initialize the ORAS file store.

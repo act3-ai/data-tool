@@ -2,7 +2,6 @@ package oci
 
 import (
 	"archive/tar"
-	"bytes"
 	"context"
 	"encoding/json"
 	"os"
@@ -14,8 +13,8 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// Tests local archive reference parsing (tags, digests, and bare files)
-func TestLocalArchiveReference(t *testing.T) {
+// Tests local archive reference parsing (bare files and registry references).
+func Test_LocalArchiveReference(t *testing.T) {
 	dir := t.TempDir()
 	filePath := filepath.Join(dir, "archive.tar")
 	if err := os.WriteFile(filePath, []byte("dummy data"), 0600); err != nil {
@@ -26,23 +25,24 @@ func TestLocalArchiveReference(t *testing.T) {
 		wantPath string
 		wantRef  string
 		wantFnd  bool
+		wantErr  bool
 	}{
-		{filePath, filePath, "", true},
-		{filePath + ":latest", filePath, "latest", true},
-		{filePath + "@sha256:12345", filePath, "sha256:12345", true},
-		{"nonexistent.tar:latest", "", "", false},
+		{raw: filePath, wantPath: filePath, wantFnd: true},
+		{raw: "docker.io/library/alpine:latest"},
+		{raw: filePath + ":latest", wantErr: true},
+		{raw: filePath + "@sha256:12345", wantErr: true},
 	}
 
 	for _, tt := range tests {
 		p, r, f, err := localArchiveReference(tt.raw)
-		if err != nil || p != tt.wantPath || r != tt.wantRef || f != tt.wantFnd {
-			t.Errorf("localArchiveReference(%q) = %v, %v, %v, err=%v", tt.raw, p, r, f, err)
+		if (err != nil) != tt.wantErr || p != tt.wantPath || r != tt.wantRef || f != tt.wantFnd {
+			t.Errorf("localArchiveReference(%q) = %v, %v, %v, err=%v; want error=%v", tt.raw, p, r, f, err, tt.wantErr)
 		}
 	}
 }
 
 // Tests parsing the root index.json of an OCI archive
-func TestArchiveRoots(t *testing.T) {
+func Test_ArchiveRoots(t *testing.T) {
 	dir := t.TempDir()
 	index := `{"manifests": [{"digest": "sha256:12345", "size": 100}]}`
 	if err := os.WriteFile(filepath.Join(dir, "index.json"), []byte(index), 0600); err != nil {
@@ -55,7 +55,7 @@ func TestArchiveRoots(t *testing.T) {
 }
 
 // Tests tarball extraction by writing a minimal valid OCI layout tarball
-func TestExtractOCILayoutTar_Success(t *testing.T) {
+func Test_ExtractOCILayoutTar_Success(t *testing.T) {
 	archivePath := filepath.Join(t.TempDir(), "test.tar")
 	f, _ := os.Create(archivePath)
 	tw := tar.NewWriter(f)
@@ -74,22 +74,20 @@ func TestExtractOCILayoutTar_Success(t *testing.T) {
 	tw.Close()
 	f.Close()
 
-	extractedDir, err := extractOCILayoutTar(context.Background(), archivePath)
-	if err != nil {
+	extractedDir := t.TempDir()
+	if err := extractOCILayoutTar(context.Background(), archivePath, extractedDir); err != nil {
 		t.Fatalf("extractOCILayoutTar failed: %v", err)
 	}
-	defer os.RemoveAll(extractedDir)
-
-	if _, err := os.Stat(filepath.Join(extractedDir, "oci-layout")); os.IsNotExist(err) {
-		t.Errorf("Failed to extract files properly")
+	if _, err := os.Stat(filepath.Join(extractedDir, "oci-layout")); err != nil {
+		t.Errorf("checking extracted oci-layout: %v", err)
 	}
 }
 
-// Tests a successful execution of Tree.Run using a local OCI directory
-func TestTree_Run_Success(t *testing.T) {
+// createTreeLayout builds an OCI layout with one child index for Tree.Run tests.
+func createTreeLayout(t *testing.T) (string, digest.Digest) {
+	t.Helper()
 	dir := t.TempDir()
 
-	// Setup a minimal valid OCI layout on disk
 	if err := os.WriteFile(filepath.Join(dir, "oci-layout"), []byte(`{"imageLayoutVersion":"1.0.0"}`), 0600); err != nil {
 		t.Fatalf("writing oci-layout: %v", err)
 	}
@@ -98,15 +96,16 @@ func TestTree_Run_Success(t *testing.T) {
 	// Use struct marshaling to ensure the JSON strictly matches OCI specs and ORAS expectations
 	index := ocispec.Index{
 		Versioned: specs.Versioned{SchemaVersion: 2},
-		Manifests: []ocispec.Descriptor{
-			{
-				MediaType: ocispec.MediaTypeImageIndex,
-				Digest:    childDigest,
-				Size:      int64(len(childIndex)),
-			},
-		},
+		Manifests: []ocispec.Descriptor{{
+			MediaType: ocispec.MediaTypeImageIndex,
+			Digest:    childDigest,
+			Size:      int64(len(childIndex)),
+		}},
 	}
-	indexBytes, _ := json.Marshal(index)
+	indexBytes, err := json.Marshal(index)
+	if err != nil {
+		t.Fatalf("marshaling index.json: %v", err)
+	}
 	if err := os.WriteFile(filepath.Join(dir, "index.json"), indexBytes, 0600); err != nil {
 		t.Fatalf("writing index.json: %v", err)
 	}
@@ -115,21 +114,7 @@ func TestTree_Run_Success(t *testing.T) {
 		t.Fatalf("creating blobs directory: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "blobs", childDigest.Algorithm().String(), childDigest.Encoded()), childIndex, 0600); err != nil {
-		t.Fatal(err)
+		t.Fatalf("writing child index blob: %v", err)
 	}
-	tree := &Tree{
-		OCILayout: true, // Bypasses remote registry resolution
-		Depth:     1,
-	}
-
-	var buf bytes.Buffer
-	// Append the digest so parseOCILayoutReference successfully splits the directory from the reference
-	err := tree.Run(context.Background(), &buf, dir+"@"+childDigest.String())
-	if err != nil {
-		t.Fatalf("Tree.Run expected success, got error: %v", err)
-	}
-
-	if buf.Len() == 0 {
-		t.Errorf("Expected Tree.Run to print output, got empty buffer")
-	}
+	return dir, childDigest
 }
