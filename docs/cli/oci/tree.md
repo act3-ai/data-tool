@@ -16,12 +16,13 @@ Show the tree view of the OCI data graph for a remote image or a local OCI direc
 ## Synopsis
 
 IMAGE is an OCI image reference.
-If --oci-layout is set then the positionaly argument, OCILAYOUT, is used to specify an OCI-Layout directory.  It may be specified as a path and tag (path/to/dir:tag) or a path and digest (path/to/dir@sha256:deedbeef...).
+With --oci-layout, OCILAYOUT is an OCI layout directory and reference: path/to/dir:tag or path/to/dir@sha256:...
+OCITARBALL is a local tar or tar.gz containing an OCI layout at its root. Use ./image.tar:tag or ./image.tar@sha256:...; if its index has exactly one descriptor, ./image.tar also works. Existing local files take precedence over remote references.
 
 ## Usage
 
 ```plaintext
-ace-dt oci tree [--oci-layout] [IMAGE|OCILAYOUT] [flags]
+ace-dt oci tree [--oci-layout] [IMAGE|OCILAYOUT|OCITARBALL] [flags]
 ```
 
 ## Examples
@@ -35,6 +36,10 @@ ace-dt oci tree [--oci-layout] [IMAGE|OCILAYOUT] [flags]
 
 	To display the tree view of a local OCI directory in ~/imageDir at at my-tag:
 		ace-dt oci tree --oci-layout ~/imageDir:my-tag
+		
+	To display a local OCI layout tarball at my-tag:
+		ace-dt oci tree ./image.tar:my-tag
+
 	
 ```
 
@@ -43,6 +48,7 @@ ace-dt oci tree [--oci-layout] [IMAGE|OCILAYOUT] [flags]
 ```plaintext
 Options:
       --artifact-type string   Limit predecessors to this artifact type
+      --check-blobs            Check for missing blobs in the OCI graph and print them
       --depth int              Maximum depth of the tree to display (default 10)
   -h, --help                   help for tree
       --oci-layout             Argument is a path and tag/digest in OCI image layout format
