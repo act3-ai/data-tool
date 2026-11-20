@@ -1,11 +1,12 @@
 package mirror
 
 import (
+	"archive/tar"
+	"bufio"
+	"bytes"
+	"compress/gzip"
 	"context"
-	// Register sha256/sha384/sha512 so go-digest can validate and verify
-	// every algorithm the OCI image spec allows.
-	_ "crypto/sha256"
-	_ "crypto/sha512"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,855 +14,307 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"sort"
-	"strconv"
 	"strings"
-	"text/tabwriter"
 
-	digest "github.com/opencontainers/go-digest"
+	"github.com/klauspost/compress/zstd"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/oci"
-	"oras.land/oras-go/v2/errdef"
-	"oras.land/oras-go/v2/registry"
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/credentials"
 )
 
-const (
-	kindIndex    = "index"
-	kindImage    = "image"
-	kindArtifact = "artifact"
-
-	unnamedRef      = "<unnamed>"
-	unknownPlatform = "unknown"
-
-	mediaTypeDockerManifestList = "application/vnd.docker.distribution.manifest.list.v2+json"
-	mediaTypeDockerManifest     = "application/vnd.docker.distribution.manifest.v2+json"
-	mediaTypeDockerConfig       = "application/vnd.docker.container.image.v1+json"
-
-	// Docker BuildKit marks attestation manifests inside an index with this
-	// annotation (and platform unknown/unknown).
-	annotationDockerReferenceType = "vnd.docker.reference.type"
-)
-
-// ErrIndexesDiffer is returned by --diff when the two indexes differ, so the
-// command exits non-zero like diff(1).
-var ErrIndexesDiffer = errors.New("OCI indexes differ")
-
-// View lists or compares the contents of extracted OCI image layouts.
+// View lists references from OCI layouts, archives, or remote registries.
 type View struct {
 	*Action
-
-	Detailed bool   // per-reference detail
-	Refs     bool   // top-level digest, ref, kind
-	Images   bool   // index/image/artifact rows, recursing into indexes
-	Tree     bool   // tree rendering; combine with Refs (roots only) or Images (no blobs/referrers)
-	Diff     string // compare top-level entries against this layout or index.json
+	Platforms bool
 }
 
-func (action *View) validate() error {
-	if action.Diff != "" && (action.Detailed || action.Refs || action.Images || action.Tree) {
-		return errors.New("--diff cannot be combined with --detailed, --refs, --images, or --tree")
+// Run accepts an OCI-layout directory, OCI-layout tarball, or remote reference.
+// It writes one complete reference per line, without a header.
+func (action *View) Run(ctx context.Context, out, _ io.Writer, input string) error {
+
+	// Extracts the tarball.
+	dir, err := os.MkdirTemp("", "ace-dt-mirror-view-*")
+	if err != nil {
+		return fmt.Errorf("creating extraction directory: %w", err)
 	}
-	selected := 0
-	for _, set := range []bool{action.Detailed, action.Refs, action.Images} {
-		if set {
-			selected++
-		}
+	defer func() { _ = os.RemoveAll(dir) }()
+
+	// Determines the input type is and opens it.
+	index, fetcher, err := openViewInput(ctx, input, dir)
+	if err != nil {
+		return err
 	}
-	if selected > 1 {
-		return errors.New("only one of --detailed, --refs, or --images may be used")
-	}
-	if action.Tree && action.Detailed {
-		return errors.New("--tree cannot be combined with --detailed")
-	}
-	return nil
+	// prints the references to stdout.
+	return printReferences(ctx, out, index, fetcher, action.Platforms)
 }
 
-// Run renders the layout at layoutPath (a directory or its index.json).
-// Machine-readable output goes to out; warnings about missing blobs go to errOut.
-func (action *View) Run(ctx context.Context, out, errOut io.Writer, layoutPath string) error {
-	if err := action.validate(); err != nil {
-		return err
-	}
-	if action.Diff != "" {
-		return diffIndexes(out, layoutPath, action.Diff)
-	}
+// Iterates through the OCI index and writes the references as a csv.
+func printReferences(ctx context.Context, out io.Writer, index ocispec.Index, fetcher content.Fetcher, includePlatforms bool) error {
 
-	storeDir, err := layoutDir(layoutPath)
-	if err != nil {
-		return err
-	}
-	index, err := readOCIIndex(storeDir)
-	if err != nil {
-		return err
-	}
-
-	// --refs reads index.json only, so it works on a bare gather index
-	// that has no oci-layout file or blobs/ directory.
-	if action.Refs {
-		if action.Tree {
-			return printRootLines(out, index)
-		}
-		return printRefs(out, index)
-	}
-	if len(index.Manifests) == 0 && (action.Tree || action.Images || action.Detailed) {
-		if !action.Images {
-			fmt.Fprintln(out, "No images or manifests found in index.json.")
-		}
-		return nil
-	}
-
-	// Open the layout read-only: nothing is extracted or written.
-	store, err := oci.NewFromFS(ctx, os.DirFS(storeDir))
-	if err != nil {
-		return fmt.Errorf("opening OCI layout %s (this mode needs an extracted layout with oci-layout and blobs/; --refs and --diff accept a bare index.json): %w", storeDir, err)
-	}
-	if !action.Tree && !action.Images && !action.Detailed {
-		return printSourcesList(out, index)
-	}
-	v := &viewer{graph: store, errOut: errOut, color: useColor(out)}
-
-	switch {
-	case action.Tree:
-		return v.printTrees(ctx, out, index, !action.Images)
-	case action.Images:
-		for _, desc := range index.Manifests {
-			if err := v.printImages(ctx, out, desc); err != nil {
+	// Uses a standard csv writer.
+	w := csv.NewWriter(out)
+	// Grabs the top level names in the OCI layout.
+	for _, desc := range index.Manifests {
+		row := []string{desc.Annotations[ocispec.AnnotationRefName]}
+		// Returns the platforms if requested.
+		if includePlatforms {
+			platforms, err := viewPlatforms(ctx, fetcher, desc)
+			if err != nil {
 				return err
 			}
+			row = append(row, strings.Join(platforms, ";"))
 		}
-		return nil
-	case action.Detailed:
-		for _, desc := range index.Manifests {
-			if err := v.printDetailed(ctx, out, desc); err != nil {
-				return err
-			}
-		}
-		return nil
-	default:
-		return v.printSummary(ctx, out, index)
-	}
-}
-
-// ---------------------------------------------------------------------------
-// index.json-level helpers (no blob access)
-// ---------------------------------------------------------------------------
-
-func layoutDir(p string) (string, error) {
-	info, err := os.Stat(p)
-	if err != nil {
-		return "", err
-	}
-	if info.IsDir() {
-		return p, nil
-	}
-	if filepath.Base(p) == ocispec.ImageIndexFile {
-		return filepath.Dir(p), nil
-	}
-	return "", fmt.Errorf("%s is not an extracted OCI layout directory or index.json; extract the archive before running mirror view", p)
-}
-
-func readOCIIndex(storeDir string) (ocispec.Index, error) {
-	data, err := os.ReadFile(filepath.Join(storeDir, ocispec.ImageIndexFile))
-	if err != nil {
-		return ocispec.Index{}, fmt.Errorf("reading index.json: %w", err)
-	}
-	var index ocispec.Index
-	if err := json.Unmarshal(data, &index); err != nil {
-		return ocispec.Index{}, fmt.Errorf("decoding index.json: %w", err)
-	}
-	for _, desc := range index.Manifests {
-		if err := desc.Digest.Validate(); err != nil {
-			return ocispec.Index{}, fmt.Errorf("index.json: invalid digest %q: %w", desc.Digest, err)
-		}
-	}
-	return index, nil
-}
-
-func referenceName(desc ocispec.Descriptor) string {
-	if ref := desc.Annotations[ocispec.AnnotationRefName]; ref != "" {
-		return ref
-	}
-	return unnamedRef
-}
-
-// printSourcesList writes the root references in index order.
-func printSourcesList(w io.Writer, index ocispec.Index) error {
-	for _, desc := range index.Manifests {
-		if _, err := fmt.Fprintln(w, desc.Annotations[ocispec.AnnotationRefName]); err != nil {
+		if err := w.Write(row); err != nil {
 			return err
 		}
 	}
-	return nil
+	w.Flush()
+	return w.Error()
 }
 
-// descriptorKind classifies using only what the parent index says about a
-// descriptor. --refs and --diff use it so their output does not depend on
-// whether blobs are present.
-func descriptorKind(desc ocispec.Descriptor) string {
-	switch desc.MediaType {
-	case ocispec.MediaTypeImageIndex, mediaTypeDockerManifestList:
-		return kindIndex
-	case ocispec.MediaTypeImageManifest, mediaTypeDockerManifest:
-		if desc.ArtifactType != "" || desc.Annotations[annotationDockerReferenceType] != "" {
-			return kindArtifact
-		}
-		return kindImage
-	default:
-		return kindArtifact
-	}
-}
+// viewPlatforms walks through the OCI image index and grabs a list of platforms.
+func viewPlatforms(ctx context.Context, fetcher content.Fetcher, root ocispec.Descriptor) ([]string, error) {
+	var platforms []string
+	seen := make(map[string]bool)
 
-func isManifest(mediaType string) bool {
-	return mediaType == ocispec.MediaTypeImageManifest || mediaType == mediaTypeDockerManifest
-}
+	// Walks through the tree of OCI descriptors.
+	var walk func(ocispec.Descriptor) error
+	walk = func(desc ocispec.Descriptor) error {
+		switch desc.MediaType {
 
-// manifestKind refines descriptorKind using the manifest itself: OCI 1.1
-// artifacts (SBOMs, signatures, Helm charts) share the image manifest media type.
-func manifestKind(desc ocispec.Descriptor, m *ocispec.Manifest) string {
-	kind := descriptorKind(desc)
-	if kind != kindImage || m == nil {
-		return kind
-	}
-	if m.ArtifactType != "" {
-		return kindArtifact
-	}
-	switch m.Config.MediaType {
-	case ocispec.MediaTypeImageConfig, mediaTypeDockerConfig:
-		return kindImage
-	default:
-		return kindArtifact
-	}
-}
-
-func artifactTypeOf(desc ocispec.Descriptor, m *ocispec.Manifest) string {
-	switch {
-	case m != nil && m.ArtifactType != "":
-		return m.ArtifactType
-	case desc.ArtifactType != "":
-		return desc.ArtifactType
-	case desc.Annotations[annotationDockerReferenceType] != "":
-		return desc.Annotations[annotationDockerReferenceType]
-	case m != nil && m.Config.MediaType != "":
-		return m.Config.MediaType
-	default:
-		return desc.MediaType
-	}
-}
-
-// formatPlatform renders os[(os.version)]/arch[/variant] as a single token.
-func formatPlatform(p ocispec.Platform) string {
-	if p.OS == "" || p.Architecture == "" {
-		return ""
-	}
-	s := p.OS
-	if p.OSVersion != "" {
-		s += "(" + p.OSVersion + ")"
-	}
-	s += "/" + p.Architecture
-	if p.Variant != "" {
-		s += "/" + p.Variant
-	}
-	return s
-}
-
-func blobPath(d digest.Digest) string {
-	return path.Join(ocispec.ImageBlobsDir, d.Algorithm().String(), d.Encoded())
-}
-
-func printRefs(w io.Writer, index ocispec.Index) error {
-	for _, desc := range index.Manifests {
-		if _, err := fmt.Fprintf(w, "%s\t%s\t%s\n", desc.Digest, referenceName(desc), descriptorKind(desc)); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func printRootLines(w io.Writer, index ocispec.Index) error {
-	color := useColor(w)
-	for _, desc := range index.Manifests {
-		fmt.Fprintf(w, "%s  %s\n", colorize(color, referenceName(desc)), treeDescriptor(desc))
-	}
-	return nil
-}
-
-// ---------------------------------------------------------------------------
-// --diff
-// ---------------------------------------------------------------------------
-
-type indexEntry struct {
-	digest digest.Digest
-	ref    string
-	kind   string
-}
-
-// diffIndexes compares the top-level descriptors of two index.json files.
-// A row is identified by (digest, ref, kind), so a retag or an image→index
-// change shows as one removal and one addition. Rows are sorted by ref with
-// "-" before "+", keeping both sides of an update adjacent:
-//
-//	-<TAB>digest<TAB>ref<TAB>kind   only in againstPath
-//	+<TAB>digest<TAB>ref<TAB>kind   only in inputPath
-//
-// Only index.json is read, so either side may be a bare gather index.
-func diffIndexes(w io.Writer, inputPath, againstPath string) error {
-	load := func(p string) (map[indexEntry]bool, error) {
-		dir, err := layoutDir(p)
-		if err != nil {
-			return nil, err
-		}
-		index, err := readOCIIndex(dir)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", p, err)
-		}
-		entries := make(map[indexEntry]bool, len(index.Manifests))
-		for _, desc := range index.Manifests {
-			entries[indexEntry{digest: desc.Digest, ref: referenceName(desc), kind: descriptorKind(desc)}] = true
-		}
-		return entries, nil
-	}
-	input, err := load(inputPath)
-	if err != nil {
-		return err
-	}
-	against, err := load(againstPath)
-	if err != nil {
-		return err
-	}
-
-	type row struct {
-		sign string
-		indexEntry
-	}
-	var rows []row
-	for e := range against {
-		if !input[e] {
-			rows = append(rows, row{"-", e})
-		}
-	}
-	for e := range input {
-		if !against[e] {
-			rows = append(rows, row{"+", e})
-		}
-	}
-	sort.Slice(rows, func(i, j int) bool {
-		a, b := rows[i], rows[j]
-		if a.ref != b.ref {
-			return a.ref < b.ref
-		}
-		if a.sign != b.sign {
-			return a.sign == "-"
-		}
-		if a.digest != b.digest {
-			return a.digest < b.digest
-		}
-		return a.kind < b.kind
-	})
-	for _, r := range rows {
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", r.sign, r.digest, r.ref, r.kind)
-	}
-	if len(rows) > 0 {
-		return ErrIndexesDiffer
-	}
-	return nil
-}
-
-// ---------------------------------------------------------------------------
-// Blob-backed views
-// ---------------------------------------------------------------------------
-
-type viewer struct {
-	graph  content.ReadOnlyGraphStorage
-	errOut io.Writer
-	color  bool
-}
-
-// node is a descriptor plus whatever could be read about it from the layout.
-type node struct {
-	desc         ocispec.Descriptor
-	kind         string
-	index        *ocispec.Index
-	manifest     *ocispec.Manifest
-	config       *ocispec.Image
-	platform     string
-	artifactType string
-	missing      bool
-}
-
-func (n node) platformOrUnknown() string {
-	if n.platform == "" {
-		return unknownPlatform
-	}
-	return n.platform
-}
-
-// fetchJSON reads a blob through the store, which resolves
-// blobs/<algorithm>/<encoded> from the digest and verifies size and digest.
-func (v *viewer) fetchJSON(ctx context.Context, desc ocispec.Descriptor, target any) error {
-	if err := desc.Digest.Validate(); err != nil {
-		return fmt.Errorf("invalid digest %q: %w", desc.Digest, err)
-	}
-	data, err := content.FetchAll(ctx, v.graph, desc)
-	if err != nil {
-		return fmt.Errorf("reading %s: %w", blobPath(desc.Digest), err)
-	}
-	if err := json.Unmarshal(data, target); err != nil {
-		return fmt.Errorf("decoding %s: %w", blobPath(desc.Digest), err)
-	}
-	return nil
-}
-
-// tolerateMissing turns a not-found error into a warning so partial or
-// platform-filtered layouts can still be viewed. Other errors are returned.
-func (v *viewer) tolerateMissing(err error) (missing bool, _ error) {
-	if err == nil {
-		return false, nil
-	}
-	if errors.Is(err, errdef.ErrNotFound) {
-		fmt.Fprintf(v.errOut, "warning: %v\n", err)
-		return true, nil
-	}
-	return false, err
-}
-
-func (v *viewer) inspect(ctx context.Context, desc ocispec.Descriptor) (node, error) {
-	n := node{desc: desc, kind: descriptorKind(desc)}
-	if desc.Platform != nil {
-		n.platform = formatPlatform(*desc.Platform)
-	}
-
-	switch {
-	case n.kind == kindIndex:
-		var idx ocispec.Index
-		missing, err := v.tolerateMissing(v.fetchJSON(ctx, desc, &idx))
-		if err != nil {
-			return n, err
-		}
-		n.missing = missing
-		if !missing {
-			n.index = &idx
-		}
-		return n, nil
-
-	case isManifest(desc.MediaType):
-		var m ocispec.Manifest
-		missing, err := v.tolerateMissing(v.fetchJSON(ctx, desc, &m))
-		if err != nil {
-			return n, err
-		}
-		n.missing = missing
-		if !missing {
-			n.manifest = &m
-			n.kind = manifestKind(desc, &m)
-		}
-		if n.kind == kindArtifact {
-			n.artifactType = artifactTypeOf(desc, n.manifest)
-			return n, nil
-		}
-		if n.manifest == nil || n.manifest.Config.Digest == "" {
-			return n, nil
-		}
-		var cfg ocispec.Image
-		missing, err = v.tolerateMissing(v.fetchJSON(ctx, n.manifest.Config, &cfg))
-		if err != nil {
-			return n, err
-		}
-		if !missing {
-			n.config = &cfg
-			if n.platform == "" {
-				n.platform = formatPlatform(ocispec.Platform{
-					OS: cfg.OS, OSVersion: cfg.OSVersion, Architecture: cfg.Architecture, Variant: cfg.Variant,
-				})
+		// If it is an index, it needs to pulled and its children walked through.
+		case ocispec.MediaTypeImageIndex, "application/vnd.docker.distribution.manifest.list.v2+json":
+			var index ocispec.Index
+			if err := fetchJSON(ctx, fetcher, desc, &index); err != nil {
+				return err
 			}
-		}
-		return n, nil
-
-	default:
-		n.artifactType = artifactTypeOf(desc, nil)
-		return n, nil
-	}
-}
-
-// --images rows; the second field selects the meaning of the rest:
-//
-//	digest<TAB>index<TAB>ref
-//	digest<TAB>image<TAB>platform<TAB>ref
-//	digest<TAB>artifact<TAB>artifactType<TAB>ref
-//
-// Children of an index follow their parent. They are untagged, so their ref
-// is <unnamed> unless the index annotates them; they never inherit the
-// parent's tag because that tag does not resolve to their digest.
-func (v *viewer) printImages(ctx context.Context, w io.Writer, desc ocispec.Descriptor) error {
-	n, err := v.inspect(ctx, desc)
-	if err != nil {
-		return err
-	}
-	ref := referenceName(desc)
-	switch n.kind {
-	case kindIndex:
-		fmt.Fprintf(w, "%s\t%s\t%s\n", desc.Digest, kindIndex, ref)
-		if n.index != nil {
-			for _, child := range n.index.Manifests {
-				if err := v.printImages(ctx, w, child); err != nil {
+			// Walks through the children.
+			for _, child := range index.Manifests {
+				if err := walk(child); err != nil {
 					return err
 				}
 			}
-		}
-	case kindImage:
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", desc.Digest, kindImage, n.platformOrUnknown(), ref)
-	default:
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", desc.Digest, kindArtifact, n.artifactType, ref)
-	}
-	return nil
-}
 
-// printSummary is the default view: one row per top-level reference.
-func (v *viewer) printSummary(ctx context.Context, out io.Writer, index ocispec.Index) error {
-	tw := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	for _, desc := range index.Manifests {
-		n, err := v.inspect(ctx, desc)
-		if err != nil {
-			return err
-		}
-		detail, err := v.summaryDetail(ctx, n)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", desc.Digest, referenceName(desc), n.kind, detail)
-	}
-	return tw.Flush()
-}
-
-func (v *viewer) summaryDetail(ctx context.Context, n node) (string, error) {
-	if n.missing {
-		return "(blob missing: " + blobPath(n.desc.Digest) + ")", nil
-	}
-	switch n.kind {
-	case kindIndex:
-		var platforms []string
-		artifacts := 0
-		for _, child := range n.index.Manifests {
-			c, err := v.inspect(ctx, child)
-			if err != nil {
-				return "", err
-			}
-			if c.kind == kindImage {
-				platforms = append(platforms, c.platformOrUnknown())
-			} else {
-				artifacts++
-			}
-		}
-		s := fmt.Sprintf("%d images", len(platforms))
-		if len(platforms) > 0 {
-			s += " (" + strings.Join(platforms, ", ") + ")"
-		}
-		if artifacts > 0 {
-			s += fmt.Sprintf(", %d artifacts", artifacts)
-		}
-		return s, nil
-	case kindImage:
-		return fmt.Sprintf("%s  %d layers", n.platformOrUnknown(), layerCount(n)), nil
-	default:
-		return fmt.Sprintf("%s  %d layers", n.artifactType, layerCount(n)), nil
-	}
-}
-
-func layerCount(n node) int {
-	if n.manifest == nil {
-		return 0
-	}
-	return len(n.manifest.Layers)
-}
-
-func detailField(w io.Writer, name, value string) {
-	fmt.Fprintf(w, "%-15s%s\n", name+":", value)
-}
-
-// printDetailed writes every record, including error states, to the same
-// writer in index order.
-func (v *viewer) printDetailed(ctx context.Context, w io.Writer, desc ocispec.Descriptor) error {
-	n, err := v.inspect(ctx, desc)
-	if err != nil {
-		return err
-	}
-	detailField(w, "Digest", desc.Digest.String())
-	detailField(w, "Reference", referenceName(desc))
-	detailField(w, "Kind", n.kind)
-	detailField(w, "Media Type", desc.MediaType)
-	detailField(w, "Size", treeSize(desc.Size))
-
-	switch {
-	case n.missing:
-		detailField(w, "Status", "blob missing: "+blobPath(desc.Digest))
-	case n.kind == kindIndex:
-		fmt.Fprintf(w, "%-15s%d\n", "Manifests:", len(n.index.Manifests))
-		tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-		for _, child := range n.index.Manifests {
-			c, err := v.inspect(ctx, child)
+		// If it is an image, it needs to be pulled and its platform grabbed.
+		case ocispec.MediaTypeImageManifest, "application/vnd.docker.distribution.manifest.v2+json":
+			platform, err := manifestPlatform(ctx, fetcher, desc)
 			if err != nil {
 				return err
 			}
-			detail := c.platformOrUnknown()
-			if c.kind == kindArtifact {
-				detail = c.artifactType
+			// If its a new platform, add it to the list.
+			if platform != "" && !seen[platform] {
+				seen[platform] = true
+				platforms = append(platforms, platform)
 			}
-			if c.missing {
-				detail += " (blob missing)"
-			}
-			fmt.Fprintf(tw, "  - %s\t%s\t%s\n", child.Digest, c.kind, detail)
 		}
-		if err := tw.Flush(); err != nil {
-			return err
-		}
-	default:
-		if n.kind == kindArtifact {
-			detailField(w, "Artifact Type", n.artifactType)
-		} else {
-			detailField(w, "Platform", n.platformOrUnknown())
-		}
-		if n.config != nil && n.config.Created != nil && !n.config.Created.IsZero() {
-			detailField(w, "Created", n.config.Created.UTC().Format("2006-01-02 15:04:05 MST"))
-		}
-		if n.manifest != nil {
-			detailField(w, "Config Digest", n.manifest.Config.Digest.String())
-			var total int64
-			for _, l := range n.manifest.Layers {
-				total += l.Size
-			}
-			detailField(w, "Layers", fmt.Sprintf("%d (%s)", len(n.manifest.Layers), treeSize(total)))
-		}
+		return nil
 	}
-
-	keys := make([]string, 0, len(desc.Annotations))
-	for k := range desc.Annotations {
-		if k != ocispec.AnnotationRefName {
-			keys = append(keys, k)
-		}
+	if err := walk(root); err != nil {
+		return nil, err
 	}
-	if len(keys) > 0 {
-		sort.Strings(keys)
-		fmt.Fprintln(w, "Annotations:")
-		for _, k := range keys {
-			fmt.Fprintf(w, "  - %s: %s\n", k, desc.Annotations[k])
-		}
-	}
-	_, err = fmt.Fprintln(w, strings.Repeat("-", 80))
-	return err
+	return platforms, nil
 }
 
-// ---------------------------------------------------------------------------
-// --tree
-// ---------------------------------------------------------------------------
-
-func useColor(w io.Writer) bool {
-	if os.Getenv("NO_COLOR") != "" {
-		return false
+// manifestPlatform returns an image manifest's platform, or "" for artifacts
+// and manifests without a known platform.
+func manifestPlatform(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor) (string, error) {
+	if desc.ArtifactType != "" || desc.Annotations["vnd.docker.reference.type"] != "" {
+		return "", nil // Skip explicitly marked artifacts and BuildKit attestations.
 	}
-	f, ok := w.(*os.File)
-	if !ok {
-		return false
+	// grab the platform from the metadata.
+	if platform := formatPlatform(desc.Platform); platform != "" {
+		return platform, nil
 	}
-	info, err := f.Stat()
-	return err == nil && info.Mode()&os.ModeCharDevice != 0
+	var manifest ocispec.Manifest
+	if err := fetchJSON(ctx, fetcher, desc, &manifest); err != nil {
+		return "", err
+	}
+	if manifest.ArtifactType != "" || (manifest.Config.MediaType != ocispec.MediaTypeImageConfig &&
+		manifest.Config.MediaType != "application/vnd.docker.container.image.v1+json") {
+		return "", nil // Artifact manifests are not image platforms.
+	}
+	// Fetch the image configuration to find the OS.
+	var image ocispec.Image
+	if err := fetchJSON(ctx, fetcher, manifest.Config, &image); err != nil {
+		return "", err
+	}
+	return formatPlatform(&image.Platform), nil
 }
 
-func colorize(enabled bool, s string) string {
-	if !enabled {
-		return s
+// fetchJSON caps the size before fetching because content.FetchAll allocates desc.Size bytes up front, and that size comes from untrusted input.
+func fetchJSON(ctx context.Context, fetcher content.Fetcher, desc ocispec.Descriptor, v any) error {
+	if desc.Size > 4<<20 {
+		return fmt.Errorf("%s: size %d exceeds 4 MiB metadata limit", desc.Digest, desc.Size)
 	}
-	return "\x1b[34m" + s + "\x1b[0m"
-}
-
-// treeSize uses decimal units, matching oci tree.
-func treeSize(n int64) string {
-	if n < 1000 {
-		return strconv.FormatInt(n, 10) + " B"
+	data, err := content.FetchAll(ctx, fetcher, desc)
+	if err != nil {
+		return fmt.Errorf("fetching %s: %w", desc.Digest, err)
 	}
-	value := float64(n)
-	unit := ""
-	for _, unit = range []string{"kB", "MB", "GB", "TB"} {
-		value /= 1000
-		if value < 1000 {
-			break
-		}
-	}
-	return fmt.Sprintf("%.1f %s", value, unit)
-}
-
-func treeDescriptor(desc ocispec.Descriptor) string {
-	short := desc.Digest.String()
-	if desc.Digest.Validate() == nil {
-		short = desc.Digest.Encoded()
-		if len(short) > 12 {
-			short = short[:12]
-		}
-	}
-	return fmt.Sprintf("[%-8s] %s %s", treeSize(desc.Size), desc.MediaType, short)
-}
-
-// treeSizes sums descriptor sizes. Sizes come from descriptors; layer
-// contents are never read.
-type treeSizes struct {
-	total  int64
-	unique int64
-	seen   map[digest.Digest]bool
-}
-
-func newTreeSizes() *treeSizes { return &treeSizes{seen: make(map[digest.Digest]bool)} }
-
-func (s *treeSizes) add(desc ocispec.Descriptor) {
-	s.total += desc.Size
-	if !s.seen[desc.Digest] {
-		s.unique += desc.Size
-		s.seen[desc.Digest] = true
-	}
-}
-
-// treeLine is built first and rendered second, so connectors and
-// continuation prefixes are computed in one place.
-type treeLine struct {
-	text     string
-	children []*treeLine
-}
-
-func writeTree(w io.Writer, t *treeLine, prefix string) {
-	for i, c := range t.children {
-		branch, next := "├── ", "│   "
-		if i == len(t.children)-1 {
-			branch, next = "└── ", "    "
-		}
-		fmt.Fprintf(w, "%s%s%s\n", prefix, branch, c.text)
-		writeTree(w, c, prefix+next)
-	}
-}
-
-func (v *viewer) printTrees(ctx context.Context, out io.Writer, index ocispec.Index, full bool) error {
-	global := newTreeSizes()
-	for i, desc := range index.Manifests {
-		if i > 0 {
-			fmt.Fprintln(out)
-		}
-		local := newTreeSizes()
-		root, err := v.buildTree(ctx, desc, full, roleRoot, local, global)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(out, "%s  %s\n", colorize(v.color, referenceName(desc)), root.text)
-		writeTree(out, root, "")
-		fmt.Fprintf(out, "%s %s (%s deduplicated)\n", totalLabel(full), treeSize(local.total), treeSize(local.unique))
-	}
-	if len(index.Manifests) > 1 {
-		fmt.Fprintf(out, "\nAll references %s %s (%s deduplicated)\n", strings.ToLower(totalLabel(full)), treeSize(global.total), treeSize(global.unique))
+	if err := json.Unmarshal(data, v); err != nil {
+		return fmt.Errorf("decoding %s: %w", desc.Digest, err)
 	}
 	return nil
 }
 
-func totalLabel(full bool) string {
-	if full {
-		return "Total:"
+// formatPlatform returns "" for missing or unknown platforms.
+func formatPlatform(p *ocispec.Platform) string {
+	if p == nil || p.OS == "" || p.Architecture == "" || p.OS == "unknown" || p.Architecture == "unknown" {
+		return ""
 	}
-	return "Total (manifests only):"
+	return path.Join(p.OS, p.Architecture, p.Variant)
 }
 
-// buildTree follows outgoing descriptors from desc. With full set it also
-// shows config/layers and referrers (manifests whose subject is desc).
-// Referrers are discovered through the store's predecessor graph, which ORAS
-// builds from everything reachable from index.json, so a referrer that is not
-// itself reachable from index.json will not be shown.
-type treeRole int
-
-const (
-	roleRoot     treeRole = iota // ref is printed by the caller
-	roleChild                    // entry of a parent index
-	roleReferrer                 // manifest whose subject is the parent
-)
-
-func (v *viewer) buildTree(ctx context.Context, desc ocispec.Descriptor, full bool, role treeRole, local, global *treeSizes) (*treeLine, error) {
-	n, err := v.inspect(ctx, desc)
-	if err != nil {
-		return nil, err
-	}
-	local.add(desc)
-	global.add(desc)
-	t := &treeLine{text: v.nodeLabel(n, role)}
-
-	if n.index != nil {
-		for _, child := range n.index.Manifests {
-			c, err := v.buildTree(ctx, child, full, roleChild, local, global)
-			if err != nil {
-				return nil, err
-			}
-			t.children = append(t.children, c)
-		}
-	}
-
-	if !full || n.missing {
-		return t, nil
-	}
-
-	if m := n.manifest; m != nil {
-		if m.Config.Digest != "" {
-			local.add(m.Config)
-			global.add(m.Config)
-			t.children = append(t.children, &treeLine{
-				text: "🗃️  " + colorize(v.color, "config") + "  " + treeDescriptor(m.Config),
-			})
-		}
-		if len(m.Layers) > 0 {
-			group := &treeLine{}
-			var layerTotal int64
-			for _, layer := range m.Layers {
-				local.add(layer)
-				global.add(layer)
-				layerTotal += layer.Size
-				group.children = append(group.children, &treeLine{text: treeDescriptor(layer)})
-			}
-			group.text = fmt.Sprintf("📦 %s  %d, %s total", colorize(v.color, "layers"), len(m.Layers), treeSize(layerTotal))
-			t.children = append(t.children, group)
-		}
-	}
-
-	referrers, err := registry.Referrers(ctx, v.graph, desc, "")
-	if err != nil {
-		return nil, fmt.Errorf("listing referrers of %s: %w", desc.Digest, err)
-	}
-	sort.Slice(referrers, func(i, j int) bool { return referrers[i].Digest < referrers[j].Digest })
-	for _, r := range referrers {
-		c, err := v.buildTree(ctx, r, full, roleReferrer, local, global)
-		if err != nil {
-			return nil, err
-		}
-		t.children = append(t.children, c)
-	}
-	return t, nil
-}
-
-func (v *viewer) nodeLabel(n node, role treeRole) string {
-	var b strings.Builder
+// openViewInput opens an OCI-layout directory, an OCI-layout tarball, or a tagged/digest-qualified registry reference.
+func openViewInput(ctx context.Context, input, dir string) (ocispec.Index, content.Fetcher, error) {
+	// Checks if the input is a local path.
+	info, err := os.Stat(input)
 	switch {
-	case role == roleReferrer:
-		b.WriteString("🔗 " + colorize(v.color, "referrer") + "  " + n.artifactTypeOrMediaType())
-	case n.kind == kindIndex:
-		b.WriteString("📚 " + colorize(v.color, "index"))
-	case n.kind == kindImage:
-		b.WriteString("📜 " + colorize(v.color, "manifest") + "  " + n.platformOrUnknown())
-	default:
-		b.WriteString("📎 " + colorize(v.color, "artifact") + "  " + n.artifactType)
+	// Case 1: its a local directory.
+	case err == nil && info.IsDir():
+		return openViewLayout(ctx, input)
+	// Case 2: its a local tarball.
+	case err == nil && info.Mode().IsRegular():
+		if err := extractViewTar(ctx, input, dir); err != nil {
+			return ocispec.Index{}, nil, fmt.Errorf("extracting %q: %w", input, err)
+		}
+		return openViewLayout(ctx, dir)
+	// If its something else, throw an error
+	case err == nil:
+		return ocispec.Index{}, nil, fmt.Errorf("%q is not a regular OCI archive or OCI-layout directory", input)
+	case !errors.Is(err, os.ErrNotExist):
+		return ocispec.Index{}, nil, fmt.Errorf("checking %q: %w", input, err)
 	}
-	if ref := n.desc.Annotations[ocispec.AnnotationRefName]; ref != "" && role != roleRoot {
-		b.WriteString("  " + ref)
+
+	// If it is not a local file nor throw an error, assume its a remote reference.
+	repo, err := remote.NewRepository(input)
+	if err != nil || repo.Reference.Reference == "" {
+		return ocispec.Index{}, nil, fmt.Errorf("%q is not an existing local path or a tagged/digest-qualified registry reference", input)
 	}
-	b.WriteString("  " + treeDescriptor(n.desc))
-	if n.missing {
-		b.WriteString("  (blob missing)")
+
+	// load the user's Docker credentials
+	store, err := credentials.NewStoreFromDocker(credentials.StoreOptions{})
+	if err != nil {
+		return ocispec.Index{}, nil, fmt.Errorf("loading Docker credentials: %w", err)
 	}
-	return b.String()
+	repo.Client = &auth.Client{Credential: credentials.Credential(store)}
+
+	// resolve the reference to a manifest descriptor.
+	desc, err := repo.Resolve(ctx, repo.Reference.Reference)
+	if err != nil {
+		return ocispec.Index{}, nil, fmt.Errorf("resolving %q: %w", input, err)
+	}
+	// Only the requested root has this reference; children do not inherit its tag.
+	desc.Annotations = map[string]string{ocispec.AnnotationRefName: input}
+	return ocispec.Index{Manifests: []ocispec.Descriptor{desc}}, repo, nil
 }
 
-func (n node) artifactTypeOrMediaType() string {
-	if n.artifactType != "" {
-		return n.artifactType
+// openViewLayout re-reads index.json because the store does not expose descriptor order.
+func openViewLayout(ctx context.Context, dir string) (ocispec.Index, content.Fetcher, error) {
+	store, err := oci.NewFromFS(ctx, os.DirFS(dir))
+	if err != nil {
+		return ocispec.Index{}, nil, fmt.Errorf("%q is not an OCI layout: %w", dir, err)
 	}
-	return artifactTypeOf(n.desc, n.manifest)
+
+	// read index.json to preserve the order of descriptors.
+	data, err := os.ReadFile(filepath.Join(dir, ocispec.ImageIndexFile))
+	if err != nil {
+		return ocispec.Index{}, nil, fmt.Errorf("reading index.json: %w", err)
+	}
+
+	var index ocispec.Index
+	if err := json.Unmarshal(data, &index); err != nil {
+		return ocispec.Index{}, nil, fmt.Errorf("decoding index.json: %w", err)
+	}
+	return index, store, nil
+}
+
+// extractViewTar accepts plain tar, gzip tar, and zstd tar. The caller owns dir.
+func extractViewTar(ctx context.Context, archivePath, dir string) error {
+	f, err := os.Open(archivePath)
+	if err != nil {
+		return fmt.Errorf("opening archive: %w", err)
+	}
+	defer f.Close()
+
+	// checks the magic bytes to determine if the tarball is compressed.
+	buffered := bufio.NewReader(f)
+	magic, _ := buffered.Peek(4) // Short or unreadable input fails in tr.Next below.
+	var reader io.Reader = buffered
+	switch {
+	// Case for gzip.
+	case bytes.HasPrefix(magic, []byte{0x1f, 0x8b}):
+		gz, err := gzip.NewReader(buffered)
+		if err != nil {
+			return fmt.Errorf("opening gzip stream: %w", err)
+		}
+		defer gz.Close()
+		reader = gz
+	// Case for Zstandard.
+	case bytes.HasPrefix(magic, []byte{0x28, 0xb5, 0x2f, 0xfd}):
+		dec, err := zstd.NewReader(buffered)
+		if err != nil {
+			return fmt.Errorf("opening zstd stream: %w", err)
+		}
+		defer dec.Close()
+		reader = dec
+	}
+
+	tr := tar.NewReader(&viewContextReader{ctx: ctx, reader: reader})
+	var extractedBytes int64
+	for {
+		hdr, err := tr.Next()
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("reading tar header: %w", err)
+		}
+
+		target := filepath.Join(dir, hdr.Name)
+		switch hdr.Typeflag {
+		case tar.TypeDir:
+			// If the tar entry is a directory, create it on the filesystem.
+			if err := os.MkdirAll(target, 0700); err != nil {
+				return fmt.Errorf("creating directory %q: %w", hdr.Name, err)
+			}
+		case tar.TypeReg:
+			extractedBytes += hdr.Size
+			if err := os.MkdirAll(filepath.Dir(target), 0700); err != nil {
+				return fmt.Errorf("creating parent of %q: %w", hdr.Name, err)
+			}
+			flags := os.O_WRONLY | os.O_CREATE | os.O_EXCL
+			if target == filepath.Join(dir, ocispec.ImageIndexFile) {
+				// The last root index.json wins; other duplicate files are errors.
+				flags = os.O_WRONLY | os.O_CREATE | os.O_TRUNC
+			}
+			out, err := os.OpenFile(target, flags, 0600)
+			if err != nil {
+				return fmt.Errorf("creating file %q: %w", hdr.Name, err)
+			}
+			_, copyErr := io.CopyN(out, tr, hdr.Size)
+			if err := errors.Join(copyErr, out.Close()); err != nil {
+				return fmt.Errorf("extracting file %q: %w", hdr.Name, err)
+			}
+		default:
+			return fmt.Errorf("unsupported tar entry type %q for %q", hdr.Typeflag, hdr.Name)
+		}
+	}
+}
+
+// viewContextReader wraps an io.Reader and checks the context for cancellation before each read.
+type viewContextReader struct {
+	// io.Reader cannot be modified to accept a context.
+	ctx    context.Context //nolint:containedctx
+	reader io.Reader
+}
+
+func (r *viewContextReader) Read(p []byte) (int, error) {
+	// checks for cancellation.
+	if err := r.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return r.reader.Read(p) //nolint:wrapcheck
 }

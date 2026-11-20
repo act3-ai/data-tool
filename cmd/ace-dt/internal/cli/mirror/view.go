@@ -30,8 +30,7 @@ Output formats (tab-separated, one record per line):
 Other modes need the full layout (oci-layout, index.json, blobs/).`,
 		Example: `  ace-dt mirror view ./sync --refs
   ace-dt mirror view ./sync --images
-  ace-dt mirror view ./sync --tree
-  ace-dt mirror view ./extracted --diff ./sync/index.json`,
+  ace-dt mirror view ./sync --diff ./sync/index.json`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Flags and args are valid at this point; a failure (including
@@ -40,18 +39,7 @@ Other modes need the full layout (oci-layout, index.json, blobs/).`,
 			return view.Run(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), args[0])
 		},
 	}
-
-	cmd.Flags().BoolVarP(&view.Detailed, "detailed", "d", false, "Display detailed information for each reference")
-	cmd.Flags().BoolVar(&view.Refs, "refs", false, "List top-level digest, reference name, and kind")
-	cmd.Flags().BoolVar(&view.Images, "images", false, "List indexes, images with platform, and artifacts with type")
-	cmd.Flags().BoolVar(&view.Tree, "tree", false, "Display an OCI tree with sizes and referrers; with --images show manifests only, with --refs show roots only")
-	cmd.Flags().StringVar(&view.Diff, "diff", "", "Compare top-level entries with this extracted OCI layout or index.json")
-
-	cmd.MarkFlagsMutuallyExclusive("refs", "images", "detailed")
-	cmd.MarkFlagsMutuallyExclusive("tree", "detailed")
-	for _, f := range []string{"refs", "images", "detailed", "tree"} {
-		cmd.MarkFlagsMutuallyExclusive("diff", f)
-	}
+	cmd.Flags().BoolVar(&view.Platforms, "platforms", false, "Include image platforms as a semicolon-separated CSV field")
 
 	return cmd
 }
