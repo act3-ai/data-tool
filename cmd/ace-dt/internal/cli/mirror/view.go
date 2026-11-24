@@ -10,36 +10,35 @@ func newViewCmd(action *mirroractions.Action) *cobra.Command {
 	view := &mirroractions.View{Action: action}
 
 	cmd := &cobra.Command{
-		Use:   "view <layout>",
-		Short: "View or compare images and manifests in extracted OCI layouts",
-		Long: `View the contents of an extracted OCI image layout (a gather or serialize
-output after untarring). <layout> is the layout directory or its index.json.
-Archives are not read directly; extract them first.
+		Use:   "view <input>",
+		Short: "List references in an OCI layout, OCI-layout archive, or registry",
+		Long: `List the root references in <input>, one per line with no header
+(the sources.list format).
 
-Output formats (tab-separated, one record per line):
-  --refs     digest  ref  index|image|artifact
-  --images   digest  index     ref
-             digest  image     platform      ref
-             digest  artifact  artifactType  ref
-             Index children follow their index and have ref <unnamed>.
-  --diff     -|+  digest  ref  kind
-             "-" = only in the --diff layout, "+" = only in <layout>.
-             Exits non-zero when the indexes differ.
+<input> is one of:
+  - an OCI-layout directory (oci-layout, index.json, blobs/)
+  - an OCI-layout tarball (plain, gzip, or zstd)
+  - a tagged or digest-qualified registry reference
 
---refs and --diff read index.json only and accept a bare gather index.
-Other modes need the full layout (oci-layout, index.json, blobs/).`,
-		Example: `  ace-dt mirror view ./sync --refs
-  ace-dt mirror view ./sync --images
-  ace-dt mirror view ./sync --diff ./sync/index.json`,
+Output:
+  default      ref
+  --platforms  ref,os/arch[/variant];...   (CSV)
+  --stats      per-reference cost, unique, shared, and missing data, sorted by
+               cost, then totals and space saved by deduplication.
+               Add --platforms to include a platforms column.`,
+		Example: `  ace-dt mirror view ./sync
+  ace-dt mirror view ./images.tar.zst --platforms
+  ace-dt mirror view reg.example.com/library/registry:2.8.3 --platforms
+  ace-dt mirror view ./sync --stats`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// Flags and args are valid at this point; a failure (including
-			// "indexes differ") should not print usage.
+			// Flags and args are valid at this point; a failure should not print usage.
 			cmd.SilenceUsage = true
 			return view.Run(cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr(), args[0])
 		},
 	}
 	cmd.Flags().BoolVar(&view.Platforms, "platforms", false, "Include image platforms as a semicolon-separated CSV field")
+	cmd.Flags().BoolVar(&view.Stats, "stats", false, "Show per-reference size, sharing, and missing-blob stats")
 
 	return cmd
 }
