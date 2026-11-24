@@ -90,8 +90,13 @@ func printReferences(ctx context.Context, out io.Writer, index ocispec.Index, st
 // reference uses (what deleting it would free); shared is the rest.
 func printStats(ctx context.Context, out io.Writer, index ocispec.Index, store content.ReadOnlyStorage, includePlatforms bool) error {
 	var refs []*refWalk
+
+	// Track how many root references use each blob digest to distinguish unique vs shared blobs.
 	uses := map[digest.Digest]int{}
+	// Makes deduplicated maps of all blobs and missing blobs across all references for totals
 	stored, missing := map[digest.Digest]int64{}, map[digest.Digest]int64{}
+
+	// Walk each root manifest/index to gather its reachable blobs, missing blobs, cost, and platforms.
 	for _, desc := range index.Manifests {
 		ref, err := walkReference(ctx, store, desc)
 		if err != nil {
@@ -104,15 +109,20 @@ func printStats(ctx context.Context, out io.Writer, index ocispec.Index, store c
 		maps.Copy(stored, ref.blobs)
 		maps.Copy(missing, ref.missing)
 	}
+	// Sorts references descending by total blob cost, keeping original index order on ties.
 	slices.SortStableFunc(refs, func(a, b *refWalk) int { return cmp.Compare(b.cost, a.cost) })
 
+	// Make the tab separated table.
 	header := "REFERENCE\tCOST\tUNIQUE\tSHARED\tMISSING"
 	if includePlatforms {
 		header += "\tPLATFORMS"
 	}
 	lines := []string{header}
+
+	// Accumulate total logical size (sum of all individual reference costs before deduplication).
 	var logical int64
 	for _, ref := range refs {
+		// Sum sizes of blobs referenced only by this root reference.
 		var unique int64
 		for d, size := range ref.blobs {
 			if uses[d] == 1 {
@@ -120,10 +130,13 @@ func printStats(ctx context.Context, out io.Writer, index ocispec.Index, store c
 			}
 		}
 		logical += ref.cost
+
+		// Use the human-readable reference name annotation, falling back to digest if untagged.
 		name := ref.root.Annotations[ocispec.AnnotationRefName]
 		if name == "" {
 			name = ref.root.Digest.String() + " (untagged)"
 		}
+		// Formats row columns.
 		line := strings.Join([]string{name, formatBytes(ref.cost), formatBytes(unique),
 			formatBytes(ref.cost - unique), formatMissing(ref.missing)}, "\t")
 		if includePlatforms {
@@ -131,12 +144,13 @@ func printStats(ctx context.Context, out io.Writer, index ocispec.Index, store c
 		}
 		lines = append(lines, line)
 	}
+	// Calculate deduplicated storage total and append summary footer lines.
 	storedBytes := sumSizes(stored)
 	lines = append(lines, "",
 		fmt.Sprintf("references: %d   blobs: %d   stored: %s   logical: %s   saved by dedup: %s", len(refs),
 			len(stored), formatBytes(storedBytes), formatBytes(logical), formatBytes(logical-storedBytes)),
 		"missing blobs: "+formatMissing(missing))
-
+	// Format columns with the tabwriter.
 	tw := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
 	if _, err := fmt.Fprintln(tw, strings.Join(lines, "\n")); err != nil {
 		return err
@@ -278,6 +292,7 @@ func formatPlatform(p *ocispec.Platform) string {
 	return path.Join(p.OS, p.Architecture, p.Variant)
 }
 
+// Sums all byte sizes in a map of blobs.
 func sumSizes(blobs map[digest.Digest]int64) int64 {
 	var total int64
 	for _, size := range blobs {
