@@ -31,6 +31,7 @@ func NewMirrorCmd(tool *actions.DataTool) *cobra.Command {
 		newBatchSerializeCmd(action),
 		newBatchDeserializeCmd(action),
 		newDiffCmd(action),
+		newViewCmd(action),
 	)
 
 	cmd.PersistentFlags().BoolVarP(&action.Recursive, "recursive", "r", false, "recursively copy the referrers")
