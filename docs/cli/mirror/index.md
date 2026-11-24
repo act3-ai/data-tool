@@ -44,4 +44,4 @@ Global options:
 - [`ace-dt mirror scatter`](scatter.md) - A command that scatters images to destination registries defined in the MAPPER
 - [`ace-dt mirror serialize`](serialize.md) - Serialize image data from IMAGE to DEST assuming that all blobs in the EXISTING-IMAGE(s) do not need to be sent.
 - [`ace-dt mirror unarchive`](unarchive.md) - Efficiently scatters images listed in a TAR-FILE according to the MAPPER
-- [`ace-dt mirror view`](view.md) - View or compare images and manifests in extracted OCI layouts
+- [`ace-dt mirror view`](view.md) - List references in an OCI layout, OCI-layout archive, or registry

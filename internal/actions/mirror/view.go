@@ -7,8 +7,6 @@ import (
 	"cmp"
 	"compress/gzip"
 	"context"
-	_ "crypto/sha256"
-	_ "crypto/sha512"
 	"encoding/csv"
 	"encoding/json"
 	"errors"
@@ -143,7 +141,10 @@ func printStats(ctx context.Context, out io.Writer, index ocispec.Index, store c
 	if _, err := fmt.Fprintln(tw, strings.Join(lines, "\n")); err != nil {
 		return err
 	}
-	return tw.Flush()
+	if err := tw.Flush(); err != nil {
+		return fmt.Errorf("writing stats: %w", err)
+	}
+	return nil
 }
 
 // refWalk holds what one root reference reaches. Sizes come from descriptors,
